@@ -6,7 +6,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.14.2.1 2004/02/13 21:38:15 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.14.2.2 2004/02/15 01:36:56 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -561,13 +561,7 @@ UdpPeek(ClientData clientData, Tcl_Interp *interp,
     int actual_size, socksize;
     int sock;
     char message[17];
-    /*struct hostent *name;*/
-#ifdef SIPC_IPV6
-    char *remotehost;
-    struct sockaddr_in6 recvaddr;
-#else
-    struct sockaddr_in recvaddr;
-#endif
+    sockaddr_t recvaddr;
     Tcl_Channel chan;
     UdpState *statePtr;
     
@@ -582,6 +576,8 @@ UdpPeek(ClientData clientData, Tcl_Interp *interp,
         buffer_size = atoi(argv[2]);
         if (buffer_size > 16) buffer_size = 16;
     }
+
+    socksize = sizeof(sockaddr_t);
     actual_size = recvfrom(sock, message, buffer_size, MSG_PEEK,
                            (struct sockaddr *)&recvaddr, &socksize);
     
@@ -590,15 +586,13 @@ UdpPeek(ClientData clientData, Tcl_Interp *interp,
         Tcl_AppendResult(interp, errBuf, (char *)NULL);
         return TCL_ERROR;
     }
-#ifdef SIPC_IPV6
-    memcpy(&statePtr->saddr6_peer, &recvaddr, sizeof(recvaddr));
-#else
     memcpy(&statePtr->saddr_peer, &recvaddr, sizeof(recvaddr));
-#endif
-    message[16]='\0';
+    message[actual_size]='\0';
     
+    Tcl_ResetResult(interp);
     Tcl_AppendResult(interp, message, (char *)NULL);
     return TCL_OK;
+
 #else /* WIN32 */
     Tcl_SetResult(interp, "udp_peek not implemented for this platform",
                   TCL_STATIC);
@@ -976,15 +970,15 @@ static void
 udpWatch(ClientData instanceData, int mask)
 {
 #ifndef WIN32
-    UdpState *fsPtr = (UdpState *) instanceData;
+    UdpState *statePtr = (UdpState *) instanceData;
     if (mask) {
         UDPTRACE("Tcl_CreateFileHandler\n");
-        Tcl_CreateFileHandler(fsPtr->sock, mask,
+        Tcl_CreateFileHandler(statePtr->sock, mask,
                               (Tcl_FileProc *) Tcl_NotifyChannel,
-                              (ClientData) fsPtr->channel);
+                              (ClientData) statePtr->channel);
     } else {
         UDPTRACE("Tcl_DeleteFileHandler\n");
-        Tcl_DeleteFileHandler(fsPtr->sock);
+        Tcl_DeleteFileHandler(statePtr->sock);
     }
 #endif
 }
@@ -1135,14 +1129,16 @@ udpInput(ClientData instanceData, char *buf, int bufSize, int *errorCode)
     memcpy(&statePtr->saddr_peer, &recvaddr, sizeof(recvaddr));
     
 #ifdef SIPC_IPV6
-    inet_ntop(recvaddr.sin_family, &statePtr->saddr_peer.sin_addr, 
-        number, 128);
+    inet_ntop(recvaddr.ipv6.sin_family,
+              &statePtr->saddr_peer.ipv6.sin_addr, 
+              number, 128);
 #else
-    inet_ntop(statePtr->saddr_peer.sin_family, &statePtr->saddr_peer.sin_addr, 
-        number, 128);
+    inet_ntop(statePtr->saddr_peer.ipv4.sin_family, 
+              &statePtr->saddr_peer.ipv4.sin_addr, 
+              number, 128);
 #endif
 
-    UDPTRACE("remotehost: %s:%d\n", number, ntohs(recvaddr.sin6_port));
+    UDPTRACE("remotehost: %s:%d\n", number, ntohs(recvaddr.ipv6.sin6_port));
 
 #endif /* ! WIN32 */
     

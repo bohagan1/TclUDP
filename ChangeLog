@@ -1,3 +1,8 @@
+2004-02-14  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* generic/udp_tcl.c: Fix to build under Linux (no ipv6)
+	* Makefile: Add installation for the library files.
+
 2004-02-13  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
 	* generic/udp_tcl.c: An extensive interface rewrite. We now have

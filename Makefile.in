@@ -12,7 +12,7 @@
 # See the file "license.terms" for information on usage and redistribution
 # of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 #
-# RCS: @(#) $Id: Makefile.in,v 1.2 2004/02/09 12:02:32 patthoyts Exp $
+# RCS: @(#) $Id: Makefile.in,v 1.2.2.1 2004/02/15 01:36:56 patthoyts Exp $
 
 #========================================================================
 # Edit the following few lines when writing a new extension
@@ -27,7 +27,7 @@
 # unix subdirectory.
 #========================================================================
 
-udp_SOURCES	= $(srcdir)/generic/udp_tcl.c
+udp_SOURCES	= udp_tcl.c
 
 WIN_SOURCES	=
 UNIX_SOURCES	= 
@@ -92,6 +92,8 @@ libdir		= @libdir@
 datadir		= @datadir@
 mandir		= @mandir@
 includedir	= @includedir@
+
+TCLUDP_LIBRARY  = $(srcdir)/library
 
 DESTDIR		=
 
@@ -180,7 +182,7 @@ COMPILE		= $(CC) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(C
 # for the BINARIES that you specified above have already been done.
 #========================================================================
 
-all: binaries #libraries doc
+all: binaries libraries #doc
 
 #========================================================================
 # The binaries target builds executable programs, Windows .dll's, unix
@@ -211,12 +213,17 @@ install-binaries: binaries install-lib-binaries install-bin-binaries
 #========================================================================
 
 install-libraries: libraries
-	@mkdir -p $(DESTDIR)$(includedir)
-	@echo "Installing header files in $(DESTDIR)$(includedir)"
-	@for i in $(GENERIC_HDRS) ; do \
-	    echo "Installing $$i" ; \
-	    $(INSTALL_DATA) $$i $(DESTDIR)$(includedir) ; \
-	done;
+	@echo "Installing script library files in $(DESTDIR)$(pkglibdir)"
+	@for i in $(srcdir)/library/*.tcl; do \
+	    echo "Installing $$i"; \
+	    $(INSTALL_DATA) $$i $(DESTDIR)$(pkglibdir) ; \
+	done
+#	@mkdir -p $(DESTDIR)$(includedir)
+#	@echo "Installing header files in $(DESTDIR)$(includedir)"
+#	@for i in $(GENERIC_HDRS) ; do \
+#	    echo "Installing $$i" ; \
+#	    $(INSTALL_DATA) $$i $(DESTDIR)$(includedir) ; \
+#	done;
 
 #========================================================================
 # Install documentation.  Unix manpages should go in the $(mandir)
