@@ -12,7 +12,7 @@
 # See the file "license.terms" for information on usage and redistribution
 # of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 #
-# RCS: @(#) $Id: Makefile.in,v 1.1 2003/03/03 06:05:32 xiaotaow Exp $
+# RCS: @(#) $Id: Makefile.in,v 1.2 2004/02/09 12:02:32 patthoyts Exp $
 
 #========================================================================
 # Edit the following few lines when writing a new extension
@@ -27,7 +27,7 @@
 # unix subdirectory.
 #========================================================================
 
-udp_SOURCES	= generic/udp_tcl.c
+udp_SOURCES	= $(srcdir)/generic/udp_tcl.c
 
 WIN_SOURCES	=
 UNIX_SOURCES	= 

@@ -6,7 +6,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.9 2003/10/14 20:37:54 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.10 2004/02/09 12:02:32 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -21,7 +21,7 @@
 #ifdef WIN32
 #include <stdlib.h>
 #include <malloc.h>
-#else
+#else /* ! WIN32 */
 #if defined(HAVE_SYS_IOCTL_H)
 #include <sys/ioctl.h>
 #elif defined(HAVE_SYS_FILIO_H)
@@ -29,7 +29,7 @@
 #else
 #error "Neither sys/ioctl.h nor sys/filio.h found. We need ioctl()"
 #endif
-#endif
+#endif /* WIN32 */
 
 /* Tcl 8.4 CONST support */
 #ifndef CONST84
@@ -42,7 +42,7 @@
 #define INVALID_SOCKET -1
 #define closesocket close
 #define ioctlsocket ioctl
-#endif
+#endif /* WIN32 */
 
 #ifdef DEBUG
 #define UDPTRACE udpTrace
@@ -100,6 +100,26 @@ static UdpState *sockList;
 static UdpState *sockTail;
 
 #endif /* ! WIN32 */
+
+/*
+ * This structure describes the channel type for accessing UDP.
+ */
+static Tcl_ChannelType Udp_ChannelType = {
+#ifdef SIPC_IPV6
+    "udp6",                /* Type name.                                    */
+#else 
+    "udp",                 /* Type name.                                    */
+#endif 
+    NULL,                  /* Set blocking/nonblocking behaviour. NULL'able */
+    udpClose,              /* Close channel, clean instance data            */
+    udpInput,              /* Handle read request                           */
+    udpOutput,             /* Handle write request                          */
+    NULL,                  /* Move location of access point.      NULL'able */
+    udpSetOption,          /* Set options.                        NULL'able */
+    udpGetOption,          /* Get options.                        NULL'able */
+    udpWatch,              /* Initialize notifier                           */
+    udpGetHandle,          /* Get OS handle from the channel.               */
+};
 
 /*
  * ----------------------------------------------------------------------
@@ -186,25 +206,27 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
     unsigned long status = 1;
     int len;
     
-    Tcl_ChannelType *Udp_ChannelType;
-    Udp_ChannelType = (Tcl_ChannelType *) ckalloc((unsigned) sizeof(Tcl_ChannelType));
-    memset(Udp_ChannelType, 0, sizeof(Tcl_ChannelType));
-#ifdef SIPC_IPV6
-    Udp_ChannelType->typeName = strdup("udp6");
-#else 
-    Udp_ChannelType->typeName = strdup("udp");
-#endif
-    Udp_ChannelType->blockModeProc = NULL;
-    Udp_ChannelType->closeProc = udpClose;
-    Udp_ChannelType->inputProc = udpInput;
-    Udp_ChannelType->outputProc = udpOutput;
-    Udp_ChannelType->seekProc = NULL;
-    Udp_ChannelType->setOptionProc = udpSetOption;
-    Udp_ChannelType->getOptionProc = udpGetOption;
-    Udp_ChannelType->watchProc = udpWatch;
-    Udp_ChannelType->getHandleProc = udpGetHandle;
-    Udp_ChannelType->close2Proc = NULL;
-    
+    /*
+     *    Tcl_ChannelType *Udp_ChannelType;
+     *    Udp_ChannelType = (Tcl_ChannelType *) ckalloc((unsigned) sizeof(Tcl_ChannelType));
+     *    memset(Udp_ChannelType, 0, sizeof(Tcl_ChannelType));
+     * #ifdef SIPC_IPV6
+     *    Udp_ChannelType->typeName = strdup("udp6");
+     *#else 
+     *    Udp_ChannelType->typeName = strdup("udp");
+     *#endif
+     *    Udp_ChannelType->blockModeProc = NULL;
+     *    Udp_ChannelType->closeProc = udpClose;
+     *    Udp_ChannelType->inputProc = udpInput;
+     *    Udp_ChannelType->outputProc = udpOutput;
+     *    Udp_ChannelType->seekProc = NULL;
+     *    Udp_ChannelType->setOptionProc = udpSetOption;
+     *    Udp_ChannelType->getOptionProc = udpGetOption;
+     *    Udp_ChannelType->watchProc = udpWatch;
+     *    Udp_ChannelType->getHandleProc = udpGetHandle;
+     *    Udp_ChannelType->close2Proc = NULL;
+     */
+
     if (argc >= 2) {
         if (udpGetService(interp, argv[1], &localport) != TCL_OK)
             return TCL_ERROR;
@@ -258,7 +280,7 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
     memset(statePtr, 0, sizeof(UdpState));
     statePtr->sock = sock;
     sprintf(channelName, "sock%d", statePtr->sock);
-    statePtr->channel = Tcl_CreateChannel(Udp_ChannelType, channelName,
+    statePtr->channel = Tcl_CreateChannel(&Udp_ChannelType, channelName,
                                           (ClientData) statePtr,
                                           (TCL_READABLE | TCL_WRITABLE | TCL_MODE_NONBLOCKING));
     statePtr->doread = 1;

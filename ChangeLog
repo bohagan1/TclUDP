@@ -1,3 +1,20 @@
+2004-02-09  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* all:        INCREMENTED VERSION TO 1.0.6
+
+	* Makefile.in: Fixed to build in directories other than the top
+	of the source tree.
+
+	* generic/udp_tcl.c: Applied the patch from bug #810572 which
+	fixes a memory leak in udp_open - from D. Richard Hipp?
+
+	* generic/udp_tcl.h: Fix for missing define WIN32 sometimes.
+	
+	* win/makefile.vc:  Added the standard windows nmake makefiles
+	* win/nmakehlp.c:   from the sampleextension project.
+	* win/rules.vc:     Visual Studio project updated as a Makefile
+	* win/tcludp.dsp:   project.
+
 2003-10-14  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
 	* generic/udp_tcl.c: Fix CONSTness for Tcl < 8.4

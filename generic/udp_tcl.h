@@ -20,6 +20,10 @@
 #  include <stdlib.h>
 #endif
 
+#if defined(_WIN32) && !defined(WIN32)
+#define WIN32
+#endif
+
 #ifdef WIN32
 #  include <winsock.h>
 #else
@@ -33,7 +37,7 @@
 #  include <netinet/in.h>
 #  include <arpa/inet.h>
 #  include <netdb.h>
-#endif
+#endif /* WIN32 */
 
 #include <stdio.h>
 #include <string.h>
@@ -64,7 +68,7 @@ typedef struct PacketList {
   struct PacketList *next;
 } PacketList;
 
-#endif // WIN32
+#endif /* WIN32 */
 
 typedef struct UdpState {
   Tcl_Channel       channel;
