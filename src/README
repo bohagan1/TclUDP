@@ -1,0 +1,77 @@
+Tcl UDP extension 
+
+1. History of the extension
+2. Synopsis
+3. How to build and test
+4. How to use
+5. Feedback
+
+1. History of the extension
+----------------------------------------------------------------------
+Some of the code in this extension is copied from Michael Miller's tcludp
+package. (http://www.neosoft.com/tcl/ftparchive/sorted/comm/tcludp-1.0/)
+Compared with Michael's UDP extension, this extension provides Windows
+support and provides the ability of using 'gets/puts' to read/write
+the socket. In addition, it provides more configuration ability.
+
+2. Synopsis
+----------------------------------------------------------------------
+udp_open ?port?
+udp_conf sock host port
+udp_conf sock ?option? (options: -myport -remote -peer)
+udp_peek sock ?buffersize?
+
+udp_open will open a UDP sockets. If 'port' is specified, the UDP socket
+will be opened on that port. Otherwise, the system will choose a port and
+the user can use 'udp_conf -myport' to get the port number.
+
+'udp_conf sock host port' will define the remote host and port to send the
+UDP packets to. Prior to using 'puts' to write to the socket, please use
+udp_conf to set the remote host and port.
+
+'udp_conf sock ?option?' will get the socket information. 
+'udp_conf -myport' will get the local port of the socket
+'udp_conf -remote' will get the remote host and port that the socket 
+                   will send packets to.
+'udp_conf -peer'   will get the remote host and port information of the 
+                   most recently received packet.
+
+udp_peek will peek a packet without removing it from the buffer.
+
+3. How to build and test
+----------------------------------------------------------------------
+This extension is to add UDP support for Tcl.
+This extension is for Tcl8.0 or later.
+Before compiling, please modify the Makefile for proper Tcl path.
+.........................................
+To compile under Unix, 
+make -f makefile.unix
+libudp.so will be in the ../unix directory
+..........................................
+To compile under Linux,
+make -f makefile.linux
+libudp.so will be in the ../linux directory
+...........................................
+To compile under Windows
+nmake -f makefile.vc
+udp.dll will be in the ../win directory
+...........................................
+The ../test contains two test programs. One is for sending and the other
+is for receiving UDP packet.
+
+4. How to use
+----------------------------------------------------------------------
+Use Tcl 'load' command to load the library.
+Use udp_open to open a socket. Use udp_conf to specify the remote host
+and port and get the socket information. Use 'gets/puts' to receive/send 
+packets. Use udp_peek to peek the packets.
+
+5. Feedback
+----------------------------------------------------------------------
+If you have any problem with this extension, please contact Xiaotao Wu
+
+Name  : Xiaotao Wu
+Email : xiaotaow@cs.columbia.edu, xw71@columbia.edu
+URL   : http://www.cs.columbia.edu/~xiaotaow
+Phone : (212)939-7020, (212)939-7133,  Fax: (801)751-0217
+SIP   : sip:xiaotaow@conductor.cs.columbia.edu
