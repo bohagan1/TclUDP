@@ -1,3 +1,9 @@
+2004-11-22  Pat Thoyts  <pat@zsplat.freeserve.co.uk>
+
+	* generic/udp_tcl.c: Added support for setting and retrieving the
+	TTL option on the socket. The default is specified by the system
+	but can be set for individual sockets. 
+
 2004-02-09  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
 	* generic/udp_tcl.c: Followed up a suggestion in patch #794072 to

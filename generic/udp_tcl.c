@@ -6,7 +6,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.14 2004/02/09 15:49:18 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.15 2004/11/22 10:00:30 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -312,10 +312,13 @@ udpConf(ClientData clientData, Tcl_Interp *interp,
     struct ip_mreq mreq;
     struct sockaddr_in maddr;
     int sock;
+    char errmsg[] = 
+      "udpConf fileId [-mcastadd] [-mcastdrop] groupaddr | "
+      "udpConf fileId remotehost remoteport | "
+      "udpConf fileId [-myport] [-remote] [-peer] [-broadcast] [-ttl]";
     
     if (argc != 4 && argc != 3) {
-        result = "udpConf fileId [-mcastadd] [-mcastdrop] groupaddr | udpConf fileId remotehost remoteport | udpConf fileId [-myport] [-remote] [-peer] [-broadcast]";
-        Tcl_SetResult (interp, result, NULL);
+        Tcl_SetResult (interp, errmsg, NULL);
         return TCL_ERROR;
     }
     chan = Tcl_GetChannel(interp, (char *)argv[1], NULL);
@@ -348,8 +351,21 @@ udpConf(ClientData clientData, Tcl_Interp *interp,
             socklen_t optlen = sizeof(int);
             if (getsockopt(statePtr->sock, SOL_SOCKET, SO_BROADCAST, 
                            (char *)&tmp, &optlen)) {
-                sprintf(errBuf, "%s", "udp - setsockopt");
-                UDPTRACE("UDP error - setsockopt\n");
+                sprintf(errBuf, "%s", "udp - getsockopt");
+                UDPTRACE("UDP error - getsockopt\n");
+                Tcl_AppendResult(interp, errBuf, (char *)NULL);
+                return TCL_ERROR;
+            } else {
+                Tcl_SetObjResult(interp, Tcl_NewIntObj(tmp));
+                return TCL_OK;
+            }
+        } else if (!strcmp(argv[2], "-ttl")) {
+            int tmp = 1;
+            socklen_t optlen = sizeof(int);
+            if (getsockopt(statePtr->sock, SOL_IP, IP_TTL, 
+                           (char *)&tmp, &optlen)) {
+                sprintf(errBuf, "%s", "udp - getsockopt");
+                UDPTRACE("UDP error - getsockopt\n");
                 Tcl_AppendResult(interp, errBuf, (char *)NULL);
                 return TCL_ERROR;
             } else {
@@ -357,8 +373,7 @@ udpConf(ClientData clientData, Tcl_Interp *interp,
                 return TCL_OK;
             }
         } else {
-            result = "udpConf fileId [-mcastadd] [-mcastdrop] groupaddr | udpConf fileId remotehost remoteport | udpConf fileId [-myport] [-remote] [-peer]";
-            Tcl_SetResult (interp, result, NULL);
+            Tcl_SetResult (interp, errmsg, NULL);
             return TCL_ERROR;
         }
         return TCL_OK;
@@ -422,6 +437,22 @@ udpConf(ClientData clientData, Tcl_Interp *interp,
                 }
             }
             return r;
+        } else if (!strcmp(argv[2], "-ttl")) {
+            socklen_t optlen = sizeof(int);
+            int tmp = 0;
+            int r = Tcl_GetInt(interp, argv[3], &tmp);
+            if (r == TCL_OK) {
+                if (setsockopt(statePtr->sock, SOL_IP, IP_TTL,
+                               (const char *)&tmp, optlen)) {
+                    sprintf(errBuf, "%s", "udp - setsockopt");
+                    UDPTRACE("UDP error - setsockopt\n");
+                    Tcl_AppendResult(interp, errBuf, (char *)NULL);
+                    r = TCL_ERROR;
+                } else {
+                    Tcl_SetObjResult(interp, Tcl_NewIntObj(tmp));
+                }
+            }
+            return r;
         } else {
             if (strlen(argv[2]) >= sizeof(statePtr->remotehost)) {
                 result = "hostname too long";
@@ -432,8 +463,7 @@ udpConf(ClientData clientData, Tcl_Interp *interp,
             return udpGetService(interp, argv[3], &(statePtr->remoteport));
         }
     } else {
-        result = "udpConf fileId [-mcastadd] [-mcastdrop] groupaddr | udpConf fileId remotehost remoteport | udpConf fileId [-myport] [-remote] [-peer]";
-        Tcl_SetResult (interp, result, NULL);
+        Tcl_SetResult (interp, errmsg, NULL);
         return TCL_ERROR;
     }
 }
@@ -1125,7 +1155,7 @@ udpGetOption(ClientData instanceData, Tcl_Interp *interp,
              CONST84 char *optionName, Tcl_DString *optionValue)
 {
     UdpState *statePtr = (UdpState *)instanceData;
-    CONST84 char * options = "myport remote peer mcastadd mcastdrop";
+    CONST84 char * options = "myport remote peer mcastadd mcastdrop broadcast ttl";
     int r = TCL_OK;
 
     if (optionName == NULL) {
@@ -1142,6 +1172,8 @@ udpGetOption(ClientData instanceData, Tcl_Interp *interp,
         udpGetOption(instanceData, interp, "-mcastdrop", optionValue);
         Tcl_DStringAppend(optionValue, " -broadcast ", -1);
         udpGetOption(instanceData, interp, "-broadcast", optionValue);
+        Tcl_DStringAppend(optionValue, " -ttl ", -1);
+        udpGetOption(instanceData, interp, "-ttl", optionValue);
 
     } else {
 
@@ -1179,12 +1211,26 @@ udpGetOption(ClientData instanceData, Tcl_Interp *interp,
             socklen_t optlen = sizeof(int);
             if (getsockopt(statePtr->sock, SOL_SOCKET, SO_BROADCAST, 
                            (char *)&tmp, &optlen)) {
-                UDPTRACE("UDP error - setsockopt\n");
-                Tcl_SetResult(interp, "error in setsockopt", TCL_STATIC);
+                UDPTRACE("UDP error - getsockopt\n");
+                Tcl_SetResult(interp, "error in getsockopt", TCL_STATIC);
                 r = TCL_ERROR;
             } else {
                 Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
                 sprintf(Tcl_DStringValue(&ds), "%d", tmp);
+            }
+
+        } else if (!strcmp("-ttl", optionName)) {
+          
+            unsigned int tmp = 0;
+            socklen_t optlen = sizeof(unsigned int);
+            if (getsockopt(statePtr->sock, SOL_IP, IP_TTL,
+                           (char *)&tmp, &optlen)) {
+                UDPTRACE("UDP error - getsockopt");
+                Tcl_SetResult(interp, "error in getsockopt", TCL_STATIC);
+                r = TCL_ERROR;
+            } else {
+                Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
+                sprintf(Tcl_DStringValue(&ds), "%u", tmp);
             }
 
         } else {
@@ -1214,7 +1260,7 @@ udpSetOption(ClientData instanceData, Tcl_Interp *interp,
              CONST84 char *optionName, CONST84 char *newValue)
 {
     UdpState *statePtr = (UdpState *)instanceData;
-    CONST84 char * options = "remote mcastadd mcastdrop broadcast";
+    CONST84 char * options = "remote mcastadd mcastdrop broadcast ttl";
     int r = TCL_OK;
 
     if (!strcmp("-remote", optionName)) {
@@ -1260,6 +1306,21 @@ udpSetOption(ClientData instanceData, Tcl_Interp *interp,
             if (setsockopt(statePtr->sock, SOL_SOCKET, SO_BROADCAST, 
                            (const char *)&tmp, sizeof(int))) {
                 sprintf(errBuf, "%s", "udp - setsockopt");
+                UDPTRACE("UDP error - setsockopt\n");
+                Tcl_SetObjResult(interp, Tcl_NewStringObj(errBuf, -1));
+                r = TCL_ERROR;
+            } else {
+                Tcl_SetObjResult(interp, Tcl_NewIntObj(tmp));
+            }
+        }
+    } else if (!strcmp("-ttl", optionName)) {
+
+        unsigned int tmp = 0;
+        r = Tcl_GetInt(interp, newValue, &tmp);
+        if (r == TCL_OK) {
+            if (setsockopt(statePtr->sock, SOL_IP, IP_TTL,
+                           (const char *)&tmp, sizeof(unsigned int))) {
+                sprintf(errBuf, "udp - setsockopt ttl");
                 UDPTRACE("UDP error - setsockopt\n");
                 Tcl_SetObjResult(interp, Tcl_NewStringObj(errBuf, -1));
                 r = TCL_ERROR;
