@@ -6,7 +6,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.2 2003/03/03 22:24:34 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.3 2003/03/04 01:58:26 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -67,6 +67,8 @@ static int udpOutput(ClientData instanceData, CONST84 char *buf, int toWrite, in
 static int udpInput(ClientData instanceData, char *buf, int bufSize, int *errorCode);
 static int udpClose(ClientData instanceData, Tcl_Interp *interp);
 static void udpTrace(const char *format, ...);
+static int udpGetService(Tcl_Interp *interp, const char *service,
+                         unsigned short *servicePort);
 
 #ifdef WIN32
 static HANDLE waitForSock;
@@ -253,13 +255,13 @@ udpConf(ClientData clientData, Tcl_Interp *interp,
     
     if (argc == 3) {
         if (!strcmp(argv[2], "-myport")) {
-            sprintf(buf, "%d", statePtr->localport);
+            sprintf(buf, "%d", ntohs(statePtr->localport));
             Tcl_AppendResult(interp, buf, (char *)NULL);
         } else if (!strcmp(argv[2], "-remote")) {
             if (statePtr->remotehost && *statePtr->remotehost) {
                 sprintf(buf, "%s", statePtr->remotehost);
                 Tcl_AppendResult(interp, buf, (char *)NULL);
-                sprintf(buf, "%d", statePtr->remoteport);
+                sprintf(buf, "%d", ntohs(statePtr->remoteport));
                 Tcl_AppendElement(interp, buf);
             }
         } else if (!strcmp(argv[2], "-peer")) {
@@ -326,8 +328,7 @@ udpConf(ClientData clientData, Tcl_Interp *interp,
                 return TCL_ERROR;
             }
             strcpy(statePtr->remotehost, argv[2]);
-            statePtr->remoteport = atoi(argv[3]);
-            return TCL_OK;
+            return udpGetService(interp, argv[3], &(statePtr->remoteport));
         }
     } else {
         result = "udpConf fileId [-mcastadd] [-mcastdrop] groupaddr | udpConf fileId remotehost remoteport | udpConf fileId [-myport] [-remote] [-peer]";
@@ -521,7 +522,8 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
     Udp_ChannelType->close2Proc = NULL;
     
     if (argc >= 2) {
-        localport = atoi(argv[1]);
+        if (udpGetService(interp, argv[1], &localport) != TCL_OK)
+            return TCL_ERROR;
     }
     
     memset(channelName, 0, sizeof(channelName));
@@ -540,11 +542,11 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
     memset(&addr, 0, sizeof(addr));
 #ifdef SIPC_IPV6
     addr.sin6_family = AF_INET6;
-    addr.sin6_port = htons(localport);
+    addr.sin6_port = localport;
 #else
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = 0;
-    addr.sin_port = htons(localport);
+    addr.sin_port = localport;
 #endif
     if (bind(sock,(struct sockaddr *)&addr, sizeof(addr)) < 0) {
         sprintf(errBuf,"%s","udp - bind");
@@ -561,13 +563,14 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
         len = sizeof(sockaddr);
         getsockname(sock, (struct sockaddr *)&sockaddr, &len);
 #ifdef SIPC_IPV6
-        localport = ntohs(sockaddr.sin6_port);
+        localport = sockaddr.sin6_port;
 #else
-        localport = ntohs(sockaddr.sin_port);
+        localport = sockaddr.sin_port;
 #endif
     }
     
-    UDPTRACE("Open socket %d. Bind socket to port %d\n", sock, localport);
+    UDPTRACE("Open socket %d. Bind socket to port %d\n", 
+             sock, ntohs(localport));
 
     statePtr = (UdpState *) ckalloc((unsigned) sizeof(UdpState));
     memset(statePtr, 0, sizeof(UdpState));
@@ -845,12 +848,12 @@ udpOutput(ClientData instanceData, CONST84 char *buf, int toWrite, int *errorCod
             memcpy(&sendaddr.sin6_addr, name->h_addr, sizeof(sendaddr.sin6_addr));
         }
         sendaddr.sin6_family = AF_INET6;
-        sendaddr.sin6_port = htons(statePtr->remoteport);
+        sendaddr.sin6_port = statePtr->remoteport;
 #else
         memcpy(&sendaddr.sin_addr, name->h_addr, sizeof(sendaddr.sin_addr));
     }
     sendaddr.sin_family = AF_INET;
-    sendaddr.sin_port = htons(statePtr->remoteport);
+    sendaddr.sin_port = statePtr->remoteport;
 #endif
     written = sendto(statePtr->sock, buf, toWrite, 0,
                      (struct sockaddr *)&sendaddr, socksize);
@@ -859,8 +862,8 @@ udpOutput(ClientData instanceData, CONST84 char *buf, int toWrite, int *errorCod
         return -1;
     }
     
-    UDPTRACE("Send %d to %s:%d through %d\n", written, 
-             statePtr->remotehost, statePtr->remoteport, statePtr->sock);
+    UDPTRACE("Send %d to %s:%d through %d\n", written, statePtr->remotehost,
+             ntohs(statePtr->remoteport), statePtr->sock);
     
     return written;
 }
@@ -1001,4 +1004,34 @@ udpTrace(const char *format, ...)
 #endif /* ! WIN32 */
 
     va_end(args);
+}
+
+/*
+ * Return the service port number in network byte order from either a string
+ * representation of the port number or the service name. If the service
+ * string cannot be converted (ie: a name not present in the services 
+ * database) then set a Tcl error.
+ */
+static int
+udpGetService(Tcl_Interp *interp, const char *service,
+              unsigned short *servicePort)
+{
+    struct servent *sv = NULL;
+    char *remainder = NULL;
+    int r = TCL_OK;
+
+    sv = getservbyname(service, "udp");
+    if (sv != NULL) {
+        *servicePort = sv->s_port;
+    } else {
+        *servicePort = htons((unsigned short)strtol(service, &remainder, 0));
+        if (remainder == service) {
+            Tcl_ResetResult(interp);
+            Tcl_AppendResult(interp, "invalid service name: \"", service,
+                             "\" could not be converted to a port number",
+                             TCL_STATIC);
+            r = TCL_ERROR;
+        }
+    }
+    return r;
 }

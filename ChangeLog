@@ -2,6 +2,8 @@
 
 	* generic/udp_tcl.c: Fix include list to use the autoconfig test
 	results. Fixes for CONST Tcl 8.3/8.4 compatability.
+	* genetic/udp_tcl.c: Enhanced udp_open and udp_conf to permit the
+	use of symbolic port names. Added some tests for this.
 
 2003-02-27  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
