@@ -1,5 +1,6 @@
-2004-11-22  Pat Thoyts  <pat@zsplat.freeserve.co.uk>
+2004-11-22  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
+	* generic/udp_tcl.h: Fixed the -ttl option for Windows.
 	* generic/udp_tcl.c: Added support for setting and retrieving the
 	TTL option on the socket. The default is specified by the system
 	but can be set for individual sockets. 
