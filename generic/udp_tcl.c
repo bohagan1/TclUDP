@@ -6,7 +6,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.13 2004/02/09 14:37:33 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.14 2004/02/09 15:49:18 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -21,6 +21,7 @@
 #ifdef WIN32
 #include <stdlib.h>
 #include <malloc.h>
+typedef int socklen_t;
 #else /* ! WIN32 */
 #if defined(HAVE_SYS_IOCTL_H)
 #include <sys/ioctl.h>
@@ -225,7 +226,8 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
         UDPTRACE("UDP error - socket\n");
         Tcl_AppendResult(interp, errBuf, (char *)NULL);
         return TCL_ERROR;
-    }
+    } 
+
     memset(&addr, 0, sizeof(addr));
 #ifdef SIPC_IPV6
     addr.sin6_family = AF_INET6;
@@ -312,7 +314,7 @@ udpConf(ClientData clientData, Tcl_Interp *interp,
     int sock;
     
     if (argc != 4 && argc != 3) {
-        result = "udpConf fileId [-mcastadd] [-mcastdrop] groupaddr | udpConf fileId remotehost remoteport | udpConf fileId [-myport] [-remote] [-peer]";
+        result = "udpConf fileId [-mcastadd] [-mcastdrop] groupaddr | udpConf fileId remotehost remoteport | udpConf fileId [-myport] [-remote] [-peer] [-broadcast]";
         Tcl_SetResult (interp, result, NULL);
         return TCL_ERROR;
     }
@@ -340,6 +342,19 @@ udpConf(ClientData clientData, Tcl_Interp *interp,
                 Tcl_AppendResult(interp, buf, (char *)NULL);
                 sprintf(buf, "%d", statePtr->peerport);
                 Tcl_AppendElement(interp, buf);
+            }
+        } else if (!strcmp(argv[2], "-broadcast")) {
+            int tmp = 1;
+            socklen_t optlen = sizeof(int);
+            if (getsockopt(statePtr->sock, SOL_SOCKET, SO_BROADCAST, 
+                           (char *)&tmp, &optlen)) {
+                sprintf(errBuf, "%s", "udp - setsockopt");
+                UDPTRACE("UDP error - setsockopt\n");
+                Tcl_AppendResult(interp, errBuf, (char *)NULL);
+                return TCL_ERROR;
+            } else {
+                Tcl_SetObjResult(interp, Tcl_NewIntObj(tmp));
+                return TCL_OK;
             }
         } else {
             result = "udpConf fileId [-mcastadd] [-mcastdrop] groupaddr | udpConf fileId remotehost remoteport | udpConf fileId [-myport] [-remote] [-peer]";
@@ -391,6 +406,22 @@ udpConf(ClientData clientData, Tcl_Interp *interp,
                 return TCL_ERROR;
             }
             return TCL_OK;
+        } else if (!strcmp(argv[2], "-broadcast")) {
+            socklen_t optlen = sizeof(int);
+            int tmp = 0;
+            int r = Tcl_GetInt(interp, argv[3], &tmp);
+            if (r == TCL_OK) {
+                if (setsockopt(statePtr->sock, SOL_SOCKET, SO_BROADCAST, 
+                               (const char *)&tmp, optlen)) {
+                    sprintf(errBuf, "%s", "udp - setsockopt");
+                    UDPTRACE("UDP error - setsockopt\n");
+                    Tcl_AppendResult(interp, errBuf, (char *)NULL);
+                    r = TCL_ERROR;
+                } else {
+                    Tcl_SetObjResult(interp, Tcl_NewIntObj(tmp));
+                }
+            }
+            return r;
         } else {
             if (strlen(argv[2]) >= sizeof(statePtr->remotehost)) {
                 result = "hostname too long";
@@ -543,13 +574,13 @@ UDP_CheckProc(ClientData data, int flags)
     
     UDPTRACE("checkProc\n");
     
-    //synchronized
+    /* synchronized */
     WaitForSingleObject(sockListLock, INFINITE);
     
     for (statePtr = sockList; statePtr != NULL; statePtr=statePtr->next) {
         if (statePtr->packetNum > 0) {
             UDPTRACE("UDP_CheckProc\n");
-            //Read the data from socket and put it into statePtr
+            /* Read the data from socket and put it into statePtr */
             socksize = sizeof(recvaddr);
 #ifdef SIPC_IPV6
             memset(number, 0, 128);
@@ -650,7 +681,7 @@ InitSockets()
 static DWORD WINAPI
 SocketThread(LPVOID arg) 
 {
-    fd_set readfds; //variable used for select
+    fd_set readfds; /* variable used for select */
     struct timeval timeout;
     UdpState *statePtr;
     int found;
@@ -664,19 +695,19 @@ SocketThread(LPVOID arg)
         FD_ZERO(&readfds);
         timeout.tv_sec  = 1;
         timeout.tv_usec = 0;
-        //synchronized
+        /* synchronized */
         WaitForSingleObject(sockListLock, INFINITE);
         
-        //no socket, just wait, use event
+        /* no socket, just wait, use event */
         if (sockList == NULL) {
             SetEvent(sockListLock);
             UDPTRACE("Wait for adding socket\n");
             WaitForSingleObject(waitForSock, INFINITE);
-            //synchronized
+            /* synchronized */
             WaitForSingleObject(sockListLock, INFINITE);
         }
         
-        //set each socket for select
+        /* set each socket for select */
         for (statePtr = sockList; statePtr != NULL; statePtr=statePtr->next) {
             FD_SET(statePtr->sock, &readfds);
             UDPTRACE("SET sock %d\n", statePtr->sock);
@@ -684,12 +715,12 @@ SocketThread(LPVOID arg)
         
         SetEvent(sockListLock);
         UDPTRACE("Wait for select\n");
-        //block here
+        /* block here */
         found = select(0, &readfds, NULL, NULL, &timeout);
         UDPTRACE("select end\n");
         
         if (found <= 0) {
-            //We closed the socket during select or time out
+            /* We closed the socket during select or time out */
             continue;
         }
         
@@ -707,10 +738,10 @@ SocketThread(LPVOID arg)
         }
         SetEvent(sockListLock);
         
-        //wait for the socket data was read
+        /* wait for the socket data was read */
         if (sockset > 0) {
             UDPTRACE( "Wait sock read\n");
-            //alert the thread to do event checking
+            /* alert the thread to do event checking */
             Tcl_ThreadAlert(statePtr->threadId);
             WaitForSingleObject(waitSockRead, INFINITE);
             UDPTRACE("Sock read finished\n");
@@ -1109,6 +1140,8 @@ udpGetOption(ClientData instanceData, Tcl_Interp *interp,
         udpGetOption(instanceData, interp, "-mcastadd", optionValue);
         Tcl_DStringAppend(optionValue, " -mcastdrop ", -1);
         udpGetOption(instanceData, interp, "-mcastdrop", optionValue);
+        Tcl_DStringAppend(optionValue, " -broadcast ", -1);
+        udpGetOption(instanceData, interp, "-broadcast", optionValue);
 
     } else {
 
@@ -1140,11 +1173,27 @@ udpGetOption(ClientData instanceData, Tcl_Interp *interp,
             ;
         } else if (!strcmp("-mcastdrop", optionName)) {
             ;
+        } else if (!strcmp("-broadcast", optionName)) {
+
+            int tmp = 1;
+            socklen_t optlen = sizeof(int);
+            if (getsockopt(statePtr->sock, SOL_SOCKET, SO_BROADCAST, 
+                           (char *)&tmp, &optlen)) {
+                UDPTRACE("UDP error - setsockopt\n");
+                Tcl_SetResult(interp, "error in setsockopt", TCL_STATIC);
+                r = TCL_ERROR;
+            } else {
+                Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
+                sprintf(Tcl_DStringValue(&ds), "%d", tmp);
+            }
+
         } else {
             r = Tcl_BadChannelOption(interp, optionName, options);
         }
         
-        Tcl_DStringAppendElement(optionValue, Tcl_DStringValue(&ds));
+        if (r == TCL_OK) {
+            Tcl_DStringAppendElement(optionValue, Tcl_DStringValue(&ds));
+        }
         Tcl_DStringFree(&dsInt);
         Tcl_DStringFree(&ds);
     }
@@ -1165,7 +1214,7 @@ udpSetOption(ClientData instanceData, Tcl_Interp *interp,
              CONST84 char *optionName, CONST84 char *newValue)
 {
     UdpState *statePtr = (UdpState *)instanceData;
-    CONST84 char * options = "remote mcastadd mcastdrop";
+    CONST84 char * options = "remote mcastadd mcastdrop broadcast";
     int r = TCL_OK;
 
     if (!strcmp("-remote", optionName)) {
@@ -1202,6 +1251,22 @@ udpSetOption(ClientData instanceData, Tcl_Interp *interp,
 
         Tcl_SetResult(interp, "E_NOTIMPL", TCL_STATIC);
         r = TCL_ERROR;
+
+    } else if (!strcmp("-broadcast", optionName)) {
+
+        int tmp = 1;
+        r = Tcl_GetInt(interp, newValue, &tmp);
+        if (r == TCL_OK) {
+            if (setsockopt(statePtr->sock, SOL_SOCKET, SO_BROADCAST, 
+                           (const char *)&tmp, sizeof(int))) {
+                sprintf(errBuf, "%s", "udp - setsockopt");
+                UDPTRACE("UDP error - setsockopt\n");
+                Tcl_SetObjResult(interp, Tcl_NewStringObj(errBuf, -1));
+                r = TCL_ERROR;
+            } else {
+                Tcl_SetObjResult(interp, Tcl_NewIntObj(tmp));
+            }
+        }
 
     } else {
 

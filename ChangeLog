@@ -1,5 +1,9 @@
 2004-02-09  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
+	* generic/udp_tcl.c: Followed up a suggestion in patch #794072 to
+	support udp broadcast packets. This can be queried/enabled using
+	fconfigure $s -broadcast ?1|0?
+
 	* generic/udp_tcl.c: Fixes for some errors in the Win32 code
 	in udpClose provided in patch #820255.
 
