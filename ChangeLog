@@ -1,5 +1,11 @@
+2004-11-23  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* demos/chat.tcl: Sample Tk chat app using multicast udp.
+
 2004-11-22  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
+	* TAG:          ====  tcludp-1_0_6 ====
+	
 	* win/makefile.vc: Improved the win build system.
 	* demos/*: Added a few sample applications, demos of broadcast, 
 	multicast and normal operation.
