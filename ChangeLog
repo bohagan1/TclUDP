@@ -1,4 +1,19 @@
+2004-02-13  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* generic/udp_tcl.c: An extensive interface rewrite. We now have
+	just a udp command and the socket is controlled via the fconfigure
+	command. This is now a much more similar to the tcl socket
+	command. For backwards compatability, we define the old functions
+	in terms of the new interface.
+	      * * *    INTERFACE INCOMPATABILITY   * * *
+
+	* all:   Created branch dev-2 to hold udp 2.0 development
+	
 2004-02-09  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* generic/udp_tcl.c: Followed up a suggestion from patch #828180
+	to support address reuse using SO_REUSEADDR. Implemented as an
+	fconfigure option on the channel.
 
 	* generic/udp_tcl.c: Followed up a suggestion in patch #794072 to
 	support udp broadcast packets. This can be queried/enabled using

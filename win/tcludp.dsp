@@ -105,5 +105,17 @@ SOURCE=..\generic\udp_tcl.h
 SOURCE=.\tcludp.rc
 # End Source File
 # End Group
+# Begin Source File
+
+SOURCE=.\bcastdemo.tcl
+# End Source File
+# Begin Source File
+
+SOURCE=.\demo.tcl
+# End Source File
+# Begin Source File
+
+SOURCE=..\generic\udp.tcl
+# End Source File
 # End Target
 # End Project
