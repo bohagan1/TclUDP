@@ -1,5 +1,8 @@
 2004-02-09  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
+	* generic/udp_tcl.c: Fixes for some errors in the Win32 code
+	in udpClose provided in patch #820255.
+
 	* all:        INCREMENTED VERSION TO 1.0.6
 
 	* generic/udp_tcl.c: Applied fix from bug #833700 to close a

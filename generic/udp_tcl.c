@@ -6,7 +6,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.11 2004/02/09 12:19:30 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.12 2004/02/09 14:34:55 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -151,6 +151,8 @@ Udp_Init(Tcl_Interp *interp)
     Tcl_CreateCommand(interp, "udp_peek", udpPeek , 
                       (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
     
+    Tcl_CreateEventSource(UDP_SetupProc, UDP_CheckProc, NULL);
+
     r = Tcl_PkgProvide(interp, TCLUDP_PACKAGE_NAME, TCLUDP_PACKAGE_VERSION);
     return r;
 }
@@ -206,27 +208,6 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
     unsigned long status = 1;
     int len;
     
-    /*
-     *    Tcl_ChannelType *Udp_ChannelType;
-     *    Udp_ChannelType = (Tcl_ChannelType *) ckalloc((unsigned) sizeof(Tcl_ChannelType));
-     *    memset(Udp_ChannelType, 0, sizeof(Tcl_ChannelType));
-     * #ifdef SIPC_IPV6
-     *    Udp_ChannelType->typeName = strdup("udp6");
-     *#else 
-     *    Udp_ChannelType->typeName = strdup("udp");
-     *#endif
-     *    Udp_ChannelType->blockModeProc = NULL;
-     *    Udp_ChannelType->closeProc = udpClose;
-     *    Udp_ChannelType->inputProc = udpInput;
-     *    Udp_ChannelType->outputProc = udpOutput;
-     *    Udp_ChannelType->seekProc = NULL;
-     *    Udp_ChannelType->setOptionProc = udpSetOption;
-     *    Udp_ChannelType->getOptionProc = udpGetOption;
-     *    Udp_ChannelType->watchProc = udpWatch;
-     *    Udp_ChannelType->getHandleProc = udpGetHandle;
-     *    Udp_ChannelType->close2Proc = NULL;
-     */
-
     if (argc >= 2) {
         if (udpGetService(interp, argv[1], &localport) != TCL_OK)
             return TCL_ERROR;
@@ -292,7 +273,6 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
     statePtr->next = NULL;
     statePtr->packets = NULL;
     statePtr->packetsTail = NULL;
-    Tcl_CreateEventSource(UDP_SetupProc, UDP_CheckProc, NULL);
 #endif
     /* Tcl_SetChannelOption(interp, statePtr->channel, "-blocking", "0"); */
     Tcl_AppendResult(interp, channelName, (char *)NULL);
@@ -829,35 +809,36 @@ udpClose(ClientData instanceData, Tcl_Interp *interp)
     int errorCode = 0;
     UdpState *statePtr = (UdpState *) instanceData;
 #ifdef WIN32
-    UdpState *statePre;
+    UdpState *statePre, *searchPtr;
     
     WaitForSingleObject(sockListLock, INFINITE);
 #endif /* ! WIN32 */
     
     sock = statePtr->sock;
-    
+
 #ifdef WIN32
     /* remove the statePtr from the list */
-    for (statePtr = sockList, statePre = sockList;
-         statePtr != NULL;
-         statePre=statePtr, statePtr=statePtr->next) {
-        if (statePtr->sock == sock) {
+    for (searchPtr = sockList, statePre = sockList;
+         searchPtr != NULL;
+         statePre=statePtr, searchPtr=searchPtr->next) {
+        if (searchPtr->sock == sock) {
             UDPTRACE("Remove %d from the list\n", sock);
-            if (statePtr == sockList) {
-                sockList = statePtr->next;
+            if (searchPtr == sockList) {
+                sockList = sockList->next;
             } else {
-                statePre->next = statePtr->next;
-                if (sockTail == statePtr)
+                statePre->next = searchPtr->next;
+                if (sockTail == searchPtr)
                     sockTail = statePre;
             }
         }
     }
 #endif /* ! WIN32 */
     
-    ckfree((char *) statePtr);
+    Tcl_UnregisterChannel(interp, statePtr->channel);
     if (closesocket(sock) < 0) {
         errorCode = errno;
     }
+    ckfree((char *) statePtr);
     if (errorCode != 0) {
 #ifndef WIN32
         sprintf(errBuf, "udpClose: %d, error: %d\n", sock, errorCode);
