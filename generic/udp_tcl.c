@@ -6,7 +6,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.7 2003/06/13 22:08:24 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.8 2003/06/13 22:15:48 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -1060,9 +1060,9 @@ udpInput(ClientData instanceData, char *buf, int bufSize, int *errorCode)
     strcpy(statePtr->peerhost, remotehost);
 #endif
     
-    UDPTRACE("remotehost: %s\n", remotehost);
+    UDPTRACE("remotehost: %s:%d\n", remotehost, port);
     statePtr->peerport = port;
-#endif
+#endif /* ! WIN32 */
     
     /* we don't want to return anything next time */
     if (bytesRead > 0) {

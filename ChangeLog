@@ -1,3 +1,10 @@
+2003-06-13  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* generic/udp_tcl.c: Cleaned up some -Wall warnings under unix.
+	* generic/udp_tcl.h:    "         "
+	* win/tcludp.rc:     Updated the version number and fixed line endings
+	* doc/udp.man:          "          "
+
 2003-03-21  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
 	* generic/udp_tcl.c: define ioctlsocket for unix
