@@ -7,8 +7,8 @@
 '\"           script from tcllib: mpexpand nroff udp.man udp.n
 '\"                               mpexpand html  udp.man udp.html
 '\"
-'\".so man.macros
-.TH "udp" n 1.0.4  "Tcl UDP extension"
+.so man.macros
+.TH "udp" n 1.0.5  "Tcl UDP extension"
 .BS
 .SH "NAME"
 udp \- Create UDP sockets in Tcl
@@ -113,7 +113,7 @@ Extension Architecture by Pat Thoyts.
 .SH "SEE ALSO"
 socket(n)
 .SH "KEYWORDS"
-udp, socket, networking
+networking, socket, udp
 .SH "COPYRIGHT"
 .nf
 Copyright (c) 1999-2000 Columbia University; all rights reserved
