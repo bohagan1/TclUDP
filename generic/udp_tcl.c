@@ -6,7 +6,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.14.2.3 2004/02/16 02:40:28 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.14.2.4 2004/02/24 16:23:41 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -403,9 +403,10 @@ UdpGetAddressFromObj(
             }
 #else
 #error "No IPv6 address conversion function."
-#endif
 	    addr->sin6_family = AF_INET6;
 	    addr->sin6_port = port;
+#endif
+
 #endif /* SIPC_IPV6 */
         } else {
 
@@ -469,7 +470,7 @@ UdpGetObjFromAddress(
 	parts[1] = Tcl_NewIntObj(addr->sin6_port);
 #else
 	Tcl_SetObjResult(interp, 
-		Tcl_NewStringObj("error: ipv6 not supported in this build"));
+		Tcl_NewStringObj("error: ipv6 not supported in this build", -1));
 	return TCL_ERROR;
 #endif	
     } else {
@@ -550,7 +551,7 @@ Tcl_MakeUdpChannel(SOCKET sock)
     statePtr->sock = sock;
 
     getsockname(sock, (struct sockaddr *)&name, &len);
-    if (name.ss_family == AF_INET) {
+    if (((struct sockaddr *)&name)->sa_family == AF_INET) {
 	((struct sockaddr_in *)&statePtr->saddr_local)->sin_addr.s_addr 
 	    = INADDR_NONE;
         ((struct sockaddr_in *)&statePtr->saddr_remote)->sin_addr.s_addr 

@@ -7,7 +7,7 @@
  * Written by Xiaotao Wu
  * Modifications by Pat Thoyts
  *
- * $Id: udp_tcl.h,v 1.5.2.2 2004/02/16 02:40:28 patthoyts Exp $
+ * $Id: udp_tcl.h,v 1.5.2.3 2004/02/24 16:23:41 patthoyts Exp $
  *----------------------------------------------------------------------
  */
 
@@ -23,7 +23,11 @@
 #endif
 
 #if defined(_WIN32) && !defined(WIN32)
-#define WIN32
+#  define WIN32
+#  if WINVER > 0x0500
+#    define SIPC_IPV6 1
+#    define HAVE_GETADDRINFO 1
+#  endif
 #endif
 
 #ifdef WIN32
