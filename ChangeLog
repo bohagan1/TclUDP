@@ -1,5 +1,10 @@
 2004-11-22  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
+	* win/makefile.vc: Improved the win build system.
+	* demos/*: Added a few sample applications, demos of broadcast, 
+	multicast and normal operation.
+	* tools/mpexpand.tcl: Added app for generating documentation.
+
 	* generic/udp_tcl.h: Done some testing with multicast and have
 	* generic/udp_tcl.c: rationalised the fconfigure/udp_conf interfaces
 	a bit better. The -ttl option will set the multicast ttl if the

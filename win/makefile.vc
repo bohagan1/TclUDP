@@ -18,10 +18,10 @@
 # Copyright (c) 2003 Pat Thoyts
 #
 #-------------------------------------------------------------------------
-# RCS: @(#)$Id: makefile.vc,v 1.1 2004/02/09 12:03:40 patthoyts Exp $
+# RCS: @(#)$Id: makefile.vc,v 1.2 2004/11/22 23:48:48 patthoyts Exp $
 #-------------------------------------------------------------------------
 
-!if "$(MSVCDIR)" == ""
+!if !defined(MSDEVDIR) && !defined(MSVCDIR) && !defined(VCToolkitInstallDir)
 MSG = ^
 You will need to run vcvars32.bat from Developer Studio, first, to setup^
 the environment.  Jump to this line to read the new instructions.
@@ -164,6 +164,9 @@ DLLOBJS = \
 	$(TMP_DIR)\udp_tcl.obj \
 	$(TMP_DIR)\tcludp.res
 
+PRJDOCS = \
+	$(OUT_DIR)\udp.html
+
 #-------------------------------------------------------------------------
 # Target names and paths ( shouldn't need changing )
 #-------------------------------------------------------------------------
@@ -179,24 +182,22 @@ PRJSTUBLIBNAME	= $(STUBPREFIX)$(VERSION).lib
 PRJSTUBLIB	= $(OUT_DIR)\$(PRJSTUBLIBNAME)
 
 ### Make sure we use backslash only.
-LIB_INSTALL_DIR		= $(_INSTALLDIR)\lib
-BIN_INSTALL_DIR		= $(_INSTALLDIR)\bin
-DOC_INSTALL_DIR		= $(_INSTALLDIR)\doc
-SCRIPT_INSTALL_DIR	= $(_INSTALLDIR)\lib\$(PROJECT)$(DOTVERSION)
-INCLUDE_INSTALL_DIR	= $(_INSTALLDIR)\include
+PRJ_INSTALL_DIR         = $(_INSTALLDIR)\$(PROJECT)$(DOTVERSION)
+BIN_INSTALL_DIR		= $(PRJ_INSTALL_DIR)
+DOC_INSTALL_DIR		= $(PRJ_INSTALL_DIR)
+SCRIPT_INSTALL_DIR	= $(PRJ_INSTALL_DIR)
+DEMO_INSTALL_DIR	= $(PRJ_INSTALL_DIR)\demos
+INCLUDE_INSTALL_DIR	= $(_TCLDIR)\include
+LIB_INSTALL_DIR		= $(_TCLDIR)\lib
 
 ### The following paths CANNOT have spaces in them.
 GENERICDIR	= $(ROOT)\generic
 WINDIR		= $(ROOT)\win
 LIBDIR          = $(ROOT)\library
 DOCDIR		= $(ROOT)\doc
+DEMODIR		= $(ROOT)\demos
 TOOLSDIR	= $(ROOT)\tools
 COMPATDIR	= $(ROOT)\compat
-
-### Find a tclsh for testing and installation.
-!if !exist("$(TCLSH)")
-TCLSH           = $(BIN_INSTALL_DIR)\tclsh$(TCL_VERSION).exe
-!endif
 
 #---------------------------------------------------------------------
 # Compile flags
@@ -211,9 +212,9 @@ cdebug	=
 !endif
 !else if "$(MACHINE)" == "IA64"
 ### Warnings are too many, can't support warnings into errors.
-cdebug	= -Z7 -Od
+cdebug	= -Z7 -Od -GZ
 !else
-cdebug	= -Z7 -WX -Od
+cdebug	= -Z7 -WX -Od -GZ
 !endif
 
 ### Declarations common to all compiler options
@@ -294,17 +295,31 @@ TESTFLAGS = -file $(TESTPAT)
 
 all:	    setup $(PROJECT)
 $(PROJECT): setup $(PRJLIB)
-install:    install-binaries install-libraries install-docs
+doc:        setup $(PRJDOCS)
+install:    install-binaries install-libraries install-docs install-demos
 
 
-test: setup $(PROJECT)
-	set TCL_LIBRARY=$(ROOT)/library
+# Tests need to ensure we load the right dll file we
+# have to handle the output differently on Win9x.
+#
 !if "$(OS)" == "Windows_NT"  || "$(MSVCDIR)" == "IDE"
-	$(TCLSH) "$(ROOT)/tests/all.tcl" $(TESTFLAGS)
+test: setup $(PROJECT)
+        $(TCLSH) <<
+load $(PRJLIB:\=/)
+cd "$(ROOT)/tests"
+set argv "$(TESTFLAGS)"
+source all.tcl
+<<
 !else
-	@echo Please wait while the tests are collected...
-	$(TCLSH) "$(ROOT)/tests/all.tcl" $(TESTFLAGS) > tests.log
-	type tests.log | more
+test: setup $(PROJECT)
+        echo Please wait while the test results are collected
+        $(TCLSH) << >tests.log
+load $(PRJLIB:\=/)
+cd "$(ROOT)/tests"
+set argv "$(TESTFLAGS)"
+source all.tcl
+<<
+        type tests.log | more
 !endif
 
 setup:
@@ -341,6 +356,9 @@ $<
 
 {$(WINDIR)}.rc{$(TMP_DIR)}.res:
 	$(rc32) -fo $@ -r -i "$(GENERICDIR)" -D__WIN32__ \
+		-DCOMMAVERSION=$(DOTVERSION:.=,),0 \
+		-DDOTVERSION=\"$(DOTVERSION)\" \
+		-DVERSION=\"$(VERSION)$(SUFX)\" \
 !if $(DEBUG)
 	-d DEBUG \
 !endif
@@ -352,8 +370,19 @@ $<
 !endif
 	$<
 
+DOC2HTML = $(TCLSH) "$(TOOLSDIR)\mpexpand.tcl" html
+
+{$(DOCDIR)}.man{$(OUT_DIR)}.html:
+	$(DOC2HTML) $< $@
+        @$(TCLSH) <<
+set name $(@:\=/)
+set f [open $$name r]; set d [read $$f]; close $$f
+set d [regsub {</head>} $$d {<link rel="stylesheet" href="manpage.css" type="text/css"></head>}]
+set f [open $$name w]; puts -nonewline $$f $$d; close $$f
+<<
+
 .SUFFIXES:
-.SUFFIXES:.c .rc
+.SUFFIXES:.c .rc .man
 
 #---------------------------------------------------------------------
 # Installation. (EDIT)
@@ -364,17 +393,32 @@ $<
 #---------------------------------------------------------------------
 
 install-binaries:
-	@echo Installing to '$(SCRIPT_INSTALL_DIR)'
-	@if not exist $(SCRIPT_INSTALL_DIR)\nul mkdir $(SCRIPT_INSTALL_DIR)
-	$(CPY) $(PRJLIB) $(SCRIPT_INSTALL_DIR)
+	@echo Installing binaries to '$(SCRIPT_INSTALL_DIR)'
+	@if not exist $(SCRIPT_INSTALL_DIR)\nul mkdir "$(SCRIPT_INSTALL_DIR)"
+	@$(CPY) $(PRJLIB) "$(SCRIPT_INSTALL_DIR)" >NUL
 
 install-libraries:
-	@echo Installing to '$(SCRIPT_INSTALL_DIR)'
-	@if exist $(LIBDIR)\nul $(CPY) $(LIBDIR)\*.tcl $(SCRIPT_INSTALL_DIR)
-	@cd $(SCRIPT_INSTALL_DIR)
-	@echo pkg_mkIndex -verbose . | $(TCLSH)
+	@echo Installing libraries to '$(SCRIPT_INSTALL_DIR)'
+#	@$(CPY) $(LIBDIR)\*.tcl "$(SCRIPT_INSTALL_DIR)" >NUL
+	@type << >"$(SCRIPT_INSTALL_DIR)\pkgIndex.tcl"
+# Handcrafted pkgIndex for tcludp.
+if {[info exists ::tcl_platform(debug)]} {
+    package ifneeded $(PROJECT) $(DOTVERSION) [list load [file join $$dir $(PROJECT)$(VERSION)g.$(EXT)]]
+} else {
+    package ifneeded $(PROJECT) $(DOTVERSION) [list load [file join $$dir $(PROJECT)$(VERSION).$(EXT)]]
+}
+<<
 
-install-docs:
+install-docs: $(PRJDOCS)
+	@echo Installing documentation to '$(DOC_INSTALL_DIR)'
+	@if not exist $(DOC_INSTALL_DIR)\NUL mkdir "$(DOC_INSTALL_DIR)"
+	@$(CPY) "$(DOCDIR)\manpage.css" "$(DOC_INSTALL_DIR)\" >NUL
+	@for %i in ($(PRJDOCS)) do @$(CPY) %i "$(DOC_INSTALL_DIR)\" > NUL
+
+install-demos:
+	@echo Installing demos to '$(DEMO_INSTALL_DIR)'
+	@if not exist $(DEMO_INSTALL_DIR)\nul mkdir "$(DEMO_INSTALL_DIR)"
+	@$(CPY) $(DEMODIR)\*.tcl "$(DEMO_INSTALL_DIR)" >NUL
 
 #---------------------------------------------------------------------
 # Clean up
@@ -382,6 +426,7 @@ install-docs:
 
 clean:
 	@if exist $(TMP_DIR)\nul $(RMDIR) $(TMP_DIR)
+	@if exist $(WINDIR)\version.vc del $(WINDIR)\version.vc
 
 realclean: clean
 	@if exist $(OUT_DIR)\nul $(RMDIR) $(OUT_DIR)

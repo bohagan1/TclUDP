@@ -6,7 +6,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.17 2004/11/22 16:31:25 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.18 2004/11/22 23:48:47 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -1155,18 +1155,22 @@ UdpMulticast(ClientData instanceData, Tcl_Interp *interp,
 	int ndx = LSearch(statePtr->groupsObj, grp);
 	if (ndx != -1) {
 	    Tcl_Obj *old, *ptr;
+            int dup = 0;
 	    old = ptr = statePtr->groupsObj;
 	    statePtr->multicast--;
-	    if (Tcl_IsShared(ptr)) {
+	    if ((dup = Tcl_IsShared(ptr))) {
 		ptr = Tcl_DuplicateObj(ptr);
 	    }
 	    Tcl_ListObjReplace(interp, ptr, ndx, 1, 0, NULL);
-	    statePtr->groupsObj = ptr;
-	    Tcl_IncrRefCount(ptr);
-	    Tcl_DecrRefCount(old);
+            if (dup) {
+	        statePtr->groupsObj = ptr;
+	        Tcl_IncrRefCount(ptr);
+	        Tcl_DecrRefCount(old);
+            }
 	}
     }
-    Tcl_SetObjResult(interp, statePtr->groupsObj);
+    if (interp != NULL)
+        Tcl_SetObjResult(interp, statePtr->groupsObj);
     return TCL_OK;
 }
 

@@ -3,7 +3,7 @@
           script from tcllib: mpexpand nroff udp.man udp.n
                               mpexpand html  udp.man udp.html
 }]
-[manpage_begin udp n 1.0.5]
+[manpage_begin udp n 1.0.6]
 [copyright {1999-2000 Columbia University; all rights reserved}]
 [moddesc {Tcl UDP extension}]
 [titledesc {Create UDP sockets in Tcl}]
@@ -11,7 +11,11 @@
 [require udp 1.0]
 [description]
 
-This package provides support for using UDP through Tcl.
+This package provides support for using UDP through Tcl. The package provides
+a new channel type and attempts to permit the use of packet oriented UDP
+over stream oriented Tcl channels. The package defined three commands but
+[cmd udp_conf] should be considered depreciated in favour of the standard
+Tcl command [cmd fconfigure].
 
 [section "COMMANDS"]
 
@@ -30,7 +34,7 @@ if required.
 for packets written to this [arg "sock"]. You must call this command before
 writing data to the UDP socket.
 
-[call [cmd "udp_conf"] [arg "sock"] [arg [opt -myport]] [arg [opt -remote]] [arg [opt -peer]]]
+[call [cmd "udp_conf"] [arg "sock"] [arg [opt -myport]] [arg [opt -remote]] [arg [opt -peer]] [arg [opt "-broadcast bool"]] [arg [opt "-ttl count"]]]
 
 In addition to being used to configure the remote host, the [cmd "udp_conf"]
 command is used to obtain information about the UDP socket.
@@ -48,13 +52,31 @@ Returns the remote hostname and port number as set using
 Returns the remote hostname and port number for the packet most recently
 received by this socket.
 
+[lst_item "[arg -broadcast\ [opt boolean]]"]
+UDP packets can listen and send on the broadcast address. For some systems 
+a flag must be set on the socket to use broadcast. 
+With no argument this option will return the broadcast setting. With a 
+boolean argument the setting can be modified.
+
+[lst_item "[arg -ttl\ [opt count]]"]
+
+The time-to-live is given as the number of router hops the packet may do. For
+multicast packets this is important in specifying the distribution of the
+packet. The system default for multicast is 1 which restricts the packet 
+to the local subnet. To permit packets to pass routers, you must increase the
+ttl. A value of 31 should keep it within a site, while 255 is global.
+
+
 [list_end]
 
 [nl]
-[call [cmd "udp_conf"] [opt "[arg -mcastadd] [arg -mcastdrop]"]\
-     [arg groupaddr]]
+[call [cmd "udp_conf"] [opt "[arg -mcastadd] groupaddr"]]
+[call [cmd "udp_conf"] [opt "[arg -mcastdrop] groupaddr"]]
 
-FIX ME
+[package tcludp] sockets can support IPv4 multicast operations. To recieve
+multicast packets the application has to notify the operating system that
+it should join a particular multicast group. These are specified as addresses
+in the range 224.0.0.0 to 239.255.255.255. 
 
 [call [cmd "udp_peek"] [arg "sock"] [opt [arg "buffersize"]]]
 
@@ -69,7 +91,7 @@ This function is not available on windows.
 # Send data to a remote UDP socket
 proc udp_puts {host port} {
     set s [udp_open]
-    udp_conf $s $host $port
+    fconfigure $s -remote [list $host $port]
     puts $s "Hello, World"
     close $f
 }
@@ -81,7 +103,7 @@ package require udp
 
 proc udpEventHandler {sock} {
     set pkt [read $sock]
-    set peer [udp_conf $sock -peer]
+    set peer [fconfigure $sock -peer]
     puts "$peer: [string length $pkt] {$pkt}"
     return
 }
@@ -90,13 +112,38 @@ proc udp_listen {port} {
     set srv [udp_open $port]
     fconfigure $srv -buffering none -translation binary
     fileevent $srv readable [list ::udpEventHandler $srv]
-    puts "Listening on udp port: [udp_conf $srv -myport]"
+    puts "Listening on udp port: [fconfigure $srv -myport]"
     return $srv
 }
 
 set sock [udp_listen 53530]
 vwait forever
 close $sock
+}]
+
+[example {
+# A multicast demo.
+proc udpEvent {chan} {
+    set data [read $chan]
+    set peer [fconfigure $chan -peer]
+    puts "$peer [string length $data] '$data'"
+    if {[string match "QUIT*" $data]} {
+        close $chan
+        set ::forever 1
+    }
+    return
+}
+
+set group 224.5.1.21
+set port  7771
+set s [udp_open $port]
+fconfigure $s -buffering none -blocking 0
+fconfigure $s -mcastadd $group -remote [list $group $port]
+fileevent $s readable [list udpEvent $s]
+puts -nonewline $s "hello, world"
+set ::forever 0
+vwait ::forever
+exit
 }]
 
 [section "HISTORY"]
