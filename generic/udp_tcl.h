@@ -12,14 +12,19 @@
 #ifndef UDP_TCL_H
 #define UDP_TCL_H
 
+#ifdef HAVE_CONFIG_H
+#  include "../config.h"
+#endif
+
+#if STDC_HEADERS
+#  include <stdlib.h>
+#endif
+
 #ifdef WIN32
 #  include <winsock.h>
 #else
 #  if HAVE_UNISTD_H
 #    include <unistd.h>
-#  endif
-#  if HAVE_STDLIB_H
-#    include <stdlib.h>
 #  endif
 #  if HAVE_SYS_TIME_H
 #    include <sys/time.h>
