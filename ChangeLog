@@ -2,6 +2,9 @@
 
 	* all:        INCREMENTED VERSION TO 1.0.6
 
+	* generic/udp_tcl.c: Applied fix from bug #833700 to close a
+	memory leak in UDP_CheckProc.
+
 	* Makefile.in: Fixed to build in directories other than the top
 	of the source tree.
 

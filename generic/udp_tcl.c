@@ -6,7 +6,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.10 2004/02/09 12:02:32 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.11 2004/02/09 12:19:30 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -590,6 +590,7 @@ UDP_CheckProc(ClientData data, int flags)
             
             if (actual_size < 0) {
                 UDPTRACE("UDP error - recvfrom %d\n", statePtr->sock);
+                ckfree(message);
             } else {
                 p = (PacketList *)calloc(1, sizeof(struct PacketList));
                 p->message = message;
