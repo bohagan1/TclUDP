@@ -6,7 +6,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.14.2.2 2004/02/15 01:36:56 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.14.2.3 2004/02/16 02:40:28 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -310,7 +310,10 @@ UdpGetProtocolFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr, int *resultPtr)
  * ----------------------------------------------------------------------
  * UdpCreateSock --
  *
- *	Create a UDP socket and optionally specify the local address.
+ *	Create a non-blocking UDP socket for the given internet protocol.
+ *
+ * Returns:
+ *	A socket, or INVALID_SOCKET on failure.
  *
  * ----------------------------------------------------------------------
  */
@@ -329,13 +332,18 @@ UdpCreateSock(int protocol)
 }
 
 /*
+ * ----------------------------------------------------------------------
+ *
  * UdpGetAddressFromObj --
- * Convert a Tcl object into a sockaddr_in socket name.
- * The Tcl object may be just a hostname, or a list
- * made up of {hostname port} where port can be the
- * service name or the port number.
+ *
+ * 	Convert a Tcl object into a sockaddr_in socket name.  The Tcl
+ * 	object may be just a hostname, or a list made up of {hostname
+ * 	port} where port can be the service name or the port number.
+ * 	
  * Returns:
- * A standard tcl result.
+ * 	A standard tcl result.
+ *
+ * ----------------------------------------------------------------------
  */
 
 int
@@ -371,9 +379,10 @@ UdpGetAddressFromObj(
 
         if (saddr->sa_family == AF_INET6) {
 
+#ifdef SIPC_IPV6
             struct sockaddr_in6 * addr = (struct sockaddr_in6 *)saddr;
 
-#if HAVE_GETADDRINFO
+#if defined(HAVE_GETADDRINFO)
             char service[TCL_INTEGER_SPACE];
             struct addrinfo ai;
             struct addrinfo *pai = 0;
@@ -386,16 +395,18 @@ UdpGetAddressFromObj(
                 memcpy(&addr->sin6_addr, pai->ai_addr, pai->ai_addrlen);
             freeaddrinfo(pai);
             
-#elif HAVE_INET_PTON
+#elif defined(HAVE_INET_PTON)
             int n, errnum;
             n = inet_pton(AF_INET6, hostname, &addr->sin6_addr);
             if (n <= 0) {
                 name = getipnodebyname(hostname, AF_INET6, AI_DEFAULT, &errnum);
             }
+#else
+#error "No IPv6 address conversion function."
 #endif
 	    addr->sin6_family = AF_INET6;
 	    addr->sin6_port = port;
-
+#endif /* SIPC_IPV6 */
         } else {
 
             struct sockaddr_in *addr = (struct sockaddr_in *)saddr;
@@ -422,6 +433,19 @@ UdpGetAddressFromObj(
     return r;
 };
 
+/*
+ * ---------------------------------------------------------------------- 
+ *
+ * UdpGetObjFromAddress --
+ *
+ *	Convert an address structure into a Tcl list.
+ *
+ * Returns:
+ *	A Tcl_Obj containing a list of {inetaddr port}
+ *
+ * ---------------------------------------------------------------------- 
+ */
+
 int
 UdpGetObjFromAddress(
     Tcl_Interp *interp,
@@ -431,13 +455,31 @@ UdpGetObjFromAddress(
     struct sockaddr_in *addr = (struct sockaddr_in *)saddr;
     Tcl_Obj *parts[2];
 
-    if (addr->sin_addr.s_addr == INADDR_NONE) {
-        parts[0] = Tcl_NewStringObj(NULL, 0);
+    if (saddr->sa_family == AF_INET6) {
+#ifdef SIPC_IPV6
+	struct sockaddr_in6 *addr = (struct sockaddr_in6 *)saddr;
+	char host [NI_MAXHOST];
+	
+	if (IN6_IS_ADDR_UNSPECIFIED(&addr->sin6_addr)) {
+	    parts[0] = Tcl_NewStringObj(NULL, 0);
+	} else {
+	    inet_ntop(addr->sin6_family, addr, host, sizeof(host));
+	    parts[0] = Tcl_NewStringObj(host, -1);
+	}
+	parts[1] = Tcl_NewIntObj(addr->sin6_port);
+#else
+	Tcl_SetObjResult(interp, 
+		Tcl_NewStringObj("error: ipv6 not supported in this build"));
+	return TCL_ERROR;
+#endif	
     } else {
-        parts[0] = Tcl_NewStringObj(inet_ntoa(addr->sin_addr), -1);
-    }
-    parts[1] = Tcl_NewIntObj(ntohs(addr->sin_port));
-
+	if (addr->sin_addr.s_addr == INADDR_NONE) {
+	    parts[0] = Tcl_NewStringObj(NULL, 0);
+	} else {
+	    parts[0] = Tcl_NewStringObj(inet_ntoa(addr->sin_addr), -1);
+	}
+	parts[1] = Tcl_NewIntObj(ntohs(addr->sin_port));
+    }	
     *objPtrPtr = Tcl_NewListObj(2, parts);
     return TCL_OK;
 }
@@ -509,9 +551,12 @@ Tcl_MakeUdpChannel(SOCKET sock)
 
     getsockname(sock, (struct sockaddr *)&name, &len);
     if (name.ss_family == AF_INET) {
-        statePtr->saddr_local.ipv4.sin_addr.s_addr = INADDR_NONE;
-        statePtr->saddr_remote.ipv4.sin_addr.s_addr = INADDR_NONE;
-        statePtr->saddr_peer.ipv4.sin_addr.s_addr = INADDR_NONE;
+	((struct sockaddr_in *)&statePtr->saddr_local)->sin_addr.s_addr 
+	    = INADDR_NONE;
+        ((struct sockaddr_in *)&statePtr->saddr_remote)->sin_addr.s_addr 
+	    = INADDR_NONE;
+        ((struct sockaddr_in *)&statePtr->saddr_peer)->sin_addr.s_addr 
+	    = INADDR_NONE;
     }
 
     sprintf(channelName, "sock%d", statePtr->sock);
@@ -1016,6 +1061,7 @@ udpOutput(ClientData instanceData, CONST84 char *buf, int toWrite, int *errorCod
     int written;
     int socksize = sizeof(sockaddr_t);
     sockaddr_t name;
+    struct sockaddr *addr = (struct sockaddr *)&name;
     
     *errorCode = 0;
     errno = 0;
@@ -1025,13 +1071,13 @@ udpOutput(ClientData instanceData, CONST84 char *buf, int toWrite, int *errorCod
         return -1;
     }
 
-    getsockname(statePtr->sock, (struct sockaddr *)&name, &socksize);
+    getsockname(statePtr->sock, addr, &socksize);
 
-    if ((name.ss_family == AF_INET
-	&& statePtr->saddr_remote.ipv4.sin_addr.s_addr == INADDR_NONE)
+    if ((addr->sa_family == AF_INET
+		&& ((struct sockaddr_in *)&statePtr->saddr_remote)->sin_addr.s_addr == INADDR_NONE)
 #ifdef SIPC_IPV6
-	|| (name.ss_family == AF_INET6 
-            && IN6_IS_ADDR_UNSPECIFIED(&statePtr->saddr_remote.ipv6.sin6_addr))
+	    || (addr->sa_family == AF_INET6 
+		    && IN6_IS_ADDR_UNSPECIFIED(&((struct sockaddr_in6 *)&statePtr->saddr_remote)->sin6_addr))
 #endif
 	) {
         UDPTRACE("UDP error - no host set");
@@ -1040,12 +1086,12 @@ udpOutput(ClientData instanceData, CONST84 char *buf, int toWrite, int *errorCod
 
     socksize = sizeof(statePtr->saddr_remote);
     written = sendto(statePtr->sock, buf, toWrite, 0,
-                     (const struct sockaddr *)&statePtr->saddr_remote, socksize);
+	    (const struct sockaddr *)&statePtr->saddr_remote, socksize);
     if (written < 0) {
         UDPTRACE("UDP error - sendto");
         return -1;
     }
-
+    
     UDPTRACE("Send %d through socket %u\n", written, statePtr->sock);
     
     return written;
@@ -1070,7 +1116,6 @@ udpInput(ClientData instanceData, char *buf, int bufSize, int *errorCode)
     int buffer_size = MAXBUFFERSIZE;
     char *remotehost;
     int sock = statePtr->sock;
-    char number[128];
     sockaddr_t recvaddr;
 #endif /* ! WIN32 */
     
@@ -1116,7 +1161,6 @@ udpInput(ClientData instanceData, char *buf, int bufSize, int *errorCode)
     bytesRead = bufSize;
 #else /* ! WIN32 */
     socksize = sizeof(recvaddr);
-    memset(number, 0, 128);
     memset(&recvaddr, 0, socksize);
     
     bytesRead = recvfrom(sock, buf, buffer_size, 0,
@@ -1128,18 +1172,6 @@ udpInput(ClientData instanceData, char *buf, int bufSize, int *errorCode)
     }
     memcpy(&statePtr->saddr_peer, &recvaddr, sizeof(recvaddr));
     
-#ifdef SIPC_IPV6
-    inet_ntop(recvaddr.ipv6.sin_family,
-              &statePtr->saddr_peer.ipv6.sin_addr, 
-              number, 128);
-#else
-    inet_ntop(statePtr->saddr_peer.ipv4.sin_family, 
-              &statePtr->saddr_peer.ipv4.sin_addr, 
-              number, 128);
-#endif
-
-    UDPTRACE("remotehost: %s:%d\n", number, ntohs(recvaddr.ipv6.sin6_port));
-
 #endif /* ! WIN32 */
     
     /* we don't want to return anything next time */
@@ -1246,11 +1278,11 @@ udpGetOption(ClientData instanceData, Tcl_Interp *interp,
             Tcl_DStringAppend(&ds, Tcl_GetString(nameObj), -1);
 
         } else if (!strcmp("-broadcast", optionName)) {
-
+	    
             int tmp = 1;
             socklen_t optlen = sizeof(int);
             if (getsockopt(statePtr->sock, SOL_SOCKET, SO_BROADCAST, 
-                           (char *)&tmp, &optlen)) {
+			(char *)&tmp, &optlen)) {
                 Tcl_SetResult(interp, "error in setsockopt SO_BROADCAST", TCL_STATIC);
                 r = TCL_ERROR;
             } else {

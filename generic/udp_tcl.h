@@ -7,7 +7,7 @@
  * Written by Xiaotao Wu
  * Modifications by Pat Thoyts
  *
- * $Id: udp_tcl.h,v 1.5.2.1 2004/02/13 21:38:15 patthoyts Exp $
+ * $Id: udp_tcl.h,v 1.5.2.2 2004/02/16 02:40:28 patthoyts Exp $
  *----------------------------------------------------------------------
  */
 
@@ -36,6 +36,7 @@
 #  if HAVE_SYS_TIME_H
 #    include <sys/time.h>
 #  endif
+#  include <sys/types.h>
 #  include <sys/socket.h>
 #  include <netinet/in.h>
 #  include <arpa/inet.h>
@@ -54,12 +55,21 @@
 #define TCL_STORAGE_CLASS DLLEXPORT
 #endif /* BUILD_udp */
 
-typedef union {
-    short  ss_family;
-    /*struct sockaddr_storage stg;*/
-    struct sockaddr_in      ipv4;
-    struct sockaddr_in6     ipv6;
-} sockaddr_t;
+
+#ifdef SIPC_IPV6
+typedef struct sockaddr_storage sockaddr_t;
+#else
+typedef struct sockaddr_in sockaddr_t;
+#endif
+
+/* Constants to specify hostname or service name sizes */
+#ifndef NI_MAXHOST
+#define NI_MAXHOST 1025
+#endif
+#ifndef NI_MAXSERV
+#define NI_MAXSERVE 32
+#endif
+
 
 #ifdef WIN32
 
