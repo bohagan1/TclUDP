@@ -3,7 +3,7 @@
           script from tcllib: mpexpand nroff udp.man udp.n
                               mpexpand html  udp.man udp.html
 }]
-[manpage_begin udp n 1.0.3]
+[manpage_begin udp n 1.0.4]
 [copyright {1999-2000 Columbia University; all rights reserved}]
 [moddesc {Tcl UDP extension}]
 [titledesc {Create UDP sockets in Tcl}]

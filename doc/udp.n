@@ -7,8 +7,8 @@
 '\"           script from tcllib: mpexpand nroff udp.man udp.n
 '\"                               mpexpand html  udp.man udp.html
 '\"
-.so man.macros
-.TH "udp" n 1.0.3  "Tcl UDP extension"
+'\".so man.macros
+.TH "udp" n 1.0.4  "Tcl UDP extension"
 .BS
 .SH "NAME"
 udp \- Create UDP sockets in Tcl
