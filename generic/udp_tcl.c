@@ -6,7 +6,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.1 2003/03/03 06:05:32 xiaotaow Exp $
+ * $Id: udp_tcl.c,v 1.2 2003/03/03 22:24:34 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -25,11 +25,18 @@
 #include <stdio.h>
 #include <malloc.h>
 #else
-#ifdef LINUX
+#if defined(HAVE_SYS_IOCTL_H)
 #include <sys/ioctl.h>
-#else
+#elif defined(HAVE_SYS_FILIO_H)
 #include <sys/filio.h>
+#else
+#error "Neither sys/ioctl.h nor sys/filio.h found. We need ioctl()"
 #endif
+#endif
+
+/* Tcl 8.4 CONST support */
+#ifndef CONST84
+#define CONST84
 #endif
 
 /* define some Win32isms for Unix */
@@ -50,13 +57,13 @@ FILE *dbg;
 
 static char errBuf[256];
 
-int udpOpen(ClientData , Tcl_Interp *, int , CONST char * []);
-int udpConf(ClientData , Tcl_Interp *, int , CONST char * []);
-int udpPeek(ClientData , Tcl_Interp *, int , CONST char * []);
+int udpOpen(ClientData , Tcl_Interp *, int , CONST84 char * []);
+int udpConf(ClientData , Tcl_Interp *, int , CONST84 char * []);
+int udpPeek(ClientData , Tcl_Interp *, int , CONST84 char * []);
 
 static int udpGet(ClientData instanceData,int direction,ClientData *handlePtr);
 static void udpWatch(ClientData instanceData, int mask);
-static int udpOutput(ClientData instanceData, CONST char *buf, int toWrite, int *errorCode);
+static int udpOutput(ClientData instanceData, CONST84 char *buf, int toWrite, int *errorCode);
 static int udpInput(ClientData instanceData, char *buf, int bufSize, int *errorCode);
 static int udpClose(ClientData instanceData, Tcl_Interp *interp);
 static void udpTrace(const char *format, ...);
@@ -162,7 +169,7 @@ udpGet(ClientData instanceData,int direction,ClientData *handlePtr)
  */
 int
 udpPeek(ClientData clientData, Tcl_Interp *interp,
-        int argc, CONST char * argv[])
+        int argc, CONST84 char * argv[])
 {
 #ifndef WIN32
     int buffer_size = 16;
@@ -221,7 +228,7 @@ udpPeek(ClientData clientData, Tcl_Interp *interp,
  */
 int
 udpConf(ClientData clientData, Tcl_Interp *interp,
-        int argc, CONST char * argv[]) 
+        int argc, CONST84 char * argv[]) 
 {
     Tcl_Channel chan;
     UdpState *statePtr;
@@ -480,7 +487,7 @@ UDP_CheckProc(ClientData data, int flags)
  */
 int
 udpOpen(ClientData clientData, Tcl_Interp *interp,
-        int argc, CONST char * argv[]) 
+        int argc, CONST84 char * argv[]) 
 {
     int sock;
     char channelName[20];
@@ -797,7 +804,7 @@ Udp_Init(Tcl_Interp *interp)
  * udpOutput--
  */
 static int
-udpOutput(ClientData instanceData, CONST char *buf, int toWrite, int *errorCode)
+udpOutput(ClientData instanceData, CONST84 char *buf, int toWrite, int *errorCode)
 {
     UdpState *statePtr = (UdpState *) instanceData;
     int written;

@@ -1,3 +1,8 @@
+2003-03-03  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* generic/udp_tcl.c: Fix include list to use the autoconfig test
+	results. Fixes for CONST Tcl 8.3/8.4 compatability.
+
 2003-02-27  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
 	* generic/udp_tcl.c: Stop a crash when udp_conf -remote called
