@@ -3,7 +3,7 @@ dnl	This file is an input file used by the GNU "autoconf" program to
 dnl	generate the file "configure", which is run during Tcl installation
 dnl	to configure the system for the local environment.
 #
-# RCS: @(#) $Id: configure.in,v 1.1 2003/03/03 06:05:32 xiaotaow Exp $
+# RCS: @(#) $Id: configure.in,v 1.2 2003/03/12 00:21:16 patthoyts Exp $
 
 #-----------------------------------------------------------------------
 # Sample configure.in for Tcl Extensions.  The only places you should
@@ -37,7 +37,7 @@ PACKAGE=udp
 
 MAJOR_VERSION=1
 MINOR_VERSION=0
-PATCHLEVEL=4
+PATCHLEVEL=5
 
 VERSION=${MAJOR_VERSION}.${MINOR_VERSION}.${PATCHLEVEL}
 NODOT_VERSION=${MAJOR_VERSION}${MINOR_VERSION}

@@ -1,3 +1,17 @@
+2003-03-12  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* win/tcludp.dsp:
+	* configure.in: bumped patchlevel to 1.0.5
+
+2003-03-05  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* generic/udp_tcl.c: General layout rearrangement to put tcl
+	command procs, channel handler procs and utility procs together.
+	* generic/udp_tcl.c: Added channel option handlers to enable the
+	use of 'fconfigure' to hopefully replace udp_conf.
+	* generic/udp_tcl.c (udpGetHandle): Fixed to return the handle
+	properly.
+
 2003-03-03  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
 	* generic/udp_tcl.c: Fix include list to use the autoconfig test
