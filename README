@@ -1,0 +1,51 @@
+TclUDP
+======
+
+This package provides UDP sockets for Tcl.
+
+INSTALLATION
+============
+
+This package uses the Tcl Extension Architecture (TEA). Please see the
+we page
+
+    http://www.tcl.tk/doc/tea/
+
+for more information about TEA.
+
+UNIX BUILD
+==========
+
+Building under most UNIX systems is easy, just run the configure script
+and then run make. For more information about the build process, see
+the tcl/unix/README file in the Tcl src dist. The following minimal
+example will install the extension in the /opt/tcl directory.
+
+	$ cd tcludp
+	$ ./configure --prefix=/opt/tcl
+	$ make
+	$ make install
+
+WINDOWS BUILD
+=============
+
+See the tcl/win/README file included in the Tcl src dist for details
+about how to build the extension under Windows. We suggest using
+the Msys + Mingw build process since it is significantly easier
+than building with VC++ or Cygwin.
+
+This package includes a Visual Studio project file to help in building
+with VC++.
+
+The package has been built using both VC++6 and Msys + Mingw.
+
+FEEDBACK
+========
+
+If you have any problem with this extension, please contact Xiaotao Wu
+
+Name  : Xiaotao Wu
+Email : xiaotaow@cs.columbia.edu, xw71@columbia.edu
+URL   : http://www.cs.columbia.edu/~xiaotaow
+Phone : (212)939-7020, (212)939-7133,  Fax: (801)751-0217
+SIP   : sip:xiaotaow@conductor.cs.columbia.edu

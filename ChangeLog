@@ -1,0 +1,27 @@
+2003-02-27  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* generic/udp_tcl.c: Stop a crash when udp_conf -remote called
+	before setting the remote host.
+	* tests: Added tests directory and some basic tests.
+	* doc: Added doc directory with doctools format man page.
+	* Makefile.in: fixed the documentation in the build.
+	* README: rewrote as installation instructions.
+	* license.terms: copyright as perl the udp_tcl.c file.
+	* tclconfig: brought in the newer versions from tcl cvs.
+	* tcludp.dsp: updated.
+
+2003-02-20  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* all: Re-structured as a TEA2 compatible package and sorted out
+	the configure/make files.
+
+2003-02-20  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* udp_tcl.c: Reduced the number of WIN32 sections using a few
+	macros and reformatted whitespace. Also CONSITification.
+	* udp_tcl.c (udpInput): Fixed a problem with receiving binary data.
+
+2003-01-30  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* udp_tcl.c: Added support for stubs and a package declaration.
+
