@@ -6,7 +6,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.6 2003/06/11 22:17:10 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.7 2003/06/13 22:08:24 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -417,12 +417,12 @@ udpPeek(ClientData clientData, Tcl_Interp *interp,
 {
 #ifndef WIN32
     int buffer_size = 16;
-    int actual_size, socksize, port;
+    int actual_size, socksize;
     int sock;
     char message[17];
-    char *remotehost;
-    struct hostent *name;
+    /*struct hostent *name;*/
 #ifdef SIPC_IPV6
+    char *remotehost;
     struct sockaddr_in6 recvaddr;
 #else
     struct sockaddr_in recvaddr;

@@ -13,13 +13,21 @@
 #define UDP_TCL_H
 
 #ifdef WIN32
-#include <winsock.h>
+#  include <winsock.h>
 #else
-#include <unistd.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <netinet/in.h>
-#include <netdb.h>
+#  if HAVE_UNISTD_H
+#    include <unistd.h>
+#  endif
+#  if HAVE_STDLIB_H
+#    include <stdlib.h>
+#  endif
+#  if HAVE_SYS_TIME_H
+#    include <sys/time.h>
+#  endif
+#  include <sys/socket.h>
+#  include <netinet/in.h>
+#  include <arpa/inet.h>
+#  include <netdb.h>
 #endif
 
 #include <stdio.h>
