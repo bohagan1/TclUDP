@@ -6,7 +6,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.16 2004/11/22 16:12:49 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.17 2004/11/22 16:31:25 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -358,41 +358,41 @@ udpConf(ClientData clientData, Tcl_Interp *interp,
 		Tcl_DStringResult(interp, &ds);
 	    }
 	    Tcl_DStringFree(&ds);	    
-	    return r;
 	}
     } else if (argc == 4) {
         if (!strcmp(argv[2], "-mcastadd")) {
 
-	    return UdpMulticast(statePtr, interp, argv[3], IP_ADD_MEMBERSHIP);
+	    r = UdpMulticast(statePtr, interp, argv[3], IP_ADD_MEMBERSHIP);
 
         } else if (!strcmp(argv[2], "-mcastdrop")) {
 
-            return UdpMulticast(statePtr, interp, argv[3], IP_DROP_MEMBERSHIP);
+            r = UdpMulticast(statePtr, interp, argv[3], IP_DROP_MEMBERSHIP);
 
         } else if (!strcmp(argv[2], "-broadcast")) {
 
-	    return Tcl_SetChannelOption(interp, statePtr->channel,
+	    r = Tcl_SetChannelOption(interp, statePtr->channel,
 		"-broadcast", argv[3]);
 	    
         } else if (!strcmp(argv[2], "-ttl")) {
 
-	    return Tcl_SetChannelOption(interp, statePtr->channel,
+	    r = Tcl_SetChannelOption(interp, statePtr->channel,
 		"-ttl", argv[3]);
 
         } else {
             if (strlen(argv[2]) >= sizeof(statePtr->remotehost)) {
                 result = "hostname too long";
                 Tcl_SetResult (interp, result, NULL);
-                return TCL_ERROR;
-            }
-            strcpy(statePtr->remotehost, argv[2]);
-            return udpGetService(interp, argv[3], &(statePtr->remoteport));
+                r = TCL_ERROR;
+            } else {
+                strcpy(statePtr->remotehost, argv[2]);
+                r = udpGetService(interp, argv[3], &(statePtr->remoteport));
+	    }
         }
     } else {
         Tcl_SetResult (interp, errmsg, NULL);
-        return TCL_ERROR;
+        r = TCL_ERROR;
     }
-    return TCL_ERROR;
+    return r;
 }
 
 /*
