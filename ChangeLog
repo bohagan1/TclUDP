@@ -1,3 +1,7 @@
+2003-03-21  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* generic/udp_tcl.c: define ioctlsocket for unix
+
 2003-03-12  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
 	* win/tcludp.dsp:
