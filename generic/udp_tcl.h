@@ -51,11 +51,6 @@
 #define TCL_STORAGE_CLASS DLLEXPORT
 #endif /* BUILD_udp */
 
-/* Windows doesn't declare SOL_IP. It uses this instead... */
-#ifndef SOL_IP
-#define SOL_IP IPPROTO_IP
-#endif /* SOL_IP */
-
 #ifdef WIN32
 
 typedef u_short uint16_t;
@@ -92,6 +87,8 @@ typedef struct UdpState {
   struct UdpState   *next;
   Tcl_ThreadId      threadId;        /* for Tcl_ThreadAlert */
 #endif
+  int               multicast;       /* indicator set for multicast add */
+  Tcl_Obj          *groupsObj;       /* list of the mcast groups */
 } UdpState;
 
 

@@ -6,7 +6,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.15 2004/11/22 10:00:30 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.16 2004/11/22 16:12:49 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -79,6 +79,7 @@ int udpPeek(ClientData , Tcl_Interp *, int , CONST84 char * []);
 /*
  * internal functions
  */
+static int UdpMulticast(ClientData, Tcl_Interp *, const char *, int);
 static void udpTrace(const char *format, ...);
 static int  udpGetService(Tcl_Interp *interp, const char *service,
                           unsigned short *servicePort);
@@ -267,6 +268,9 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
                                           (ClientData) statePtr,
                                           (TCL_READABLE | TCL_WRITABLE | TCL_MODE_NONBLOCKING));
     statePtr->doread = 1;
+    statePtr->multicast = 0;
+    statePtr->groupsObj = Tcl_NewListObj(0, NULL);
+    Tcl_IncrRefCount(statePtr->groupsObj);
     statePtr->localport = localport;
     Tcl_RegisterChannel(interp, statePtr->channel);
 #ifdef WIN32
@@ -308,10 +312,9 @@ udpConf(ClientData clientData, Tcl_Interp *interp,
     UdpState *statePtr;
     char *result;
     char buf[128];
-    struct hostent *name;
-    struct ip_mreq mreq;
-    struct sockaddr_in maddr;
     int sock;
+    int r = TCL_OK;
+    Tcl_DString ds;
     char errmsg[] = 
       "udpConf fileId [-mcastadd] [-mcastdrop] groupaddr | "
       "udpConf fileId remotehost remoteport | "
@@ -346,113 +349,36 @@ udpConf(ClientData clientData, Tcl_Interp *interp,
                 sprintf(buf, "%d", statePtr->peerport);
                 Tcl_AppendElement(interp, buf);
             }
-        } else if (!strcmp(argv[2], "-broadcast")) {
-            int tmp = 1;
-            socklen_t optlen = sizeof(int);
-            if (getsockopt(statePtr->sock, SOL_SOCKET, SO_BROADCAST, 
-                           (char *)&tmp, &optlen)) {
-                sprintf(errBuf, "%s", "udp - getsockopt");
-                UDPTRACE("UDP error - getsockopt\n");
-                Tcl_AppendResult(interp, errBuf, (char *)NULL);
-                return TCL_ERROR;
-            } else {
-                Tcl_SetObjResult(interp, Tcl_NewIntObj(tmp));
-                return TCL_OK;
-            }
-        } else if (!strcmp(argv[2], "-ttl")) {
-            int tmp = 1;
-            socklen_t optlen = sizeof(int);
-            if (getsockopt(statePtr->sock, SOL_IP, IP_TTL, 
-                           (char *)&tmp, &optlen)) {
-                sprintf(errBuf, "%s", "udp - getsockopt");
-                UDPTRACE("UDP error - getsockopt\n");
-                Tcl_AppendResult(interp, errBuf, (char *)NULL);
-                return TCL_ERROR;
-            } else {
-                Tcl_SetObjResult(interp, Tcl_NewIntObj(tmp));
-                return TCL_OK;
-            }
-        } else {
-            Tcl_SetResult (interp, errmsg, NULL);
-            return TCL_ERROR;
-        }
-        return TCL_OK;
+        } else if (strcmp(argv[2], "-broadcast") == 0 
+	    || strcmp(argv[2], "-ttl") == 0) {
+	    
+	    Tcl_DStringInit(&ds);
+	    r = Tcl_GetChannelOption(interp, statePtr->channel, argv[2], &ds);
+	    if (r == TCL_OK) {
+		Tcl_DStringResult(interp, &ds);
+	    }
+	    Tcl_DStringFree(&ds);	    
+	    return r;
+	}
     } else if (argc == 4) {
         if (!strcmp(argv[2], "-mcastadd")) {
-            if (strlen(argv[3]) >= sizeof(statePtr->remotehost)) {
-                result = "hostname too long";
-                Tcl_SetResult (interp, result, NULL);
-                return TCL_ERROR;
-            }
-            mreq.imr_multiaddr.s_addr = inet_addr(argv[3]);
-            if (mreq.imr_multiaddr.s_addr == -1) {
-                name = gethostbyname(argv[3]);
-                if (name == NULL) {
-                    UDPTRACE("UDP error - gethostbyname");
-                    return TCL_ERROR;
-                }
-                memcpy(&mreq.imr_multiaddr.s_addr, name->h_addr, sizeof(mreq.imr_multiaddr.s_addr));
-            }
-            mreq.imr_interface.s_addr = htonl(INADDR_ANY);
-            if (setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (const char*)&mreq, sizeof(mreq)) < 0) {
-                UDPTRACE("UDP error - setsockopt - IP_ADD_MEMBERSHIP");
-                return TCL_ERROR;
-            }
-            maddr.sin_addr.s_addr = htonl(INADDR_ANY);
-            return TCL_OK;
+
+	    return UdpMulticast(statePtr, interp, argv[3], IP_ADD_MEMBERSHIP);
+
         } else if (!strcmp(argv[2], "-mcastdrop")) {
-            if (strlen(argv[3]) >= sizeof(statePtr->remotehost)) {
-                result = "hostname too long";
-                Tcl_SetResult (interp, result, NULL);
-                return TCL_ERROR;
-            }
-            mreq.imr_multiaddr.s_addr = inet_addr(argv[3]);
-            if (mreq.imr_multiaddr.s_addr == -1) {
-                name = gethostbyname(argv[3]);
-                if (name == NULL) {
-                    UDPTRACE("UDP error - gethostbyname");
-                    return TCL_ERROR;
-                }
-                memcpy(&mreq.imr_multiaddr.s_addr, name->h_addr, sizeof(mreq.imr_multiaddr.s_addr));
-            }
-            mreq.imr_interface.s_addr = htonl(INADDR_ANY);
-            if (setsockopt(sock, IPPROTO_IP, IP_DROP_MEMBERSHIP, (const char*)&mreq, sizeof(mreq)) < 0) {
-                UDPTRACE("UDP error - setsockopt - IP_DROP_MEMBERSHIP");
-                return TCL_ERROR;
-            }
-            return TCL_OK;
+
+            return UdpMulticast(statePtr, interp, argv[3], IP_DROP_MEMBERSHIP);
+
         } else if (!strcmp(argv[2], "-broadcast")) {
-            socklen_t optlen = sizeof(int);
-            int tmp = 0;
-            int r = Tcl_GetInt(interp, argv[3], &tmp);
-            if (r == TCL_OK) {
-                if (setsockopt(statePtr->sock, SOL_SOCKET, SO_BROADCAST, 
-                               (const char *)&tmp, optlen)) {
-                    sprintf(errBuf, "%s", "udp - setsockopt");
-                    UDPTRACE("UDP error - setsockopt\n");
-                    Tcl_AppendResult(interp, errBuf, (char *)NULL);
-                    r = TCL_ERROR;
-                } else {
-                    Tcl_SetObjResult(interp, Tcl_NewIntObj(tmp));
-                }
-            }
-            return r;
+
+	    return Tcl_SetChannelOption(interp, statePtr->channel,
+		"-broadcast", argv[3]);
+	    
         } else if (!strcmp(argv[2], "-ttl")) {
-            socklen_t optlen = sizeof(int);
-            int tmp = 0;
-            int r = Tcl_GetInt(interp, argv[3], &tmp);
-            if (r == TCL_OK) {
-                if (setsockopt(statePtr->sock, SOL_IP, IP_TTL,
-                               (const char *)&tmp, optlen)) {
-                    sprintf(errBuf, "%s", "udp - setsockopt");
-                    UDPTRACE("UDP error - setsockopt\n");
-                    Tcl_AppendResult(interp, errBuf, (char *)NULL);
-                    r = TCL_ERROR;
-                } else {
-                    Tcl_SetObjResult(interp, Tcl_NewIntObj(tmp));
-                }
-            }
-            return r;
+
+	    return Tcl_SetChannelOption(interp, statePtr->channel,
+		"-ttl", argv[3]);
+
         } else {
             if (strlen(argv[2]) >= sizeof(statePtr->remotehost)) {
                 result = "hostname too long";
@@ -466,6 +392,7 @@ udpConf(ClientData clientData, Tcl_Interp *interp,
         Tcl_SetResult (interp, errmsg, NULL);
         return TCL_ERROR;
     }
+    return TCL_ERROR;
 }
 
 /*
@@ -868,6 +795,8 @@ udpClose(ClientData instanceData, Tcl_Interp *interp)
 {
     int sock;
     int errorCode = 0;
+    int objc;
+    Tcl_Obj **objv;
     UdpState *statePtr = (UdpState *) instanceData;
 #ifdef WIN32
     UdpState *statePre, *searchPtr;
@@ -894,6 +823,19 @@ udpClose(ClientData instanceData, Tcl_Interp *interp)
         }
     }
 #endif /* ! WIN32 */
+
+    /*
+     * If there are multicast groups added they should be dropped.
+     */
+    if (statePtr->groupsObj) {
+	int n = 0;
+	Tcl_ListObjGetElements(interp, statePtr->groupsObj, &objc, &objv);
+	for (n = 0; n < objc; n++) {
+	    UdpMulticast(statePtr, interp, 
+		Tcl_GetString(objv[n]), IP_DROP_MEMBERSHIP);
+	}
+	Tcl_DecrRefCount(statePtr->groupsObj);
+    }
     
     Tcl_UnregisterChannel(interp, statePtr->channel);
     if (closesocket(sock) < 0) {
@@ -1145,6 +1087,89 @@ udpInput(ClientData instanceData, char *buf, int bufSize, int *errorCode)
     return -1;
 }
 
+/* ---------------------------------------------------------------------- 
+ *
+ * LSearch --
+ *
+ * 	Find a string item in a list and return the index of -1.
+ */
+
+static int
+LSearch(Tcl_Obj *listObj, const char *group)
+{
+    int objc, n;
+    Tcl_Obj **objv;
+    Tcl_ListObjGetElements(NULL, listObj, &objc, &objv);
+    for (n = 0; n < objc; n++) {
+	if (strcmp(group, Tcl_GetString(objv[n])) == 0) {
+	    return n;
+	}
+    }
+    return -1;
+}
+
+/*
+ * ----------------------------------------------------------------------
+ *
+ * UdpMulticast --
+ *
+ *	Action should be IP_ADD_MEMBERSHIP | IP_DROP_MEMBERSHIP
+ *
+ */
+
+static int
+UdpMulticast(ClientData instanceData, Tcl_Interp *interp, 
+    const char *grp, int action)
+{
+    UdpState *statePtr = (UdpState *)instanceData;
+    struct ip_mreq mreq;
+    struct hostent *name;
+    
+    memset(&mreq, 0, sizeof(mreq));
+    
+    mreq.imr_multiaddr.s_addr = inet_addr(grp);
+    if (mreq.imr_multiaddr.s_addr == -1) {
+        name = gethostbyname(grp);
+        if (name == NULL) {
+            Tcl_SetResult(interp, "invalid group name", TCL_STATIC);
+            return TCL_ERROR;
+        }
+        memcpy(&mreq.imr_multiaddr.s_addr, name->h_addr,
+               sizeof(mreq.imr_multiaddr));
+    }
+    mreq.imr_interface.s_addr = INADDR_ANY;
+    if (setsockopt(statePtr->sock, IPPROTO_IP, action,
+                   (const char*)&mreq, sizeof(mreq)) < 0) {
+       Tcl_SetResult(interp, "error changing multicast group", TCL_STATIC);
+        return TCL_ERROR;
+    }
+
+    if (action == IP_ADD_MEMBERSHIP) {
+	int ndx = LSearch(statePtr->groupsObj, grp);
+	if (ndx == -1) {
+	    statePtr->multicast++;
+	    Tcl_ListObjAppendElement(interp, statePtr->groupsObj,
+				     Tcl_NewStringObj(grp,-1));
+	}
+    } else {
+	int ndx = LSearch(statePtr->groupsObj, grp);
+	if (ndx != -1) {
+	    Tcl_Obj *old, *ptr;
+	    old = ptr = statePtr->groupsObj;
+	    statePtr->multicast--;
+	    if (Tcl_IsShared(ptr)) {
+		ptr = Tcl_DuplicateObj(ptr);
+	    }
+	    Tcl_ListObjReplace(interp, ptr, ndx, 1, 0, NULL);
+	    statePtr->groupsObj = ptr;
+	    Tcl_IncrRefCount(ptr);
+	    Tcl_DecrRefCount(old);
+	}
+    }
+    Tcl_SetObjResult(interp, statePtr->groupsObj);
+    return TCL_OK;
+}
+
 /*
  * ----------------------------------------------------------------------
  * udpGetOption --
@@ -1155,7 +1180,7 @@ udpGetOption(ClientData instanceData, Tcl_Interp *interp,
              CONST84 char *optionName, Tcl_DString *optionValue)
 {
     UdpState *statePtr = (UdpState *)instanceData;
-    CONST84 char * options = "myport remote peer mcastadd mcastdrop broadcast ttl";
+    CONST84 char * options = "myport remote peer mcastgroups broadcast ttl";
     int r = TCL_OK;
 
     if (optionName == NULL) {
@@ -1166,10 +1191,8 @@ udpGetOption(ClientData instanceData, Tcl_Interp *interp,
         udpGetOption(instanceData, interp, "-remote", optionValue);
         Tcl_DStringAppend(optionValue, " -peer ", -1);
         udpGetOption(instanceData, interp, "-peer", optionValue);
-        Tcl_DStringAppend(optionValue, " -mcastadd ", -1);
-        udpGetOption(instanceData, interp, "-mcastadd", optionValue);
-        Tcl_DStringAppend(optionValue, " -mcastdrop ", -1);
-        udpGetOption(instanceData, interp, "-mcastdrop", optionValue);
+        Tcl_DStringAppend(optionValue, " -mcastgroups ", -1);
+        udpGetOption(instanceData, interp, "-mcastgroups", optionValue);
         Tcl_DStringAppend(optionValue, " -broadcast ", -1);
         udpGetOption(instanceData, interp, "-broadcast", optionValue);
         Tcl_DStringAppend(optionValue, " -ttl ", -1);
@@ -1201,10 +1224,15 @@ udpGetOption(ClientData instanceData, Tcl_Interp *interp,
             Tcl_DStringAppendElement(&ds, statePtr->peerhost);
             Tcl_DStringAppendElement(&ds, Tcl_DStringValue(&dsInt));
 
-        } else if (!strcmp("-mcastadd", optionName)) {
-            ;
-        } else if (!strcmp("-mcastdrop", optionName)) {
-            ;
+        } else if (!strcmp("-mcastgroups", optionName)) {
+
+            int objc, n;
+	    Tcl_Obj **objv;
+	    Tcl_ListObjGetElements(interp, statePtr->groupsObj, &objc, &objv);
+	    for (n = 0; n < objc; n++) {
+		Tcl_DStringAppendElement(&ds, Tcl_GetString(objv[n]));
+	    }
+	    
         } else if (!strcmp("-broadcast", optionName)) {
 
             int tmp = 1;
@@ -1223,8 +1251,11 @@ udpGetOption(ClientData instanceData, Tcl_Interp *interp,
           
             unsigned int tmp = 0;
             socklen_t optlen = sizeof(unsigned int);
-            if (getsockopt(statePtr->sock, SOL_IP, IP_TTL,
-                           (char *)&tmp, &optlen)) {
+	    int cmd = IP_TTL;
+	    if (statePtr->multicast > 0)
+		cmd = IP_MULTICAST_TTL;
+            if (getsockopt(statePtr->sock, IPPROTO_IP, cmd,
+		(char *)&tmp, &optlen)) {
                 UDPTRACE("UDP error - getsockopt");
                 Tcl_SetResult(interp, "error in getsockopt", TCL_STATIC);
                 r = TCL_ERROR;
@@ -1232,7 +1263,7 @@ udpGetOption(ClientData instanceData, Tcl_Interp *interp,
                 Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
                 sprintf(Tcl_DStringValue(&ds), "%u", tmp);
             }
-
+	    
         } else {
             r = Tcl_BadChannelOption(interp, optionName, options);
         }
@@ -1290,13 +1321,13 @@ udpSetOption(ClientData instanceData, Tcl_Interp *interp,
 
     } else if (!strcmp("-mcastadd", optionName)) {
 
-        Tcl_SetResult(interp, "E_NOTIMPL", TCL_STATIC);
-        r = TCL_ERROR;
+	r = UdpMulticast(instanceData, interp, 
+	    (const char *)newValue, IP_ADD_MEMBERSHIP);
 
     } else if (!strcmp("-mcastdrop", optionName)) {
 
-        Tcl_SetResult(interp, "E_NOTIMPL", TCL_STATIC);
-        r = TCL_ERROR;
+	r = UdpMulticast(instanceData, interp, 
+	    (const char *)newValue, IP_DROP_MEMBERSHIP);
 
     } else if (!strcmp("-broadcast", optionName)) {
 
@@ -1316,9 +1347,12 @@ udpSetOption(ClientData instanceData, Tcl_Interp *interp,
     } else if (!strcmp("-ttl", optionName)) {
 
         unsigned int tmp = 0;
+	int cmd = IP_TTL;
+	if (statePtr->multicast > 0)
+	    cmd = IP_MULTICAST_TTL;
         r = Tcl_GetInt(interp, newValue, &tmp);
         if (r == TCL_OK) {
-            if (setsockopt(statePtr->sock, SOL_IP, IP_TTL,
+            if (setsockopt(statePtr->sock, IPPROTO_IP, cmd,
                            (const char *)&tmp, sizeof(unsigned int))) {
                 sprintf(errBuf, "udp - setsockopt ttl");
                 UDPTRACE("UDP error - setsockopt\n");

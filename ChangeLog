@@ -1,5 +1,12 @@
 2004-11-22  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
+	* generic/udp_tcl.h: Done some testing with multicast and have
+	* generic/udp_tcl.c: rationalised the fconfigure/udp_conf interfaces
+	a bit better. The -ttl option will set the multicast ttl if the
+	socket has been added to a multicast group. 
+	Now maintains a list of groups so that this can be inspected and
+	when the socket is closed we will call mcastdrop for each item.
+	
 	* generic/udp_tcl.h: Fixed the -ttl option for Windows.
 	* generic/udp_tcl.c: Added support for setting and retrieving the
 	TTL option on the socket. The default is specified by the system
