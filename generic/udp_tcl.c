@@ -6,7 +6,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.4 2003/03/12 00:21:17 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.5 2003/03/21 23:05:13 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -39,7 +39,9 @@
 /* define some Win32isms for Unix */
 #ifndef WIN32
 #define SOCKET int
+#define INVALID_SOCKET -1
 #define closesocket close
+#define ioctlsocket ioctl
 #endif
 
 #ifdef DEBUG
@@ -236,11 +238,9 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
         Tcl_AppendResult(interp, errBuf, (char *)NULL);
         return TCL_ERROR;
     }
-#ifdef WIN32
+
     ioctlsocket(sock, FIONBIO, &status);
-#else
-    ioctl(sock, (int) FIONBIO, &status);
-#endif
+
     if (localport == 0) {
         len = sizeof(sockaddr);
         getsockname(sock, (struct sockaddr *)&sockaddr, &len);
