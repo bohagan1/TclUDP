@@ -53,7 +53,7 @@ typedef u_short uint16_t;
 
 typedef struct {
   Tcl_Event         header;     /* Information that is standard for */
-  Tcl_Channel       chan;     /* Socket descriptor that is ready  */
+  Tcl_Channel       chan;       /* Socket descriptor that is ready  */
 } UdpEvent;
 
 typedef struct PacketList {
@@ -64,7 +64,7 @@ typedef struct PacketList {
   struct PacketList *next;
 } PacketList;
 
-#endif
+#endif // WIN32
 
 typedef struct UdpState {
   Tcl_Channel       channel;
