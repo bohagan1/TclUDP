@@ -1,3 +1,7 @@
+2003-10-14  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* generic/udp_tcl.c: Fix CONSTness for Tcl < 8.4
+
 2003-06-13  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
 	* generic/udp_tcl.c: Cleaned up some -Wall warnings under unix.
