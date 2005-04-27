@@ -1,3 +1,11 @@
+2005-04-27  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* demos/bug1158628.tcl: Demo file for this bug.
+	* generic/udp_tcl.c: Applied a fix for bug #1158628 from Reinhard
+	Max which avoids hanging Tcl while exiting with open channels.
+	* configure.in:     Moved version to 1.0.7
+	* win/makefile.vc: 
+
 2004-11-23  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
 	* demos/chat.tcl: Sample Tk chat app using multicast udp.

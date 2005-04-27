@@ -6,7 +6,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.18 2004/11/22 23:48:47 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.19 2005/04/27 08:11:10 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -837,7 +837,9 @@ udpClose(ClientData instanceData, Tcl_Interp *interp)
 	Tcl_DecrRefCount(statePtr->groupsObj);
     }
     
-    Tcl_UnregisterChannel(interp, statePtr->channel);
+    /* No - doing this causes a infinite recursion. Let Tcl handle this.
+     *   Tcl_UnregisterChannel(interp, statePtr->channel);
+     */
     if (closesocket(sock) < 0) {
         errorCode = errno;
     }
