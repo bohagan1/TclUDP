@@ -1,3 +1,8 @@
+2005-05-17  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* win/rules.vc: Applied patch 1092432 by westrick85 to handle
+	paths with spaces better.
+
 2005-04-27  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
 	* demos/bug1158628.tcl: Demo file for this bug.
