@@ -14,16 +14,10 @@
 # This script demonstrates the problem. Using udp 1.0.6 the program hangs
 # after printing "Exiting...". With the fix applied it properly exits.
 #
-# $Id: bug1158628.tcl,v 1.1 2005/04/27 08:11:10 patthoyts Exp $
+# $Id: bug1158628.tcl,v 1.2 2005/05/19 20:46:23 patthoyts Exp $
 
-If the channel is closed, the program will exit.
-
-BTW, when it will not exit it does *not* consume CPU
-resources.
-
-
-
-load [file join [file dirname [info script]] .. win Release udp106.dll]
+#load [file join [file dirname [info script]] .. win Release udp107.dll]
+#load [file join [file dirname [info script]] .. i386-unknown-openbsd3.6 libudp107.so]
 package require udp
 
 variable forever 0

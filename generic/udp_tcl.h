@@ -33,6 +33,9 @@
 #  if HAVE_SYS_TIME_H
 #    include <sys/time.h>
 #  endif
+#  if HAVE_STDINT_H
+#    include <stdint.h>
+#  endif
 #  include <sys/socket.h>
 #  include <netinet/in.h>
 #  include <arpa/inet.h>

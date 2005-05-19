@@ -4,6 +4,9 @@
 	used to cleanup sockets under Windows.
 	* generic/udp_tcl.c: fconfigure options were returning lists of
 	lists. Fixed.
+	* tclconfig/*:  Updated TEA files to TEA 3.2
+	* configure.in:
+	* Makefile.in: 
 
 2005-05-17  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
