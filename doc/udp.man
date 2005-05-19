@@ -1,13 +1,13 @@
 [comment {-*- tcl -*- doctools manpage}]
 [comment {To convert this to another documentation format use the mpexpand
-          script from tcllib: mpexpand nroff udp.man udp.n
-                              mpexpand html  udp.man udp.html
+          script from tcllib: dtplite -o udp.n nroff udp.man
+                              dtplite -o udp.html html udp.man
 }]
-[manpage_begin udp n 1.0.6]
+[manpage_begin udp n 1.0.7]
 [copyright {1999-2000 Columbia University; all rights reserved}]
 [moddesc {Tcl UDP extension}]
 [titledesc {Create UDP sockets in Tcl}]
-[require Tcl 8.0]
+[require Tcl 8.2]
 [require udp 1.0]
 [description]
 

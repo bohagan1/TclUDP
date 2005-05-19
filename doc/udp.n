@@ -1,19 +1,19 @@
 '\"
-'\" Generated from file 'udp.man' by tcllib/doctools with format 'nroff'
+'\" Generated from file '../../tcludp/doc/udp.man' by tcllib/doctools with format 'nroff'
 '\" Copyright (c) 1999-2000 Columbia University; all rights reserved
 '\"
 '\" -*- tcl -*- doctools manpage
 '\" To convert this to another documentation format use the mpexpand
-'\"           script from tcllib: mpexpand nroff udp.man udp.n
-'\"                               mpexpand html  udp.man udp.html
+'\"           script from tcllib: dtplite -o udp.n nroff udp.man
+'\"                               dtplite -o udp.html html udp.man
 '\"
 .so man.macros
-.TH "udp" n 1.0.6  "Tcl UDP extension"
+.TH "udp" n 1.0.7 udp "Tcl UDP extension"
 .BS
 .SH "NAME"
 udp \- Create UDP sockets in Tcl
 .SH "SYNOPSIS"
-package require \fBTcl  8.0\fR
+package require \fBTcl  8.2\fR
 .sp
 package require \fBudp  1.0\fR
 .sp
@@ -94,6 +94,7 @@ This function is not available on windows.
 .SH "EXAMPLES"
 .PP
 .nf
+
 # Send data to a remote UDP socket
 proc udp_puts {host port} {
     set s [udp_open]
@@ -101,8 +102,10 @@ proc udp_puts {host port} {
     puts $s "Hello, World"
     close $f
 }
+
 .fi
 .nf
+
 # A simple UDP server
 package require udp
 
@@ -124,8 +127,10 @@ proc udp_listen {port} {
 set sock [udp_listen 53530]
 vwait forever
 close $sock
+
 .fi
 .nf
+
 # A multicast demo.
 proc udpEvent {chan} {
     set data [read $chan]
@@ -148,6 +153,7 @@ puts -nonewline $s "hello, world"
 set ::forever 0
 vwait ::forever
 exit
+
 .fi
 .SH "HISTORY"
 Some of the code in this extension is copied from Michael Miller's tcludp
@@ -165,4 +171,5 @@ networking, socket, udp
 .SH "COPYRIGHT"
 .nf
 Copyright (c) 1999-2000 Columbia University; all rights reserved
+
 .fi

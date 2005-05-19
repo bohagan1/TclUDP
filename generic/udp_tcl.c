@@ -6,7 +6,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.22 2005/05/19 20:46:23 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.23 2005/05/19 23:30:34 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -20,10 +20,10 @@
 #include <malloc.h>
 typedef int socklen_t;
 #else /* ! WIN32 */
-#if defined(HAVE_SYS_IOCTL_H)
-#include <sys/ioctl.h>
-#elif defined(HAVE_SYS_FILIO_H)
+#if defined(HAVE_SYS_FILIO_H)
 #include <sys/filio.h>
+#elif defined(HAVE_SYS_IOCTL_H)
+#include <sys/ioctl.h>
 #else
 #error "Neither sys/ioctl.h nor sys/filio.h found. We need ioctl()"
 #endif

@@ -3,7 +3,7 @@ dnl	This file is an input file used by the GNU "autoconf" program to
 dnl	generate the file "configure", which is run during Tcl installation
 dnl	to configure the system for the local environment.
 #
-# RCS: @(#) $Id: configure.in,v 1.6 2005/05/19 20:46:23 patthoyts Exp $
+# RCS: @(#) $Id: configure.in,v 1.7 2005/05/19 23:30:34 patthoyts Exp $
 
 #-----------------------------------------------------------------------
 # Sample configure.in for Tcl Extensions.  The only places you should
@@ -186,6 +186,12 @@ TEA_MAKE_LIB
 
 TEA_PROG_TCLSH
 #TEA_PROG_WISH
+
+# -------------------------------------------------------------------
+# Find a usable dtplite (from tcllib) to use in document generation.
+# -------------------------------------------------------------------
+
+TEA_PROG_DTPLITE
 
 #--------------------------------------------------------------------
 # Finally, substitute all of the various values into the Makefile.
