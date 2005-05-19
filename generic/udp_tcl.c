@@ -6,7 +6,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.19 2005/04/27 08:11:10 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.20 2005/05/19 00:53:26 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -99,7 +99,6 @@ static HANDLE waitForSock;
 static HANDLE waitSockRead;
 static HANDLE sockListLock;
 static UdpState *sockList;
-static UdpState *sockTail;
 
 #endif /* ! WIN32 */
 
@@ -284,15 +283,10 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
     Tcl_AppendResult(interp, channelName, (char *)NULL);
 #ifdef WIN32
     WaitForSingleObject(sockListLock, INFINITE);
-    if (sockList == NULL) {
-        sockList = statePtr;
-        sockTail = statePtr;
-    } else {
-        sockTail->next = statePtr;
-        sockTail = statePtr;
-    }
+    statePtr->next = sockList;
+    sockList = statePtr;
 
-    UDPTRACE("Append %d to sockList\n", statePtr->sock);
+    UDPTRACE("Added %d to sockList\n", statePtr->sock);
     SetEvent(sockListLock);
     SetEvent(waitForSock);
 #endif
@@ -490,7 +484,7 @@ UDP_SetupProc(ClientData data, int flags)
     UdpState *statePtr;
     Tcl_Time blockTime = { 0, 0 };
     
-    UDPTRACE("setupProc\n");
+    /* UDPTRACE("setupProc\n"); */
     
     if (!(flags & TCL_FILE_EVENTS)) {
         return;
@@ -529,7 +523,7 @@ UDP_CheckProc(ClientData data, int flags)
 #endif
     PacketList *p;
     
-    UDPTRACE("checkProc\n");
+    /* UDPTRACE("checkProc\n"); */
     
     /* synchronized */
     WaitForSingleObject(sockListLock, INFINITE);
@@ -750,7 +744,6 @@ Udp_WinHasSockets(Tcl_Interp *interp)
          */
         
         sockList = NULL;
-        sockTail = NULL;
         waitForSock = CreateEvent(NULL, FALSE, FALSE, NULL);
         waitSockRead = CreateEvent(NULL, FALSE, FALSE, NULL);
         sockListLock = CreateEvent(NULL, FALSE, TRUE, NULL);
@@ -799,7 +792,7 @@ udpClose(ClientData instanceData, Tcl_Interp *interp)
     Tcl_Obj **objv;
     UdpState *statePtr = (UdpState *) instanceData;
 #ifdef WIN32
-    UdpState *statePre, *searchPtr;
+    UdpState *tmp, *p;
     
     WaitForSingleObject(sockListLock, INFINITE);
 #endif /* ! WIN32 */
@@ -807,21 +800,19 @@ udpClose(ClientData instanceData, Tcl_Interp *interp)
     sock = statePtr->sock;
 
 #ifdef WIN32
+
     /* remove the statePtr from the list */
-    for (searchPtr = sockList, statePre = sockList;
-         searchPtr != NULL;
-         statePre=statePtr, searchPtr=searchPtr->next) {
-        if (searchPtr->sock == sock) {
-            UDPTRACE("Remove %d from the list\n", sock);
-            if (searchPtr == sockList) {
-                sockList = sockList->next;
-            } else {
-                statePre->next = searchPtr->next;
-                if (sockTail == searchPtr)
-                    sockTail = statePre;
-            }
-        }
+    for (tmp = p = sockList; p != NULL; tmp = p, p = p->next) {
+	if (p->sock == sock) {
+            UDPTRACE("Remove %d from the list\n", p->sock);
+	    if (p == sockList) {
+		sockList = sockList->next;
+	    } else {
+		tmp->next = p->next;
+	    }
+	}
     }
+
 #endif /* ! WIN32 */
 
     /*

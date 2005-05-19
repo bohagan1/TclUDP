@@ -1,3 +1,8 @@
+2005-05-19  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* generic/udp_tcl.c: Deal with bug #1178996 by changing the code
+	used to cleanup sockets under Windows.
+
 2005-05-17  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
 	* win/rules.vc: Applied patch 1092432 by westrick85 to handle
