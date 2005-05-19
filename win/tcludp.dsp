@@ -62,9 +62,9 @@ CFG=tcludp - Win32 Debug
 # PROP Use_Debug_Libraries 1
 # PROP Output_Dir "Debug"
 # PROP Intermediate_Dir "Debug"
-# PROP Cmd_Line "nmake /f makefile.vc INSTALLDIR=c:\opt\tcl OPTS=symbols all"
-# PROP Rebuild_Opt "/a"
-# PROP Target_File "Debug/udp106g.dll"
+# PROP Cmd_Line "nmake /f makefile.vc INSTALLDIR=c:\opt\tcl\site-lib OPTS=symbols all"
+# PROP Rebuild_Opt "realclean all"
+# PROP Target_File "Debug/udp107g.dll"
 # PROP Bsc_Name ""
 # PROP Target_Dir ""
 

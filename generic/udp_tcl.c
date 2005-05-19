@@ -6,7 +6,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.20 2005/05/19 00:53:26 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.21 2005/05/19 15:41:06 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -1177,23 +1177,24 @@ udpGetOption(ClientData instanceData, Tcl_Interp *interp,
              CONST84 char *optionName, Tcl_DString *optionValue)
 {
     UdpState *statePtr = (UdpState *)instanceData;
-    CONST84 char * options = "myport remote peer mcastgroups broadcast ttl";
+    const char * options[] = { "myport", "remote", "peer", "mcastgroups", "broadcast", "ttl", NULL};
     int r = TCL_OK;
 
     if (optionName == NULL) {
-
-        Tcl_DStringAppend(optionValue, " -myport ", -1);
-        udpGetOption(instanceData, interp, "-myport", optionValue);
-        Tcl_DStringAppend(optionValue, " -remote ", -1);
-        udpGetOption(instanceData, interp, "-remote", optionValue);
-        Tcl_DStringAppend(optionValue, " -peer ", -1);
-        udpGetOption(instanceData, interp, "-peer", optionValue);
-        Tcl_DStringAppend(optionValue, " -mcastgroups ", -1);
-        udpGetOption(instanceData, interp, "-mcastgroups", optionValue);
-        Tcl_DStringAppend(optionValue, " -broadcast ", -1);
-        udpGetOption(instanceData, interp, "-broadcast", optionValue);
-        Tcl_DStringAppend(optionValue, " -ttl ", -1);
-        udpGetOption(instanceData, interp, "-ttl", optionValue);
+	Tcl_DString ds;
+	const char **p;
+	
+	Tcl_DStringInit(&ds);
+	for (p = options; *p != NULL; p++) {
+	    char op[16];
+	    sprintf(op, "-%s", *p);
+	    Tcl_DStringSetLength(&ds, 0);
+	    udpGetOption(instanceData, interp, op, &ds);
+	    Tcl_DStringAppend(optionValue, " ", 1);
+	    Tcl_DStringAppend(optionValue, op, -1);
+	    Tcl_DStringAppend(optionValue, " ", 1);
+	    Tcl_DStringAppendElement(optionValue, Tcl_DStringValue(&ds));
+	}
 
     } else {
 
@@ -1262,11 +1263,17 @@ udpGetOption(ClientData instanceData, Tcl_Interp *interp,
             }
 	    
         } else {
-            r = Tcl_BadChannelOption(interp, optionName, options);
+	    CONST84 char **p;
+	    Tcl_DString tmp;
+	    Tcl_DStringInit(&tmp);
+	    for (p = options; *p != NULL; p++)
+		Tcl_DStringAppendElement(&tmp, *p);
+            r = Tcl_BadChannelOption(interp, optionName, Tcl_DStringValue(&tmp));
+	    Tcl_DStringFree(&tmp);
         }
         
         if (r == TCL_OK) {
-            Tcl_DStringAppendElement(optionValue, Tcl_DStringValue(&ds));
+            Tcl_DStringAppend(optionValue, Tcl_DStringValue(&ds), -1);
         }
         Tcl_DStringFree(&dsInt);
         Tcl_DStringFree(&ds);

@@ -2,6 +2,8 @@
 
 	* generic/udp_tcl.c: Deal with bug #1178996 by changing the code
 	used to cleanup sockets under Windows.
+	* generic/udp_tcl.c: fconfigure options were returning lists of
+	lists. Fixed.
 
 2005-05-17  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
