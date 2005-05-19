@@ -18,7 +18,7 @@
 # Copyright (c) 2003 Pat Thoyts
 #
 #-------------------------------------------------------------------------
-# RCS: @(#)$Id: makefile.vc,v 1.3 2005/04/27 08:11:11 patthoyts Exp $
+# RCS: @(#)$Id: makefile.vc,v 1.4 2005/05/19 23:38:23 patthoyts Exp $
 #-------------------------------------------------------------------------
 
 !if !defined(MSDEVDIR) && !defined(MSVCDIR) && !defined(VCToolkitInstallDir)
@@ -245,7 +245,9 @@ crt = -MT
 INCLUDES	= $(TCL_INCLUDES) -I"$(WINDIR)" -I"$(GENERICDIR)"
 BASE_CLFAGS	= $(cflags) $(cdebug) $(crt) $(INCLUDES)
 CON_CFLAGS	= $(cflags) $(cdebug) $(crt) -DCONSOLE
-TCL_CFLAGS	= -DUSE_TCL_STUBS -DVERSION="\"$(DOTVERSION)\"" $(BASE_CLFAGS) $(OPTDEFINES)
+TCL_CFLAGS	= -DUSE_TCL_STUBS -DPACKAGE_NAME="\"$(PROJECT)\"" \
+		  -DPACKAGE_VERSION="\"$(DOTVERSION)\"" \
+		  $(BASE_CLFAGS) $(OPTDEFINES)
 
 #---------------------------------------------------------------------
 # Link flags
