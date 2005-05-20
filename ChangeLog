@@ -1,3 +1,7 @@
+2005-05-20  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* RELEASE:      Released tcludp 1.0.7
+
 2005-05-19  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
 	* generic/udp_tcl.c: Deal with bug #1178996 by changing the code
