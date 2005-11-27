@@ -6,7 +6,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.23 2005/05/19 23:30:34 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.24 2005/11/27 21:32:01 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -22,9 +22,11 @@ typedef int socklen_t;
 #else /* ! WIN32 */
 #if defined(HAVE_SYS_FILIO_H)
 #include <sys/filio.h>
-#elif defined(HAVE_SYS_IOCTL_H)
+#endif
+#if defined(HAVE_SYS_IOCTL_H)
 #include <sys/ioctl.h>
-#else
+#endif
+#if !defined(HAVE_SYS_FILIO_H) && !defined(HAVE_SYS_IOCTL_H)
 #error "Neither sys/ioctl.h nor sys/filio.h found. We need ioctl()"
 #endif
 #endif /* WIN32 */
@@ -32,6 +34,11 @@ typedef int socklen_t;
 /* Tcl 8.4 CONST support */
 #ifndef CONST84
 #define CONST84
+#endif
+
+/* bug #1240127: May not be found on certain versions of mingw-gcc */
+#ifndef IP_TTL
+#define IP_TTL 4
 #endif
 
 /* define some Win32isms for Unix */

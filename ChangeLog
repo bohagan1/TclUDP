@@ -1,3 +1,12 @@
+2005-11-27  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* generic/udp_tcl.c:  bug #1240127 - handle possible missing IP_TTL
+	* generic/udp_tcl.c:  bug #1358181 - fix for NetBSD 2.0
+	* aclocal.m4:         bug #1358189 - better method for finding dtplite
+	* win/makefile.vc:    Increment version to 1.0.8
+	* configure.in:       
+	* configure:          regenerated
+
 2005-05-20  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
 	* TAG:      ==== tcludp-1_0_7 ====
