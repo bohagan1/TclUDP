@@ -6,7 +6,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.24 2005/11/27 21:32:01 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.25 2006/03/04 00:05:45 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -162,6 +162,13 @@ Udp_Init(Tcl_Interp *interp)
     return r;
 }
 
+int
+Udp_SafeInit(Tcl_Interp *interp)
+{
+    Tcl_SetResult(interp, "permission denied", TCL_STATIC);
+    return TCL_ERROR;
+}
+
 /*
  * ----------------------------------------------------------------------
  * Udp_CmdProc --
@@ -211,7 +218,7 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
     struct sockaddr_in  addr, sockaddr;
 #endif
     unsigned long status = 1;
-    int len;
+    socklen_t len;
     
     if (argc >= 2) {
         if (udpGetService(interp, argv[1], &localport) != TCL_OK)
@@ -405,7 +412,8 @@ udpPeek(ClientData clientData, Tcl_Interp *interp,
 {
 #ifndef WIN32
     int buffer_size = 16;
-    int actual_size, socksize;
+    int actual_size;
+    socklen_t socksize;
     int sock;
     char message[17];
     /*struct hostent *name;*/
@@ -515,7 +523,8 @@ UDP_CheckProc(ClientData data, int flags)
 {
     UdpState *statePtr;
     UdpEvent *evPtr;
-    int actual_size, socksize;
+    int actual_size;
+    socklen_t socksize;
     int buffer_size = MAXBUFFERSIZE;
     char *message;
 #ifdef SIPC_IPV6
@@ -981,7 +990,7 @@ udpInput(ClientData instanceData, char *buf, int bufSize, int *errorCode)
 #ifdef WIN32
     PacketList *packets;
 #else /* ! WIN32 */
-    int socksize;
+    socklen_t socksize;
     int port;
     int buffer_size = MAXBUFFERSIZE;
     char *remotehost;

@@ -1,3 +1,14 @@
+2006-03-03  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* tclconfig/*:        Updated to TEA 3.5
+	* configure:          Regenerated.
+	* generic/udp_tcl.c:  Applied patch from bug #1245141 to use
+	                      socklen_t type correctly (Tru64 uses a
+	                      64bit long for socklen_t)
+	* generic/udp_tcl.c:  Included a Udp_SafeInit function. Some versions
+	                      of MacOSX are wierd about apps testing for
+	                      missing functions in shared libs. (#1439508)
+
 2005-11-27  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
 	* generic/udp_tcl.c:  bug #1240127 - handle possible missing IP_TTL
