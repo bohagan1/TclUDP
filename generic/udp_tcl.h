@@ -2,10 +2,12 @@
  *----------------------------------------------------------------------
  * UDP Extension for Tcl 8.4
  *
- * Copyright 1999-2000 by Columbia University; all rights reserved
+ * Copyright (c) 1999-2003 by Columbia University; all rights reserved
+ * Copyright (c) 2003-2005 Pat Thoyts <patthoyts@users.sourceforge.net>
  *
  * Written by Xiaotao Wu
- * Last modified: 11/03/2000
+ * 
+ * $Id: udp_tcl.h,v 1.10 2006/03/05 10:43:12 patthoyts Exp $
  *----------------------------------------------------------------------
  */
 
