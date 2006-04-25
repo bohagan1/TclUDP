@@ -12,7 +12,7 @@
 # See the file "license.terms" for information on usage and redistribution
 # of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 #
-# RCS: @(#) $Id: Makefile.in,v 1.6 2005/11/27 21:31:59 patthoyts Exp $
+# RCS: @(#) $Id: Makefile.in,v 1.7 2006/04/25 11:13:33 patthoyts Exp $
 
 #========================================================================
 # Add additional lines to handle any additional AC_SUBST cases that
@@ -191,11 +191,14 @@ DTPLITE=@DTPLITE@
 doc: udp.n
 
 udp.n: $(srcdir)/doc/udp.man
-	test -x $(DTPLITE) && $(DTPLITE) -o $@ nroff $(srcdir)/doc/udp.man
+	@if [ -n "$(DTPLITE)" -a -x "$(DTPLITE)" ]; then \
+	    $(DTPLITE) -o $@ nroff $(srcdir)/doc/udp.man ; \
+	fi
 
 udp.html: $(srcdir)/doc/udp.man
-	test -x $(DTPLITE) && $(DTPLITE) -o $@ html $(srcdir)/doc/udp.man
-
+	@if [ -n "$(DTPLITE)" -a -x "$(DTPLITE)" ]; then \
+	    $(DTPLITE) -o $@ html $(srcdir)/doc/udp.man ; \
+	fi
 
 install: all install-binaries install-libraries install-doc
 
