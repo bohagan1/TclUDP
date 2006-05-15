@@ -60,3 +60,42 @@ AC_DEFUN(TEA_PROG_DTPLITE, [
     AC_PATH_TOOL([DTPLITE], [dtplite], [:])
 ])
 
+#-------------------------------------------------------------------------
+# TCLUDP_CHECK_CLOEXEC
+#
+#	Do we have the FD_CLOEXEC flag available for fcntl()
+#
+# Results
+#	Sets up HAVE_FCNTL_H and HAVE_FLAG_FD_CLOEXEC
+#
+#-------------------------------------------------------------------------
+
+AC_DEFUN(TCLUDP_CHECK_CLOEXEC, [
+    AC_CHECK_HEADERS(fcntl.h)
+    AC_CACHE_CHECK([check for usable FD_CLOEXEC flag],tcludp_cloexec,
+      AC_TRY_COMPILE([
+#if HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+#if HAVE_FCNTL_H
+#include <fcntl.h>
+#endif
+],[fcntl(1, F_SETFD, FD_CLOEXEC);],tcludp_cloexec=yes,tcludp_cloexec=no))
+    if test "$tcludp_cloexec" = "yes" ; then
+        AC_DEFINE(HAVE_FLAG_FD_CLOEXEC, 1, [Can we use FD_CLOEXEC with fcntl?])
+    fi
+])
+
+#-------------------------------------------------------------------------
+# TCLUDP_CONFIG
+#
+#	Do any TCLUDP specific configuration here.
+#
+# Results
+#	See the individual sections referenced.
+#
+#-------------------------------------------------------------------------
+
+AC_DEFUN(TCLUDP_CONFIG, [
+    TCLUDP_CHECK_CLOEXEC
+])

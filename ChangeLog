@@ -1,3 +1,13 @@
+2006-05-15  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* aclocal.m4:        Added check for fcntl.h and the FD_CLOEXEC flag
+	* generic/udp_tcl.c: bug #1477669 - set the close-on-exec flag for 
+	                     the socket to avoid child processes inheriting
+	                     our sockets
+	* configure:         Regenerated with autoconf 2.59
+	* configure.in:      Added call to project specific code.
+	* tclconfig/tcl.m4:  Updated
+
 2006-03-03  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
 	* tclconfig/*:        Updated to TEA 3.5

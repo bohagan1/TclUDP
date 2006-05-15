@@ -3,7 +3,7 @@ dnl	This file is an input file used by the GNU "autoconf" program to
 dnl	generate the file "configure", which is run during Tcl installation
 dnl	to configure the system for the local environment.
 #
-# RCS: @(#) $Id: configure.in,v 1.9 2006/03/04 00:05:45 patthoyts Exp $
+# RCS: @(#) $Id: configure.in,v 1.10 2006/05/15 12:35:47 patthoyts Exp $
 
 #-----------------------------------------------------------------------
 # Sample configure.in for Tcl Extensions.  The only places you should
@@ -166,6 +166,12 @@ TEA_ENABLE_SYMBOLS
 
 AC_DEFINE(USE_TCL_STUBS)
 #AC_DEFINE(USE_TK_STUBS)
+
+#--------------------------------------------------------------------
+# Additional headers or symbols needed for the tcludp projects.
+#--------------------------------------------------------------------
+
+TCLUDP_CONFIG
 
 #--------------------------------------------------------------------
 # This macro generates a line to use when building a library.  It
