@@ -308,7 +308,7 @@ ac_includes_default="\
 # include <unistd.h>
 #endif"
 
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS CYGPATH EXEEXT PKG_LIB_FILE PKG_STUB_LIB_FILE PKG_STUB_SOURCES PKG_STUB_OBJECTS PKG_TCL_SOURCES PKG_HEADERS PKG_INCLUDES PKG_LIBS PKG_CFLAGS TCL_VERSION TCL_BIN_DIR TCL_SRC_DIR TCL_LIB_FILE TCL_LIB_FLAG TCL_LIB_SPEC TCL_STUB_LIB_FILE TCL_STUB_LIB_FLAG TCL_STUB_LIB_SPEC TCL_LIBS TCL_DEFS TCL_EXTRA_CFLAGS TCL_LD_FLAGS TCL_SHLIB_LD_LIBS CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC OBJEXT CPP INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA SET_MAKE RANLIB ac_ct_RANLIB EGREP MATH_LIBS PKG_SOURCES PKG_OBJECTS CLEANFILES TCL_INCLUDES TCL_THREADS SHARED_BUILD AR CELIB_DIR LIBOBJS DL_LIBS CFLAGS_DEBUG CFLAGS_OPTIMIZE CFLAGS_WARNING STLIB_LD SHLIB_LD SHLIB_LD_LIBS SHLIB_CFLAGS LD_LIBRARY_PATH_VAR TCL_DBGX CFLAGS_DEFAULT LDFLAGS_DEFAULT MAKE_LIB MAKE_SHARED_LIB MAKE_STATIC_LIB MAKE_STUB_LIB RANLIB_STUB TCLSH_PROG DTPLITE ac_pt_DTPLITE LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS CYGPATH EXEEXT PKG_LIB_FILE PKG_STUB_LIB_FILE PKG_STUB_SOURCES PKG_STUB_OBJECTS PKG_TCL_SOURCES PKG_HEADERS PKG_INCLUDES PKG_LIBS PKG_CFLAGS TCL_VERSION TCL_BIN_DIR TCL_SRC_DIR TCL_LIB_FILE TCL_LIB_FLAG TCL_LIB_SPEC TCL_STUB_LIB_FILE TCL_STUB_LIB_FLAG TCL_STUB_LIB_SPEC TCL_LIBS TCL_DEFS TCL_EXTRA_CFLAGS TCL_LD_FLAGS TCL_SHLIB_LD_LIBS CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC OBJEXT CPP INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA SET_MAKE RANLIB ac_ct_RANLIB EGREP MATH_LIBS PKG_SOURCES PKG_OBJECTS CLEANFILES TCL_INCLUDES TCL_THREADS SHARED_BUILD AR CELIB_DIR LIBOBJS DL_LIBS CFLAGS_DEBUG CFLAGS_OPTIMIZE CFLAGS_WARNING STLIB_LD SHLIB_LD SHLIB_LD_LIBS SHLIB_CFLAGS LD_LIBRARY_PATH_VAR TCL_DBGX CFLAGS_DEFAULT LDFLAGS_DEFAULT MAKE_LIB MAKE_SHARED_LIB MAKE_STATIC_LIB MAKE_STUB_LIB RANLIB_STUB TCLSH_PROG DTPLITE ac_pt_DTPLITE CONFIGURE_OUTPUTS LTLIBOBJS'
 ac_subst_files=''
 
 # Initialize some variables set by options.
@@ -1672,8 +1672,6 @@ echo "${ECHO_T}could not find ${TCL_BIN_DIR}/tclConfig.sh" >&6
 # Load the tkConfig.sh file if necessary (Tk extension)
 #--------------------------------------------------------------------
 
-#TEA_PATH_TKCONFIG
-#TEA_LOAD_TKCONFIG
 
 #-----------------------------------------------------------------------
 # Handle the --prefix=... option by defaulting to what Tcl gave.
@@ -6589,10 +6587,8 @@ if test "${TEA_PLATFORM}" = "windows" ; then
 _ACEOF
 
     CLEANFILES="pkgIndex.tcl *.lib *.dll *.exp *.ilk *.pdb vc*.pch"
-    #TEA_ADD_SOURCES([win/winFile.c])
-    #TEA_ADD_INCLUDES([-I\"$(${CYGPATH} ${srcdir}/win)\"])
 
-    vars="-lws2_32"
+    vars="ws2_32.lib"
     for i in $vars; do
 	if test "${TEA_PLATFORM}" = "windows" -a "$GCC" = "yes" ; then
 	    # Convert foo.lib to -lfoo for GCC.  No-op if not *.lib
@@ -6604,9 +6600,7 @@ _ACEOF
 
 else
     CLEANFILES="pkgIndex.tcl"
-    #TEA_ADD_SOURCES([unix/unixFile.c])
-    #TEA_ADD_LIBS([-lsuperfly])
-fi
+        fi
 
 
 #--------------------------------------------------------------------
@@ -6705,11 +6699,7 @@ echo "${ECHO_T}${ac_cv_c_tclh}" >&6
 
 
 
-#TEA_PRIVATE_TCL_HEADERS
 
-#TEA_PUBLIC_TK_HEADERS
-#TEA_PRIVATE_TK_HEADERS
-#TEA_PATH_X
 
 #--------------------------------------------------------------------
 # Check whether --enable-threads or --disable-threads was given.
@@ -9876,7 +9866,6 @@ cat >>confdefs.h <<\_ACEOF
 #define USE_TCL_STUBS 1
 _ACEOF
 
-#AC_DEFINE(USE_TK_STUBS)
 
 #--------------------------------------------------------------------
 # Additional headers or symbols needed for the tcludp projects.
@@ -10033,8 +10022,8 @@ fi
 
 done
 
-    echo "$as_me:$LINENO: checking check for usable FD_CLOEXEC flag" >&5
-echo $ECHO_N "checking check for usable FD_CLOEXEC flag... $ECHO_C" >&6
+    echo "$as_me:$LINENO: checking for usable FD_CLOEXEC flag" >&5
+echo $ECHO_N "checking for usable FD_CLOEXEC flag... $ECHO_C" >&6
 if test "${tcludp_cloexec+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
 else
@@ -10222,7 +10211,6 @@ echo $ECHO_N "checking for tclsh... $ECHO_C" >&6
 echo "${ECHO_T}${TCLSH_PROG}" >&6
 
 
-#TEA_PROG_WISH
 
 # -------------------------------------------------------------------
 # Find a usable dtplite (from tcllib) to use in document generation.
@@ -10322,10 +10310,13 @@ fi
 #--------------------------------------------------------------------
 # Finally, substitute all of the various values into the Makefile.
 # You may alternatively have a special pkgIndex.tcl.in or other files
-# which require substituting th AC variables in.  Include these here.
+# which require substituting the AC variables in.  Include these here.
 #--------------------------------------------------------------------
 
+CONFIGURE_OUTPUTS="Makefile config.cache config.log config.status"
+
           ac_config_files="$ac_config_files Makefile"
+
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
 # tests run on this system so they can be shared between configure
@@ -11030,6 +11021,7 @@ s,@RANLIB_STUB@,$RANLIB_STUB,;t t
 s,@TCLSH_PROG@,$TCLSH_PROG,;t t
 s,@DTPLITE@,$DTPLITE,;t t
 s,@ac_pt_DTPLITE@,$ac_pt_DTPLITE,;t t
+s,@CONFIGURE_OUTPUTS@,$CONFIGURE_OUTPUTS,;t t
 s,@LTLIBOBJS@,$LTLIBOBJS,;t t
 CEOF
 

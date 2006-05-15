@@ -7,7 +7,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.27 2006/05/15 12:35:47 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.28 2006/05/15 14:27:16 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -251,9 +251,9 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
     fcntl(sock, F_SETFD, FD_CLOEXEC);
 #else
 #ifdef WIN32
-    if (SetHandleInformation(sock, HANDLE_FLAG_INHERIT, 0) == 0) {
-      Tcl_AppendResult(interp, "failed to set close-on-exec bit", NULL);
-      return TCL_ERROR;
+    if (SetHandleInformation((HANDLE)sock, HANDLE_FLAG_INHERIT, 0) == 0) {
+        Tcl_AppendResult(interp, "failed to set close-on-exec bit", NULL);
+        return TCL_ERROR;
     }
 #endif /* WIN32 */
 #endif /* HAVE_FLAG_FD_CLOEXEC */

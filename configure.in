@@ -3,7 +3,7 @@ dnl	This file is an input file used by the GNU "autoconf" program to
 dnl	generate the file "configure", which is run during Tcl installation
 dnl	to configure the system for the local environment.
 #
-# RCS: @(#) $Id: configure.in,v 1.10 2006/05/15 12:35:47 patthoyts Exp $
+# RCS: @(#) $Id: configure.in,v 1.11 2006/05/15 14:27:16 patthoyts Exp $
 
 #-----------------------------------------------------------------------
 # Sample configure.in for Tcl Extensions.  The only places you should
@@ -42,8 +42,8 @@ TEA_LOAD_TCLCONFIG
 # Load the tkConfig.sh file if necessary (Tk extension)
 #--------------------------------------------------------------------
 
-#TEA_PATH_TKCONFIG
-#TEA_LOAD_TKCONFIG
+dnl#TEA_PATH_TKCONFIG
+dnl#TEA_LOAD_TKCONFIG
 
 #-----------------------------------------------------------------------
 # Handle the --prefix=... option by defaulting to what Tcl gave.
@@ -103,13 +103,13 @@ TEA_ADD_TCL_SOURCES([])
 if test "${TEA_PLATFORM}" = "windows" ; then
     AC_DEFINE(BUILD_udp)
     CLEANFILES="pkgIndex.tcl *.lib *.dll *.exp *.ilk *.pdb vc*.pch"
-    #TEA_ADD_SOURCES([win/winFile.c])
-    #TEA_ADD_INCLUDES([-I\"$(${CYGPATH} ${srcdir}/win)\"])
-    TEA_ADD_LIBS([-lws2_32])
+    dnl#TEA_ADD_SOURCES([win/winFile.c])
+    dnl#TEA_ADD_INCLUDES([-I\"$(${CYGPATH} ${srcdir}/win)\"])
+    TEA_ADD_LIBS([ws2_32.lib])
 else
     CLEANFILES="pkgIndex.tcl"
-    #TEA_ADD_SOURCES([unix/unixFile.c])
-    #TEA_ADD_LIBS([-lsuperfly])
+    dnl#TEA_ADD_SOURCES([unix/unixFile.c])
+    dnl#TEA_ADD_LIBS([-lsuperfly])
 fi
 AC_SUBST(CLEANFILES)
 
@@ -123,11 +123,11 @@ AC_SUBST(CLEANFILES)
 #--------------------------------------------------------------------
 
 TEA_PUBLIC_TCL_HEADERS
-#TEA_PRIVATE_TCL_HEADERS
+dnl#TEA_PRIVATE_TCL_HEADERS
 
-#TEA_PUBLIC_TK_HEADERS
-#TEA_PRIVATE_TK_HEADERS
-#TEA_PATH_X
+dnl#TEA_PUBLIC_TK_HEADERS
+dnl#TEA_PRIVATE_TK_HEADERS
+dnl#TEA_PATH_X
 
 #--------------------------------------------------------------------
 # Check whether --enable-threads or --disable-threads was given.
@@ -165,7 +165,7 @@ TEA_ENABLE_SYMBOLS
 #--------------------------------------------------------------------
 
 AC_DEFINE(USE_TCL_STUBS)
-#AC_DEFINE(USE_TK_STUBS)
+dnl#AC_DEFINE(USE_TK_STUBS)
 
 #--------------------------------------------------------------------
 # Additional headers or symbols needed for the tcludp projects.
@@ -191,7 +191,7 @@ TEA_MAKE_LIB
 #--------------------------------------------------------------------
 
 TEA_PROG_TCLSH
-#TEA_PROG_WISH
+dnl#TEA_PROG_WISH
 
 # -------------------------------------------------------------------
 # Find a usable dtplite (from tcllib) to use in document generation.
@@ -202,7 +202,10 @@ TEA_PROG_DTPLITE
 #--------------------------------------------------------------------
 # Finally, substitute all of the various values into the Makefile.
 # You may alternatively have a special pkgIndex.tcl.in or other files
-# which require substituting th AC variables in.  Include these here.
+# which require substituting the AC variables in.  Include these here.
 #--------------------------------------------------------------------
 
-AC_OUTPUT([Makefile])
+CONFIGURE_OUTPUTS="Makefile config.cache config.log config.status"
+AC_SUBST(CONFIGURE_OUTPUTS)
+AC_CONFIG_FILES([Makefile])
+AC_OUTPUT

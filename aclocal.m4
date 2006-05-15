@@ -72,7 +72,7 @@ AC_DEFUN(TEA_PROG_DTPLITE, [
 
 AC_DEFUN(TCLUDP_CHECK_CLOEXEC, [
     AC_CHECK_HEADERS(fcntl.h)
-    AC_CACHE_CHECK([check for usable FD_CLOEXEC flag],tcludp_cloexec,
+    AC_CACHE_CHECK([for usable FD_CLOEXEC flag],tcludp_cloexec,
       AC_TRY_COMPILE([
 #if HAVE_UNISTD_H
 #include <unistd.h>
