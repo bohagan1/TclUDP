@@ -7,7 +7,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.29 2006/05/15 14:35:24 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.30 2006/05/15 14:40:54 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -58,6 +58,10 @@ typedef int socklen_t;
 #define UDPTRACE udpTrace
 #else
 #define UDPTRACE 1 ? ((void)0) : udpTrace
+#endif
+
+#ifdef _MSC_VER
+#define snprintf _snprintf      /* trust Microsoft to complicate things */
 #endif
 
 FILE *dbg;
