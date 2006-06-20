@@ -1,6 +1,9 @@
-if {[lsearch [namespace children] ::tcltest] == -1} {
-    package require tcltest
+if {[catch {
+    package require tcltest 2
     namespace import -force ::tcltest::*
+} err]} {
+    puts "skipping [file tail [info script]]: these tests require tcltest 2.0"
+    return
 }
 
 package require udp

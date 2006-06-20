@@ -30,12 +30,16 @@ if required.
 
 [call [cmd "udp_conf"] [arg "sock"] [arg "host"] [arg "port"]]
 
+[emph Deprecated] in favour of the standard Tcl [cmd fconfigure] command.
+[nl]
 [cmd udp_conf] in this configuration is used to specify the remote destination
 for packets written to this [arg "sock"]. You must call this command before
 writing data to the UDP socket.
 
 [call [cmd "udp_conf"] [arg "sock"] [arg [opt -myport]] [arg [opt -remote]] [arg [opt -peer]] [arg [opt "-broadcast bool"]] [arg [opt "-ttl count"]]]
 
+[emph Deprecated] in favour of the standard Tcl [cmd fconfigure] command.
+[nl]
 In addition to being used to configure the remote host, the [cmd "udp_conf"]
 command is used to obtain information about the UDP socket.
 

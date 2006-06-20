@@ -2,6 +2,7 @@
 
 	* tests/udp-srv.test: Added new test file which runs a child
 	                      proces as a udp server.
+	* tests/all.tcl:      Support 8.2 and 8.3 test package.
 
 2006-05-15  Pat Thoyts  <patthoyts@users.sourceforge.net>
 

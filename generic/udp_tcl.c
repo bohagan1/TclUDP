@@ -7,7 +7,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.30 2006/05/15 14:40:54 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.31 2006/06/20 11:01:23 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -394,11 +394,11 @@ udpConf(ClientData clientData, Tcl_Interp *interp,
     } else if (argc == 4) {
         if (!strcmp(argv[2], "-mcastadd")) {
 
-	    r = UdpMulticast(statePtr, interp, argv[3], IP_ADD_MEMBERSHIP);
+	    r = UdpMulticast((ClientData)statePtr, interp, argv[3], IP_ADD_MEMBERSHIP);
 
         } else if (!strcmp(argv[2], "-mcastdrop")) {
 
-            r = UdpMulticast(statePtr, interp, argv[3], IP_DROP_MEMBERSHIP);
+            r = UdpMulticast((ClientData)statePtr, interp, argv[3], IP_DROP_MEMBERSHIP);
 
         } else if (!strcmp(argv[2], "-broadcast")) {
 
@@ -862,7 +862,7 @@ udpClose(ClientData instanceData, Tcl_Interp *interp)
 	int n = 0;
 	Tcl_ListObjGetElements(interp, statePtr->groupsObj, &objc, &objv);
 	for (n = 0; n < objc; n++) {
-	    UdpMulticast(statePtr, interp, 
+	    UdpMulticast((ClientData)statePtr, interp, 
 		Tcl_GetString(objv[n]), IP_DROP_MEMBERSHIP);
 	}
 	Tcl_DecrRefCount(statePtr->groupsObj);
@@ -1217,7 +1217,7 @@ udpGetOption(ClientData instanceData, Tcl_Interp *interp,
              CONST84 char *optionName, Tcl_DString *optionValue)
 {
     UdpState *statePtr = (UdpState *)instanceData;
-    const char * options[] = { "myport", "remote", "peer", "mcastgroups", "broadcast", "ttl", NULL};
+    CONST84 char * options[] = { "myport", "remote", "peer", "mcastgroups", "broadcast", "ttl", NULL};
     int r = TCL_OK;
 
     if (optionName == NULL) {
