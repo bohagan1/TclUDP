@@ -1,0 +1,152 @@
+if {[lsearch [namespace children] ::tcltest] == -1} {
+    package require tcltest
+    namespace import -force ::tcltest::*
+}
+
+package require udp
+
+set scriptName [makeFile {} udptest2.tcl]
+set script {
+    # UDP Test Server
+    package require udp
+    proc Wait {n} {
+        set ::forever 0
+        after $n {set ::forever 1}
+        vwait ::forever
+    }
+    
+    # If an error occurs during the tests, this process may end up not
+    # being closed down. To deal with this we create a 30s timeout.
+    proc DoTimeout {} {
+        set ::done 1
+        puts stderr "udp-srv.test child process [pid] timed out."
+        flush stdout
+    }
+    
+    proc ReadSock {chan} {
+        set data [read $chan]
+        set peer [fconfigure $chan -peer]
+        puts [list $peer [string length $data] $data]
+    }
+    
+    proc ReadControl {chan} {
+        if {[eof $chan]} {
+            fileevent $chan readable {}
+            set ::done 1
+            return
+        }
+        gets $chan line
+        if {[string equal [string trim $line] "quit"]} {
+            set ::done 1
+        }
+    }
+    
+    set timeout [after 5000 ::DoTimeout]
+    fconfigure stdout -buffering line
+    fconfigure stdin -buffering line
+    set socket [udp_open]
+    fconfigure $socket -buffering none -encoding binary -translation binary
+    fileevent $socket readable [list ReadSock $socket]
+    fileevent stdin readable [list ReadControl stdin]
+    Wait 100
+    puts ready
+    puts [fconfigure $socket -myport]
+    vwait ::done
+    after cancel $timeout
+    close $socket
+    Wait 100
+    exit
+}
+
+proc Wait {n} {
+    set ::forever 0
+    after $n {set ::forever 1}
+    vwait ::forever
+}
+
+proc createChildProcess {filename} {
+    file delete -force $filename
+    set f [open $filename w]
+    puts $f $::script
+    close $f
+    set p [open |[list [interpreter] $filename] r+]
+    fconfigure $p -buffering line
+    gets $p line
+    return $p
+}
+
+proc closeChildProcess {pipe} {
+    puts $pipe quit
+    while {[gets $pipe line] != -1} { puts "EXTRA: $line" }
+    close $pipe
+    return
+}
+
+test udp-srv-1 {basic server operation (ascii)} -constraints {} -setup {
+    set child [createChildProcess $::scriptName]
+    gets $child port
+} -body {
+    set u [udp_open]
+    fconfigure $u -remote [list localhost $port]
+    puts -nonewline $u "abcdefgh"
+    close $u
+    Wait 100
+    gets $child r
+    lindex $r 1
+} -cleanup {
+    closeChildProcess $child
+} -result {8}
+
+test udp-srv-2 {basic server operation (binary)} -constraints {} -setup {
+    set child [createChildProcess $::scriptName]
+    gets $child port
+} -body {
+    set u [udp_open]
+    fconfigure $u -remote [list localhost $port]
+    puts -nonewline $u "\0\1\2\3\4\5\6\7"
+    close $u
+    Wait 100
+    gets $child r
+    lindex $r 1
+} -cleanup {
+    closeChildProcess $child
+} -result {8}
+
+test udp-srv-3 {basic server operation (large packet)} -constraints {} -setup {
+    set child [createChildProcess $::scriptName]
+    gets $child port
+} -body {
+    set u [udp_open]
+    fconfigure $u -remote [list localhost $port]
+    puts -nonewline $u [string repeat x 1024]
+    close $u
+    Wait 100
+    gets $child r
+    lindex $r 1
+} -cleanup {
+    closeChildProcess $child
+} -result {1024}
+
+test udp-srv-4 {basic server operation (short packet)} -constraints {} -setup {
+    set child [createChildProcess $::scriptName]
+    gets $child port
+} -body {
+    set u [udp_open]
+    fconfigure $u -remote [list localhost $port] -buffering none
+    puts -nonewline $u "\0"
+    close $u
+    Wait 100
+    gets $child r
+    lindex $r 1
+} -cleanup {
+    closeChildProcess $child
+} -result {1}
+
+# -------------------------------------------------------------------------
+file delete -force $::scriptName
+::tcltest::cleanupTests
+return
+
+# Local variables:
+# mode: tcl
+# End:

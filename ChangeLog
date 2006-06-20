@@ -1,3 +1,8 @@
+2006-06-20  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* tests/udp-srv.test: Added new test file which runs a child
+	                      proces as a udp server.
+
 2006-05-15  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
 	* aclocal.m4:        Added check for fcntl.h and the FD_CLOEXEC flag
