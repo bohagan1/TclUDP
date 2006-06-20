@@ -1,5 +1,10 @@
 2006-06-20  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
+	* TAG:      ==== tcludp-1_0_8 ====
+        * RELEASE:  Released version 1.0.8
+
+2006-06-20  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
 	* generic/udp_tcl.c:  Stick to ckalloc/ckfree.
 	* tests/udp-srv.test: Added new test file which runs a child
 	                      proces as a udp server.
