@@ -7,7 +7,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.31 2006/06/20 11:01:23 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.32 2006/06/20 13:12:18 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -580,11 +580,12 @@ UDP_CheckProc(ClientData data, int flags)
 #endif
             memset(&recvaddr, 0, socksize);
             
-            message = (char *)calloc(1, MAXBUFFERSIZE);
+            message = (char *)ckalloc(MAXBUFFERSIZE);
             if (message == NULL) {
-                UDPTRACE("calloc error\n");
+                UDPTRACE("ckalloc error\n");
                 exit(1);
             }
+            memset(message, 0, MAXBUFFERSIZE);
             
             actual_size = recvfrom(statePtr->sock, message, buffer_size, 0,
                                    (struct sockaddr *)&recvaddr, &socksize);
@@ -594,7 +595,7 @@ UDP_CheckProc(ClientData data, int flags)
                 UDPTRACE("UDP error - recvfrom %d\n", statePtr->sock);
                 ckfree(message);
             } else {
-                p = (PacketList *)calloc(1, sizeof(struct PacketList));
+                p = (PacketList *)ckalloc(sizeof(struct PacketList));
                 p->message = message;
                 p->actual_size = actual_size;
 #ifdef SIPC_IPV6
@@ -1064,13 +1065,13 @@ udpInput(ClientData instanceData, char *buf, int bufSize, int *errorCode)
         return 0;
     }
     memcpy(buf, packets->message, packets->actual_size);
-    free((char *) packets->message);
+    ckfree((char *) packets->message);
     UDPTRACE("udp_recv message\n%s", buf);
     bufSize = packets->actual_size;
     strcpy(statePtr->peerhost, packets->r_host);
     statePtr->peerport = packets->r_port;
     statePtr->packets = packets->next;
-    free((char *) packets);
+    ckfree((char *) packets);
     bytesRead = bufSize;
 #else /* ! WIN32 */
     socksize = sizeof(recvaddr);

@@ -1,5 +1,6 @@
 2006-06-20  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
+	* generic/udp_tcl.c:  Stick to ckalloc/ckfree.
 	* tests/udp-srv.test: Added new test file which runs a child
 	                      proces as a udp server.
 	* tests/all.tcl:      Support 8.2 and 8.3 test package.
