@@ -7,7 +7,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.32 2006/06/20 13:12:18 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.33 2006/07/11 12:37:51 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -93,9 +93,12 @@ int udpPeek(ClientData , Tcl_Interp *, int , CONST84 char * []);
  * internal functions
  */
 static int UdpMulticast(ClientData, Tcl_Interp *, const char *, int);
+static int UdpSockGetPort(Tcl_Interp *interp, const char *s,
+                          const char *proto, int *portPtr);
 static void udpTrace(const char *format, ...);
 static int  udpGetService(Tcl_Interp *interp, const char *service,
                           unsigned short *servicePort);
+
 
 /*
  * Windows specific functions
@@ -1455,28 +1458,72 @@ udpTrace(const char *format, ...)
  *  services database) then set a Tcl error.
  * ----------------------------------------------------------------------
  */
+
 static int
 udpGetService(Tcl_Interp *interp, const char *service,
               unsigned short *servicePort)
 {
-    struct servent *sv = NULL;
-    char *remainder = NULL;
-    int r = TCL_OK;
+    int port = 0;
+    int r = UdpSockGetPort(interp, service, "udp", &port);
+    *servicePort = htons(port);
+    return r;
+}
 
-    sv = getservbyname(service, "udp");
-    if (sv != NULL) {
-        *servicePort = sv->s_port;
-    } else {
-        *servicePort = htons((unsigned short)strtol(service, &remainder, 0));
-        if (remainder == service) {
-            Tcl_ResetResult(interp);
-            Tcl_AppendResult(interp, "invalid service name: \"", service,
-                             "\" could not be converted to a port number",
-                             TCL_STATIC);
-            r = TCL_ERROR;
+/*
+ *---------------------------------------------------------------------------
+ *
+ * UdpSockGetPort --
+ *
+ *      Maps from a string, which could be a service name, to a port.
+ *      Used by socket creation code to get port numbers and resolve
+ *      registered service names to port numbers.
+ *
+ *      NOTE: this is a copy of TclSockGetPort.   
+ *
+ * Results:
+ *      A standard Tcl result.  On success, the port number is returned
+ *      in portPtr. On failure, an error message is left in the interp's
+ *      result.
+ *
+ * Side effects:
+ *      None.
+ *
+ *---------------------------------------------------------------------------
+ */
+
+int
+UdpSockGetPort(interp, string, proto, portPtr)
+     Tcl_Interp *interp;
+     const char *string;         /* Integer or service name */
+     const char *proto;          /* "tcp" or "udp", typically */
+     int *portPtr;               /* Return port number */
+{
+    struct servent *sp;          /* Protocol info for named services */
+    Tcl_DString ds;
+    CONST char *native;
+
+    if (Tcl_GetInt(NULL, string, portPtr) != TCL_OK) {
+        /*
+         * Don't bother translating 'proto' to native.
+         */
+
+        native = Tcl_UtfToExternalDString(NULL, string, -1, &ds);
+        sp = getservbyname(native, proto);              /* INTL: Native. */
+        Tcl_DStringFree(&ds);
+        if (sp != NULL) {
+            *portPtr = ntohs((unsigned short) sp->s_port);
+            return TCL_OK;
         }
     }
-    return r;
+    if (Tcl_GetInt(interp, string, portPtr) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if (*portPtr > 0xFFFF) {
+        Tcl_AppendResult(interp, "couldn't open socket: port number too high",
+                         (char *) NULL);
+        return TCL_ERROR;
+    }
+    return TCL_OK;
 }
 
 /*

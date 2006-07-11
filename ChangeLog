@@ -1,3 +1,8 @@
+2006-07-11  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* generic/udp_tcl.c: Added some timing to tests and changed the
+	* tests/udp-srv.tcl: service name lookup (was very slow on linux)
+
 2006-06-20  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
 	* TAG:      ==== tcludp-1_0_8 ====
