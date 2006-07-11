@@ -8,7 +8,13 @@ if {[catch {
 
 package require udp
 
+# Some tests are marked as slow as they can take 30s to test a volume of packets.
+# We generally just test for correctness and these do not significantly contribute
+# in testing correctness.
 ::tcltest::testConstraint slow 0
+
+# Enable printing timing information during some tests.
+::tcltest::testConstraint timestamp 0
 
 set scriptName [makeFile {} udptest2.tcl]
 set script {
@@ -87,6 +93,24 @@ proc closeChildProcess {pipe} {
     return
 }
 
+proc timestamp {cmd {label ""} {t 0}} {
+    if {![::tcltest::testConstraint timestamp]} {
+        return
+    }
+    switch -exact -- $cmd {
+        start { return [clock clicks -milliseconds] }
+        display {
+            set delta [expr {[clock clicks -milliseconds] - $t}]
+            puts "$label: ${delta}ms"
+        }
+        default {
+            return -code error "invalid command \"$cmd\": must be one of start or display"
+        }
+    }
+    return
+}
+
+
 test udp-srv-1 {basic server operation (ascii)} -constraints {stdio} -setup {
     set child [createChildProcess $::scriptName]
     gets $child port
@@ -150,6 +174,7 @@ test udp-srv-4 {basic server operation (short packet)} -constraints {stdio} -set
 test udp-srv-5.1 {multiple client packets (10)} -constraints {stdio} -setup {
     set child [createChildProcess $::scriptName]
     gets $child port
+    set t [timestamp start]
 } -body {
     set r 0
     set u [udp_open]
@@ -163,12 +188,14 @@ test udp-srv-5.1 {multiple client packets (10)} -constraints {stdio} -setup {
     close $u
     set r
 } -cleanup {
+    timestamp display 5.1 $t
     closeChildProcess $child
 } -result {10}
 
 test udp-srv-5.2 {multiple client packets (1000)} -constraints {stdio} -setup {
     set child [createChildProcess $::scriptName]
     gets $child port
+    set t [timestamp start]
 } -body {
     set r 0
     set u [udp_open]
@@ -182,12 +209,14 @@ test udp-srv-5.2 {multiple client packets (1000)} -constraints {stdio} -setup {
     close $u
     set r
 } -cleanup {
+    timestamp display 5.2 $t
     closeChildProcess $child
 } -result {1000}
 
 test udp-srv-5.3 {multiple client packets (10000)} -constraints {stdio slow} -setup {
     set child [createChildProcess $::scriptName 30000]
     gets $child port
+    set t [timestamp start]
 } -body {
     set r 0
     set u [udp_open]
@@ -201,12 +230,14 @@ test udp-srv-5.3 {multiple client packets (10000)} -constraints {stdio slow} -se
     close $u
     set r
 } -cleanup {
+    timestamp display 5.3 $t
     closeChildProcess $child
 } -result {10000}
 
 test udp-srv-6.1 {multiple client sockets (10)} -constraints {stdio} -setup {
     set child [createChildProcess $::scriptName]
     gets $child port
+    set t [timestamp start]
 } -body {
     set r 0
     for {set n 0} {$n < 10} {incr n} {
@@ -220,12 +251,14 @@ test udp-srv-6.1 {multiple client sockets (10)} -constraints {stdio} -setup {
     }
     set r
 } -cleanup {
+    timestamp display 6.1 $t
     closeChildProcess $child
 } -result {10}
 
-test udp-srv-6.2 {multiple client sockets (1000)} -constraints {stdio} -setup {
-    set child [createChildProcess $::scriptName]
+test udp-srv-6.2 {multiple client sockets (1000)} -constraints {stdio slow} -setup {
+    set child [createChildProcess $::scriptName 30000]
     gets $child port
+    set t [timestamp start]
 } -body {
     set r 0
     for {set n 0} {$n < 1000} {incr n} {
@@ -239,12 +272,14 @@ test udp-srv-6.2 {multiple client sockets (1000)} -constraints {stdio} -setup {
     }
     set r
 } -cleanup {
+    timestamp display 6.2 $t
     closeChildProcess $child
 } -result {1000}
 
 test udp-srv-6.3 {multiple client sockets (10000)} -constraints {stdio slow} -setup {
-    set child [createChildProcess $::scriptName 30000]
+    set child [createChildProcess $::scriptName 60000]
     gets $child port
+    set t [timestamp start]
 } -body {
     set r 0
     for {set n 0} {$n < 10000} {incr n} {
@@ -258,6 +293,7 @@ test udp-srv-6.3 {multiple client sockets (10000)} -constraints {stdio slow} -se
     }
     set r
 } -cleanup {
+    timestamp display 6.3 $t
     closeChildProcess $child
 } -result {10000}
 
