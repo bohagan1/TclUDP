@@ -1,3 +1,7 @@
+2007-01-21  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* generic/udp_tcl.c: Applied HP-UX patch #1639930 from tclguy.
+
 2006-07-11  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
 	* generic/udp_tcl.c: Added some timing to tests and changed the

@@ -7,7 +7,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.33 2006/07/11 12:37:51 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.34 2007/01/21 13:12:41 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -45,6 +45,18 @@ typedef int socklen_t;
 #ifndef IP_TTL
 #define IP_TTL 4
 #endif
+
+#ifdef _XOPEN_SOURCE_EXTENDED
+/*
+ * This won't get defined on HP-UX if _XOPEN_SOURCE_EXTENDED is defined,
+ * but we need it and TEA causes this macro to be defined.
+ */
+
+struct ip_mreq {
+    struct in_addr imr_multiaddr; /* IP multicast address of group */
+    struct in_addr imr_interface; /* local IP address of interface */
+};
+#endif /* _XOPEN_SOURCE_EXTENDED */
 
 /* define some Win32isms for Unix */
 #ifndef WIN32
