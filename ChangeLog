@@ -1,3 +1,8 @@
+2007-01-31  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* generic/udp_tcl.c: Turns out the HP-UX patch break buiding on
+	AIX so made the check more specific (from Jeff Hobbs again).
+
 2007-01-21  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
 	* generic/udp_tcl.c: Applied HP-UX patch #1639930 from tclguy.

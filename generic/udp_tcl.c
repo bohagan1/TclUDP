@@ -7,7 +7,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.34 2007/01/21 13:12:41 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.35 2007/01/31 13:23:10 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -46,7 +46,7 @@ typedef int socklen_t;
 #define IP_TTL 4
 #endif
 
-#ifdef _XOPEN_SOURCE_EXTENDED
+#if defined(_XOPEN_SOURCE_EXTENDED) && defined(__hpux)
 /*
  * This won't get defined on HP-UX if _XOPEN_SOURCE_EXTENDED is defined,
  * but we need it and TEA causes this macro to be defined.
