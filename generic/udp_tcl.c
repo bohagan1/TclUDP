@@ -7,7 +7,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.35 2007/01/31 13:23:10 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.36 2007/03/30 11:09:44 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -1233,7 +1233,7 @@ udpGetOption(ClientData instanceData, Tcl_Interp *interp,
              CONST84 char *optionName, Tcl_DString *optionValue)
 {
     UdpState *statePtr = (UdpState *)instanceData;
-    CONST84 char * options[] = { "myport", "remote", "peer", "mcastgroups", "broadcast", "ttl", NULL};
+    CONST84 char * options[] = { "myport", "remote", "peer", "mcastgroups", "mcastloopback", "broadcast", "ttl", NULL};
     int r = TCL_OK;
 
     if (optionName == NULL) {
@@ -1301,6 +1301,20 @@ udpGetOption(ClientData instanceData, Tcl_Interp *interp,
                 sprintf(Tcl_DStringValue(&ds), "%d", tmp);
             }
 
+	} else if (!strcmp("-mcastloopback", optionName)) {
+
+            unsigned char tmp = 0;
+            socklen_t optlen = sizeof(unsigned char);
+            if (getsockopt(statePtr->sock, IPPROTO_IP, IP_MULTICAST_LOOP, 
+                           (char *)&tmp, &optlen)) {
+                UDPTRACE("UDP error - getsockopt\n");
+                Tcl_SetResult(interp, "error in getsockopt", TCL_STATIC);
+                r = TCL_ERROR;
+            } else {
+                Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
+                sprintf(Tcl_DStringValue(&ds), "%d", (int)tmp);
+            }
+
         } else if (!strcmp("-ttl", optionName)) {
           
             unsigned int tmp = 0;
@@ -1351,7 +1365,7 @@ udpSetOption(ClientData instanceData, Tcl_Interp *interp,
              CONST84 char *optionName, CONST84 char *newValue)
 {
     UdpState *statePtr = (UdpState *)instanceData;
-    CONST84 char * options = "remote mcastadd mcastdrop broadcast ttl";
+    CONST84 char * options = "remote mcastadd mcastdrop mcastloopback broadcast ttl";
     int r = TCL_OK;
 
     if (!strcmp("-remote", optionName)) {
@@ -1404,6 +1418,23 @@ udpSetOption(ClientData instanceData, Tcl_Interp *interp,
                 Tcl_SetObjResult(interp, Tcl_NewIntObj(tmp));
             }
         }
+    } else if (!strcmp("-mcastloopback", optionName)) {
+
+        int tmp = 1;
+        r = Tcl_GetInt(interp, newValue, &tmp);
+        if (r == TCL_OK) {
+	    unsigned char ctmp = (unsigned char)tmp;
+            if (setsockopt(statePtr->sock, IPPROTO_IP, IP_MULTICAST_LOOP,
+                           (const char *)&ctmp, sizeof(unsigned char))) {
+                sprintf(errBuf, "%s", "udp - setsockopt");
+                UDPTRACE("UDP error - setsockopt\n");
+                Tcl_SetObjResult(interp, Tcl_NewStringObj(errBuf, -1));
+                r = TCL_ERROR;
+            } else {
+                Tcl_SetObjResult(interp, Tcl_NewIntObj(tmp));
+            }
+        }
+
     } else if (!strcmp("-ttl", optionName)) {
 
         unsigned int tmp = 0;
