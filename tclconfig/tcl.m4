@@ -9,13 +9,13 @@
 # See the file "license.terms" for information on usage and redistribution
 # of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 #
-# RCS: @(#) $Id: tcl.m4,v 1.5 2007/01/21 13:12:41 patthoyts Exp $
+# RCS: @(#) $Id: tcl.m4,v 1.6 2007/03/30 21:22:54 patthoyts Exp $
 
-AC_PREREQ(2.50)
+AC_PREREQ(2.57)
 
 dnl TEA extensions pass us the version of TEA they think they
 dnl are compatible with (must be set in TEA_INIT below)
-dnl TEA_VERSION="3.5"
+dnl TEA_VERSION="3.6"
 
 # Possible values for key variables defined:
 #
@@ -980,7 +980,6 @@ AC_DEFUN([TEA_CONFIG_CFLAGS], [
     TCL_TRIM_DOTS='`echo ${PACKAGE_VERSION} | tr -d .`'
     ECHO_VERSION='`echo ${PACKAGE_VERSION}`'
     TCL_LIB_VERSIONS_OK=ok
-    CFLAGS="${CPPFLAGS} ${CFLAGS}"
     CFLAGS_DEBUG=-g
     CFLAGS_OPTIMIZE=-O
     if test "$GCC" = "yes" ; then
@@ -1318,7 +1317,11 @@ dnl AC_CHECK_TOOL(AR, ar)
 	    #AC_DEFINE(_XOPEN_SOURCE, 1, [Do we want to use the XOPEN network library?])
 	    #LIBS="$LIBS -lxnet"               # Use the XOPEN network library
 
-	    SHLIB_SUFFIX=".sl"
+	    if test "`uname -m`" = "ia64" ; then
+		SHLIB_SUFFIX=".so"
+	    else
+		SHLIB_SUFFIX=".sl"
+	    fi
 	    AC_CHECK_LIB(dld, shl_load, tcl_ok=yes, tcl_ok=no)
 	    if test "$tcl_ok" = yes; then
 		SHLIB_CFLAGS="+z"
@@ -1619,11 +1622,14 @@ dnl AC_CHECK_TOOL(AR, ar)
 	    CFLAGS_OPTIMIZE="-Os"
 	    SHLIB_CFLAGS="-fno-common"
 	    # To avoid discrepancies between what headers configure sees during
-	    # preprocessing tests and compiling tests, add any -isysroot and
-	    # -mmacosx-version-min flags present in CFLAGS to CPPFLAGS:
+	    # preprocessing tests and compiling tests, move any -isysroot and
+	    # -mmacosx-version-min flags from CFLAGS to CPPFLAGS:
 	    CPPFLAGS="${CPPFLAGS} `echo " ${CFLAGS}" | \
-		awk 'BEGIN {FS=" +-";ORS=" "}; {for (i=1;i<=NF;i++) \
+		awk 'BEGIN {FS=" +-";ORS=" "}; {for (i=2;i<=NF;i++) \
 		if ([$]i~/^(isysroot|mmacosx-version-min)/) print "-"[$]i}'`"
+	    CFLAGS="`echo " ${CFLAGS}" | \
+		awk 'BEGIN {FS=" +-";ORS=" "}; {for (i=2;i<=NF;i++) \
+		if (!([$]i~/^(isysroot|mmacosx-version-min)/)) print "-"[$]i}'`"
 	    if test $do64bit = yes; then
 		case `arch` in
 		    ppc)
@@ -1675,7 +1681,7 @@ dnl AC_CHECK_TOOL(AR, ar)
 	    DL_LIBS=""
 	    # Don't use -prebind when building for Mac OS X 10.4 or later only:
 	    test "`echo "${MACOSX_DEPLOYMENT_TARGET}" | awk -F '10\\.' '{print int([$]2)}'`" -lt 4 -a \
-		"`echo "${CFLAGS}" | awk -F '-mmacosx-version-min=10\\.' '{print int([$]2)}'`" -lt 4 && \
+		"`echo "${CPPFLAGS}" | awk -F '-mmacosx-version-min=10\\.' '{print int([$]2)}'`" -lt 4 && \
 		LDFLAGS="$LDFLAGS -prebind"
 	    LDFLAGS="$LDFLAGS -headerpad_max_install_names"
 	    AC_CACHE_CHECK([if ld accepts -search_paths_first flag], tcl_cv_ld_search_paths_first, [
@@ -1962,6 +1968,12 @@ dnl AC_CHECK_TOOL(AR, ar)
     if test "$do64bit" = "yes" -a "$do64bit_ok" = "no" ; then
 	AC_MSG_WARN([64bit support being disabled -- don't know magic for this platform])
     fi
+
+dnl # Add any CPPFLAGS set in the environment to our CFLAGS, but delay doing so
+dnl # until the end of configure, as configure's compile and link tests use
+dnl # both CPPFLAGS and CFLAGS (unlike our compile and link) but configure's
+dnl # preprocessing tests use only CPPFLAGS.
+    AC_CONFIG_COMMANDS_PRE([CFLAGS="${CFLAGS} ${CPPFLAGS}"; CPPFLAGS=""])
 
     # Step 4: disable dynamic loading if requested via a command-line switch.
 
@@ -2771,7 +2783,7 @@ AC_DEFUN([TEA_TCL_64BIT_FLAGS], [
 AC_DEFUN([TEA_INIT], [
     # TEA extensions pass this us the version of TEA they think they
     # are compatible with.
-    TEA_VERSION="3.5"
+    TEA_VERSION="3.6"
 
     AC_MSG_CHECKING([for correct TEA configuration])
     if test x"${PACKAGE_NAME}" = x ; then
@@ -3147,11 +3159,14 @@ AC_DEFUN([TEA_SETUP_COMPILER], [
     #------------------------------------------------------------------------
 
     if test -z "$no_pipe" -a -n "$GCC"; then
-	AC_MSG_CHECKING([if the compiler understands -pipe])
-	OLDCC="$CC"
-	CC="$CC -pipe"
-	AC_TRY_COMPILE(,, AC_MSG_RESULT([yes]), CC="$OLDCC"
-	    AC_MSG_RESULT([no]))
+	AC_CACHE_CHECK([if the compiler understands -pipe],
+	    tcl_cv_cc_pipe, [
+	    hold_cflags=$CFLAGS; CFLAGS="$CFLAGS -pipe"
+	    AC_TRY_COMPILE(,, tcl_cv_cc_pipe=yes, tcl_cv_cc_pipe=no)
+	    CFLAGS=$hold_cflags])
+	if test $tcl_cv_cc_pipe = yes; then
+	    CFLAGS="$CFLAGS -pipe"
+	fi
     fi
 
     #--------------------------------------------------------------------
@@ -3391,7 +3406,12 @@ AC_DEFUN([TEA_PRIVATE_TCL_HEADERS], [
 	        TCL_INCLUDES="${TCL_INCLUDES} ${TCL_INCLUDE_SPEC} `echo "${TCL_INCLUDE_SPEC}" | sed -e 's/Headers/PrivateHeaders/'`"; fi
 	        ;;
 	esac
+    else
+	if test ! -f "${TCL_SRC_DIR}/generic/tclInt.h" ; then
+	    AC_MSG_ERROR([Cannot find private header tclInt.h in ${TCL_SRC_DIR}])
+	fi
     fi
+
 
     AC_SUBST(TCL_TOP_DIR_NATIVE)
     AC_SUBST(TCL_GENERIC_DIR_NATIVE)
@@ -3547,6 +3567,10 @@ AC_DEFUN([TEA_PRIVATE_TK_HEADERS], [
 	        TK_INCLUDES="-I\"${TK_BIN_DIR}/Headers\" -I\"${TK_BIN_DIR}/PrivateHeaders\" ${TK_INCLUDES}"; fi
 	        ;;
 	esac
+    else
+	if test ! -f "${TK_SRC_DIR}/generic/tkInt.h" ; then
+	    AC_MSG_ERROR([Cannot find private header tkInt.h in ${TK_SRC_DIR}])
+	fi
     fi
 
     AC_SUBST(TK_TOP_DIR_NATIVE)

@@ -87,6 +87,23 @@ AC_DEFUN(TCLUDP_CHECK_CLOEXEC, [
 ])
 
 #-------------------------------------------------------------------------
+# TCLUDP_CHECK_STRERROR
+#
+#	Do we have strerror()
+#
+# Results
+#	Sets HAVE_STRERROR
+#
+#-------------------------------------------------------------------------
+
+AC_DEFUN(TCLUDP_CHECK_STRERROR, [
+    AC_CHECK_LIB(c,strerror,[tcludp_strerror_ok=yes],[tcludp_strerror_ok=no])
+    if test "$tcludp_strerror_ok" = "yes"; then
+        TEA_ADD_CFLAGS([-DHAVE_STRERROR])
+    fi
+])
+
+#-------------------------------------------------------------------------
 # TCLUDP_CONFIG
 #
 #	Do any TCLUDP specific configuration here.
@@ -98,4 +115,5 @@ AC_DEFUN(TCLUDP_CHECK_CLOEXEC, [
 
 AC_DEFUN(TCLUDP_CONFIG, [
     TCLUDP_CHECK_CLOEXEC
+    TCLUDP_CHECK_STRERROR
 ])

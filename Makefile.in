@@ -12,7 +12,7 @@
 # See the file "license.terms" for information on usage and redistribution
 # of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 #
-# RCS: @(#) $Id: Makefile.in,v 1.7 2006/04/25 11:13:33 patthoyts Exp $
+# RCS: @(#) $Id: Makefile.in,v 1.8 2007/03/30 21:22:54 patthoyts Exp $
 
 #========================================================================
 # Add additional lines to handle any additional AC_SUBST cases that
@@ -235,7 +235,7 @@ test: binaries libraries
 	$(TCLSH) `@CYGPATH@ $(srcdir)/tests/all.tcl` $(TESTFLAGS)
 
 shell: binaries libraries
-	@$(TCLSH) $(SCRIPT)
+	echo "load $(PKG_LIB_FILE);set argv $(SCRIPT)" | $(TCLSH)
 
 gdb:
 	$(TCLSH_ENV) gdb $(TCLSH_PROG) $(SCRIPT)

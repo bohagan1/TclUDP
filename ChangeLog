@@ -2,6 +2,11 @@
 
 	* generic/udp_tcl.c: Added support for IP_MULTICAST_LOOP for
 	Konstantin Khomoutov to control multicast loopback transmission.
+	Improved the error reporting by using strerror if available.
+	* Makefile.in: Fix 'make shell' to load the built library.
+	* configure.in: Incremented version and use TEA 3.6
+	* tclconfig/*: Upgraded to TEA 3.6
+	* aclocal.m4: Check for strerror presence.
 
 2007-01-31  Pat Thoyts  <patthoyts@users.sourceforge.net>
 

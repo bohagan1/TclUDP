@@ -11,10 +11,10 @@ package require udp
 # Some tests are marked as slow as they can take 30s to test a volume of packets.
 # We generally just test for correctness and these do not significantly contribute
 # in testing correctness.
-::tcltest::testConstraint slow 0
+::tcltest::testConstraint slow 1
 
 # Enable printing timing information during some tests.
-::tcltest::testConstraint timestamp 0
+::tcltest::testConstraint timestamp 1
 
 set scriptName [makeFile {} udptest2.tcl]
 set script {
