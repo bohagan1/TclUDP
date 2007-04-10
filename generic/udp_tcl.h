@@ -7,7 +7,7 @@
  *
  * Written by Xiaotao Wu
  * 
- * $Id: udp_tcl.h,v 1.10 2006/03/05 10:43:12 patthoyts Exp $
+ * $Id: udp_tcl.h,v 1.11 2007/04/10 23:36:14 patthoyts Exp $
  *----------------------------------------------------------------------
  */
 
@@ -27,7 +27,8 @@
 #endif
 
 #ifdef WIN32
-#  include <winsock.h>
+#  include <winsock2.h>
+#  include <ws2tcpip.h>
 #else
 #  if HAVE_UNISTD_H
 #    include <unistd.h>

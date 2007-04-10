@@ -2,10 +2,10 @@
 #
 # This is a sample application from TclUDP.
 #
-# This illustrates the use of multicast UDP messages to implement a primitive chat
-# application.
+# This illustrates the use of multicast UDP messages to implement a
+# primitive chat application.
 #
-# $Id: chat.tcl,v 1.1 2004/11/23 13:39:29 patthoyts Exp $
+# $Id: chat.tcl,v 1.2 2007/04/10 23:36:14 patthoyts Exp $
 
 package require Tk  8.4
 package require udp 1.0.6
@@ -33,7 +33,8 @@ proc CreateGui {socket} {
     scrollbar .s -command {.t yview}
     frame .f -border 0
     entry .f.e -textvariable ::_msg
-    button .f.ok -text Send -underline 0 -command "SendMessage $socket \$::_msg"
+    button .f.ok -text Send -underline 0 \
+        -command "SendMessage $socket \$::_msg"
     button .f.ex -text Exit -underline 1 -command {destroy .}
     pack .f.ex .f.ok -side right
     pack .f.e -side left -expand 1 -fill x
@@ -43,6 +44,7 @@ proc CreateGui {socket} {
     grid rowconfigure . 0 -weight 1
     bind .f.e <Return> {.f.ok invoke}
     .t tag configure CLNT -foreground red
+    .t configure -tabs {90}
 }
 
 proc SendMessage {sock msg} {
@@ -53,16 +55,26 @@ proc AddMessage {client msg} {
     set msg [string map [list "\r\n" "" "\r" "" "\n" ""] $msg]
     set client [lindex $client 0]
     if {[string length $msg] > 0} {
-        .t insert end "$client " CLNT "$msg\n" MSG
+        .t insert end "$client\t" CLNT "$msg\n" MSG
+        .t see end
     }
 }
 
-if {!$tcl_interactive} {
+proc Main {} {
+    variable Address
+    variable Port
+    variable sock
     set sock [Start $Address $Port]    
     CreateGui $sock
-    after idle [list SendMessage $sock "$::tcl_platform(user)@[info hostname] connected"]
+    after idle [list SendMessage $sock \
+                    "$::tcl_platform(user)@[info hostname] connected"]
     tkwait window .
     close $sock
+}
+
+if {!$tcl_interactive} {
+    set r [catch [linsert $argv 0 Main] err]
+    if {$r} {puts $::errorInfo} else {puts $err}
     exit 0
 }
 
