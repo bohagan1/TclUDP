@@ -7,7 +7,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.39 2007/04/10 23:36:14 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.40 2007/04/10 23:49:38 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -1487,7 +1487,7 @@ ErrorToObj(const char * prefix)
     LocalFree(sMsg);
 #elif defined(HAVE_STRERROR)
     extern int errno;
-    Tcl_Obj *errObj = Tcl_NewStringObj(prefix, -1);
+    errObj = Tcl_NewStringObj(prefix, -1);
     Tcl_AppendStringsToObj(errObj, ": ", strerror(errno), NULL);
 #endif
     return errObj;

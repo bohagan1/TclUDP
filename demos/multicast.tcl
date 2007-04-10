@@ -5,7 +5,7 @@
 # You can send to ths using netcat:
 #  echo HELLO | nc -u 224.5.1.21 7771
 #
-# $Id: multicast.tcl,v 1.2 2005/05/19 15:41:06 patthoyts Exp $
+# $Id: multicast.tcl,v 1.3 2007/04/10 23:49:38 patthoyts Exp $
 
 package require udp 1.0.6
 
@@ -32,8 +32,8 @@ set port   7771
 # Create a listening socket and configure for sending too.
 set s [udp_open $port]
 fconfigure $s -buffering none -blocking 0
-fconfigure $s -mcastadd $group1 -remote [list $group1 $port]
 fconfigure $s -mcastadd $group2 -remote [list $group2 $port]
+fconfigure $s -mcastadd $group1 -remote [list $group1 $port]
 fileevent $s readable [list udpEvent $s]
 
 # Announce our presence and run
