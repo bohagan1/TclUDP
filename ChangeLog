@@ -1,3 +1,10 @@
+2007-04-10  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* generic/udp_tcl.c: Applied patch 1693037 from Uwe Klein to
+	enable setting the SO_REUSEADDR socket option when creating a new
+	udp socket.
+	Improved error reporting on Windows.
+
 2007-03-30  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
 	* generic/udp_tcl.c: Added support for IP_MULTICAST_LOOP for

@@ -7,7 +7,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.37 2007/03/30 21:22:54 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.38 2007/04/10 12:25:57 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -237,6 +237,7 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
     char channelName[20];
     UdpState *statePtr;
     uint16_t localport = 0;
+    int reuse = 0;
 #ifdef SIPC_IPV6
     struct sockaddr_in6  addr, sockaddr;
 #else
@@ -246,6 +247,10 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
     socklen_t len;
     
     if (argc >= 2) {
+        if ((argc >= 3) && (0 == strncmp("reuse", argv[2], 6))) {
+            fprintf(stderr,"sock reuse!\n");
+            reuse = 1;
+        }
         if (udpGetService(interp, argv[1], &localport) != TCL_OK)
             return TCL_ERROR;
     }
@@ -289,12 +294,20 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
     addr.sin_addr.s_addr = 0;
     addr.sin_port = localport;
 #endif
+    if (reuse) {
+        int one = 1;
+        if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR,
+                       (const char *)&one, sizeof(one)) < 0) {
+            Tcl_SetObjResult(interp, 
+                             ErrorToObj("error setting socket option"));
+            closesocket(sock);
+            return TCL_ERROR;
+        }
+    }
     if (bind(sock,(struct sockaddr *)&addr, sizeof(addr)) < 0) {
-        snprintf(errBuf, 255, "failed to bind socket to port %u",
-            ntohs(localport));
-        errBuf[255] = 0;
-        UDPTRACE("%s\n");
-        Tcl_AppendResult(interp, errBuf, (char *)NULL);
+        Tcl_SetObjResult(interp, 
+                         ErrorToObj("failed to bind socket to port"));
+        closesocket(sock);
         return TCL_ERROR;
     }
 
@@ -1458,9 +1471,23 @@ udpSetOption(ClientData instanceData, Tcl_Interp *interp,
 static Tcl_Obj *
 ErrorToObj(const char * prefix)
 {
+    Tcl_Obj *errObj;
+#ifdef WIN32
+    LPVOID sMsg;
+    DWORD len = 0;
+    len = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER
+                         | FORMAT_MESSAGE_FROM_SYSTEM
+                         | FORMAT_MESSAGE_IGNORE_INSERTS,
+                         NULL, GetLastError(),
+                         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                         (LPWSTR)&sMsg, 0, NULL);
+    errObj = Tcl_NewStringObj(prefix, -1);
+    Tcl_AppendToObj(errObj, ": ", -1);
+    Tcl_AppendUnicodeToObj(errObj, (LPWSTR)sMsg, len - 1);
+    LocalFree(sMsg);
+#elif defined(HAVE_STRERROR)
     extern int errno;
     Tcl_Obj *errObj = Tcl_NewStringObj(prefix, -1);
-#ifdef HAVE_STRERROR
     Tcl_AppendStringsToObj(errObj, ": ", strerror(errno), NULL);
 #endif
     return errObj;
@@ -1511,7 +1538,7 @@ udpGetService(Tcl_Interp *interp, const char *service,
 {
     int port = 0;
     int r = UdpSockGetPort(interp, service, "udp", &port);
-    *servicePort = htons(port);
+    *servicePort = htons((short)port);
     return r;
 }
 

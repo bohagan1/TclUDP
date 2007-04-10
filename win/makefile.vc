@@ -18,7 +18,7 @@
 # Copyright (c) 2003 Pat Thoyts
 #
 #-------------------------------------------------------------------------
-# RCS: @(#)$Id: makefile.vc,v 1.5 2005/11/27 21:32:01 patthoyts Exp $
+# RCS: @(#)$Id: makefile.vc,v 1.6 2007/04/10 12:25:57 patthoyts Exp $
 #-------------------------------------------------------------------------
 
 !if !defined(MSDEVDIR) && !defined(MSVCDIR) && !defined(VCToolkitInstallDir)
@@ -156,7 +156,7 @@ Please `cd` to its location first.
 PROJECT = udp
 !include "rules.vc"
 
-DOTVERSION      = 1.0.8
+DOTVERSION      = 1.0.9
 VERSION         = $(DOTVERSION:.=)
 STUBPREFIX      = $(PROJECT)stub
 
