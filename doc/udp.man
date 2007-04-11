@@ -3,7 +3,7 @@
           script from tcllib: dtplite -o udp.n nroff udp.man
                               dtplite -o udp.html html udp.man
 }]
-[manpage_begin udp n 1.0.8]
+[manpage_begin udp n 1.0.9]
 [copyright {1999-2000 Columbia University; all rights reserved}]
 [moddesc {Tcl UDP extension}]
 [titledesc {Create UDP sockets in Tcl}]
@@ -21,12 +21,17 @@ Tcl command [cmd fconfigure].
 
 [list_begin definitions]
 
-[call [cmd "udp_open"] [opt "[arg port]"]]
+[call [cmd "udp_open"] [opt "[arg port]"] [opt "[arg keywordlist]"]]
 
 [cmd udp_open] will open a UDP socket. If [arg port] is specified the UDP
 socket will be opened on that port. Otherwise the system will choose a port
 and the user can use the [cmd udp_conf] command to obtain the port number
 if required.
+[nl]
+From version 1.0.9 a second argument may be provided. The only valid value is
+'reuse' although others may be added in the future. The reuse keyword sets the
+SO_REUSEADDR socket option and permits multiple sockets to be bound to the same
+address/port combination.
 
 [call [cmd "udp_conf"] [arg "sock"] [arg "host"] [arg "port"]]
 
@@ -41,7 +46,8 @@ writing data to the UDP socket.
 [emph Deprecated] in favour of the standard Tcl [cmd fconfigure] command.
 [nl]
 In addition to being used to configure the remote host, the [cmd "udp_conf"]
-command is used to obtain information about the UDP socket.
+command is used to obtain information about the UDP socket. NOTE all these options
+are now available using the standard Tcl [cmd fconfigure] command.
 
 [list_begin definitions]
 
@@ -70,17 +76,25 @@ packet. The system default for multicast is 1 which restricts the packet
 to the local subnet. To permit packets to pass routers, you must increase the
 ttl. A value of 31 should keep it within a site, while 255 is global.
 
+[lst_item "[arg -mcastadd] groupaddr"]
+[lst_item "[arg -mcastdrop] groupaddr"]
+[lst_item "[arg -mcastgroups]"]
 
-[list_end]
-
-[nl]
-[call [cmd "udp_conf"] [opt "[arg -mcastadd] groupaddr"]]
-[call [cmd "udp_conf"] [opt "[arg -mcastdrop] groupaddr"]]
-
-[package tcludp] sockets can support IPv4 multicast operations. To recieve
+[package tcludp] sockets can support IPv4 multicast operations. To receive
 multicast packets the application has to notify the operating system that
 it should join a particular multicast group. These are specified as addresses
-in the range 224.0.0.0 to 239.255.255.255. 
+in the range 224.0.0.0 to 239.255.255.255.
+[nl]
+To view the current set of multicast groups for a channel use [arg -mcastgroups]
+
+[lst_item "[arg -mcastloop\ [opt boolean]]"]
+
+With multicast udp the system can choose to receive packets that it has sent
+or it can drop them. This is known as multicast loopback and can be controlled
+using this option. By default the value is true and your application will receive
+its own transmissions.
+
+[list_end]
 
 [call [cmd "udp_peek"] [arg "sock"] [opt [arg "buffersize"]]]
 
