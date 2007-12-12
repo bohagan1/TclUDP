@@ -3,6 +3,7 @@
  *
  * Copyright (c) 1999-2000 by Columbia University; all rights reserved
  * Copyright (c) 2003-2005 Pat Thoyts <patthoyts@users.sourceforge.net>
+ * Copyright (c) 2007      Todd J Martin <todd.martin@acm.org>
  *
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
@@ -19,6 +20,7 @@
 #ifdef WIN32
 #include <stdlib.h>
 #include <malloc.h>
+#include <Mswsock.h>
 typedef int socklen_t;
 #else /* ! WIN32 */
 #if defined(HAVE_SYS_FILIO_H)
@@ -129,6 +131,9 @@ static HANDLE waitSockRead;
 static HANDLE sockListLock;
 static UdpState *sockList;
 
+typedef INT (WINAPI * LPFN_WSARECVMSG)(SOCKET, LPWSAMSG, LPDWORD,
+		   LPWSAOVERLAPPED, LPWSAOVERLAPPED_COMPLETION_ROUTINE);
+static LPFN_WSARECVMSG WSARecvMsg = NULL;
 #endif /* ! WIN32 */
 
 /*
@@ -238,6 +243,7 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
     UdpState *statePtr;
     uint16_t localport = 0;
     int reuse = 0;
+    int pktinfo = 1;
 #ifdef SIPC_IPV6
     struct sockaddr_in6  addr, sockaddr;
 #else
@@ -245,6 +251,10 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
 #endif
     unsigned long status = 1;
     socklen_t len;
+#ifdef WIN32
+    const GUID guidWSARecvMsg = WSAID_WSARECVMSG;
+    DWORD nbytes;
+#endif
     
     if (argc >= 2) {
         if ((argc >= 3) && (0 == strncmp("reuse", argv[2], 6))) {
@@ -310,6 +320,38 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
         closesocket(sock);
         return TCL_ERROR;
     }
+ 
+#if defined(IP_PKTINFO)
+    if ( pktinfo && 
+#ifdef WIN32
+	    /* IP_PKTINFO is only available for Windows XP, Vista, and Server 2003 */
+	    setsockopt(sock, IPPROTO_IP, IP_PKTINFO, (const void *)&pktinfo, sizeof(pktinfo)) ) {
+#else
+	    setsockopt(sock, SOL_IP, IP_PKTINFO, (const void *)&pktinfo, sizeof(pktinfo)) ) {
+#endif
+            Tcl_SetObjResult(interp, 
+                             ErrorToObj("error setting socket IP_PKTINFO option"));
+            closesocket(sock);
+            return TCL_ERROR;
+    }
+
+#ifdef WIN32
+    /* To make use of IP_PKTINFO on Windows, you have to use WSARecvMsg to read
+     * the data and control info.  That means you need this WSAIoctl mess.
+     */
+    WSAIoctl(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, 
+	    (LPVOID)&guidWSARecvMsg, sizeof(guidWSARecvMsg), &WSARecvMsg, 
+	    sizeof(WSARecvMsg), &nbytes, NULL, NULL);
+#endif
+#elif defined(IP_RECVDSTADDR)
+    if ( pktinfo && 
+	    setsockopt(sock, IPPROTO_IP, IP_RECVDSTADDR, (const void *)&pktinfo, sizeof(pktinfo)) ) {
+            Tcl_SetObjResult(interp, 
+                             ErrorToObj("error setting socket IP_RECVDSTADDR option"));
+            closesocket(sock);
+            return TCL_ERROR;
+    }
+#endif
 
     ioctlsocket(sock, FIONBIO, &status);
 
@@ -379,7 +421,7 @@ udpConf(ClientData clientData, Tcl_Interp *interp,
     char errmsg[] = 
       "udpConf fileId [-mcastadd] [-mcastdrop] groupaddr | "
       "udpConf fileId remotehost remoteport | "
-      "udpConf fileId [-myport] [-remote] [-peer] [-broadcast] [-ttl]";
+      "udpConf fileId [-myport] [-remote] [-peer] [-broadcast] [-ttl] [-dstip]";
     
     if (argc != 4 && argc != 3) {
         Tcl_SetResult (interp, errmsg, NULL);
@@ -418,6 +460,11 @@ udpConf(ClientData clientData, Tcl_Interp *interp,
 	    if (r == TCL_OK) {
 		Tcl_DStringResult(interp, &ds);
 	    }
+	    Tcl_DStringFree(&ds);	    
+        } else if (!strcmp(argv[2], "-dstip")) {
+	    Tcl_DStringInit(&ds);
+	    Tcl_DStringAppendElement(&ds, statePtr->dstip);
+	    Tcl_DStringResult(interp, &ds);
 	    Tcl_DStringFree(&ds);	    
 	}
     } else if (argc == 4) {
@@ -482,6 +529,11 @@ udpPeek(ClientData clientData, Tcl_Interp *interp,
     Tcl_Channel chan;
     UdpState *statePtr;
     
+    if (argc < 2) {
+	Tcl_WrongNumArgs(interp, 0, NULL, "udp_peek sock ?buffersize?");
+        return TCL_ERROR;
+    }
+
     chan = Tcl_GetChannel(interp, (char *)argv[1], NULL);
     if (chan == (Tcl_Channel) NULL) {
         return TCL_ERROR;
@@ -579,7 +631,7 @@ UDP_CheckProc(ClientData data, int flags)
 {
     UdpState *statePtr;
     UdpEvent *evPtr;
-    int actual_size;
+    int status;
     socklen_t socksize;
     int buffer_size = MAXBUFFERSIZE;
     char *message;
@@ -591,6 +643,11 @@ UDP_CheckProc(ClientData data, int flags)
     struct sockaddr_in recvaddr;
 #endif
     PacketList *p;
+    WSAMSG msg;
+    WSABUF iov[1];
+    WSABUF control;
+    char controlbuf[MAXBUFFERSIZE];
+    WSACMSGHDR *msghdr;
     
     /* UDPTRACE("checkProc\n"); */
     
@@ -610,23 +667,43 @@ UDP_CheckProc(ClientData data, int flags)
             memset(&recvaddr, 0, socksize);
             
             message = (char *)ckalloc(MAXBUFFERSIZE);
+	    buffer_size = MAXBUFFERSIZE;
             if (message == NULL) {
                 UDPTRACE("ckalloc error\n");
                 exit(1);
             }
             memset(message, 0, MAXBUFFERSIZE);
             
-            actual_size = recvfrom(statePtr->sock, message, buffer_size, 0,
-                                   (struct sockaddr *)&recvaddr, &socksize);
+	    if (WSARecvMsg != NULL) {
+		msg.name = (struct sockaddr *)&recvaddr;
+		msg.namelen = socksize;
+		iov[0].len = buffer_size;
+		iov[0].buf = message;
+		msg.lpBuffers = iov;
+		msg.dwBufferCount = 1;
+		control.len = MAXBUFFERSIZE;
+		control.buf = controlbuf;
+		msg.Control = control;
+		msg.dwFlags = 0;
+		status = WSARecvMsg(statePtr->sock, &msg, &buffer_size, NULL, NULL);
+	    } else {
+		buffer_size = recvfrom(statePtr->sock, message, buffer_size, 0,
+                                    (struct sockaddr *)&recvaddr, &socksize);
+	        status = buffer_size;
+	    }
             SetEvent(waitSockRead);
             
-            if (actual_size < 0) {
-                UDPTRACE("UDP error - recvfrom %d\n", statePtr->sock);
+            if (status == SOCKET_ERROR) {
+		if (WSARecvMsg != NULL) {
+		    UDPTRACE("UDP error - WSARecvMsg %d\n", WSAGetLastError() );
+		} else {
+		    UDPTRACE("UDP error - recvfrom %d\n", WSAGetLastError() );
+		}
                 ckfree(message);
             } else {
                 p = (PacketList *)ckalloc(sizeof(struct PacketList));
                 p->message = message;
-                p->actual_size = actual_size;
+                p->actual_size = buffer_size;
 #ifdef SIPC_IPV6
                 remotehost = (char *)inet_ntoa(AF_INET6, &recvaddr.sin6_addr, p->r_host, sizeof(p->r_host));
                 p->r_port = ntohs(recvaddr.sin6_port);
@@ -643,6 +720,20 @@ UDP_CheckProc(ClientData data, int flags)
                 strcpy(statePtr->peerhost, (char *)inet_ntoa(recvaddr.sin_addr));
                 statePtr->peerport = ntohs(recvaddr.sin_port);
 #endif
+
+		statePtr->dstip[0] = '\0';
+		if (WSARecvMsg != NULL) {
+		    for (msghdr = WSA_CMSG_FIRSTHDR(&msg) ; msghdr != NULL ;
+			    msghdr = WSA_CMSG_NXTHDR(&msg, msghdr) ) {
+			if (msghdr->cmsg_level == IPPROTO_IP && 
+				msghdr->cmsg_type == IP_PKTINFO) {
+			    struct in_pktinfo *pktinfo;
+			    pktinfo = (struct in_pktinfo *) WSA_CMSG_DATA(msghdr);
+			    strncpy(statePtr->dstip, (char *)inet_ntoa(pktinfo->ipi_addr), 
+				    sizeof(statePtr->dstip));
+			}
+		    }
+		}
                 
                 if (statePtr->packets == NULL) {
                     statePtr->packets = p;
@@ -661,7 +752,7 @@ UDP_CheckProc(ClientData data, int flags)
             statePtr->doread = 1;
             UDPTRACE("packetNum is %d\n", statePtr->packetNum);
             
-            if (actual_size >= 0) {
+            if (status != SOCKET_ERROR) {
                 evPtr = (UdpEvent *) ckalloc(sizeof(UdpEvent));
                 evPtr->header.proc = UdpEventProc;
                 evPtr->chan = statePtr->channel;
@@ -890,11 +981,14 @@ udpClose(ClientData instanceData, Tcl_Interp *interp)
      */
     if (statePtr->groupsObj) {
 	int n = 0;
-	Tcl_ListObjGetElements(interp, statePtr->groupsObj, &objc, &objv);
+	Tcl_Obj *dupGroupList = Tcl_DuplicateObj(statePtr->groupsObj);
+	Tcl_IncrRefCount(dupGroupList);
+	Tcl_ListObjGetElements(interp, dupGroupList, &objc, &objv);
 	for (n = 0; n < objc; n++) {
 	    UdpMulticast((ClientData)statePtr, interp, 
 		Tcl_GetString(objv[n]), IP_DROP_MEMBERSHIP);
 	}
+	Tcl_DecrRefCount(dupGroupList);
 	Tcl_DecrRefCount(statePtr->groupsObj);
     }
     
@@ -1059,6 +1153,11 @@ udpInput(ClientData instanceData, char *buf, int bufSize, int *errorCode)
     char number[32];
     struct sockaddr_in recvaddr;
 #endif /* ! SIPC_IPV6 */
+
+    struct msghdr msg;
+    struct iovec iov;
+    char ancillary[64];
+    struct cmsghdr *msghdr;
 #endif /* ! WIN32 */
     
     UDPTRACE("In udpInput\n");
@@ -1111,12 +1210,38 @@ udpInput(ClientData instanceData, char *buf, int bufSize, int *errorCode)
 #endif
     memset(&recvaddr, 0, socksize);
     
-    bytesRead = recvfrom(sock, buf, buffer_size, 0,
-                         (struct sockaddr *)&recvaddr, &socksize);
+    msg.msg_name = &recvaddr;
+    msg.msg_namelen = socksize;
+    iov.iov_base = buf;
+    iov.iov_len = buffer_size;
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+    msg.msg_control = ancillary;
+    msg.msg_controllen = sizeof(ancillary);
+    msg.msg_flags = 0;
+    bytesRead = recvmsg(sock, &msg, 0);
     if (bytesRead < 0) {
         UDPTRACE("UDP error - recvfrom %d\n", sock);
         *errorCode = errno;
         return -1;
+    }
+
+    statePtr->dstip[0] = '\0';
+    for (msghdr = CMSG_FIRSTHDR(&msg) ; msghdr != NULL ; 
+	    msghdr = CMSG_NXTHDR(&msg, msghdr) ) {
+#if defined(IP_PKTINFO)
+	if (msghdr->cmsg_level == SOL_IP && msghdr->cmsg_type == IP_PKTINFO) {
+	    struct in_pktinfo *pktinfo;
+	    pktinfo = (struct in_pktinfo *) CMSG_DATA(msghdr);
+	    strncpy(statePtr->dstip, (char *)inet_ntoa(pktinfo->ipi_addr), sizeof(statePtr->dstip));
+	}
+#elif defined(IP_RECVDSTADDR)
+	if (msghdr->cmsg_level == IPPROTO_IP && msghdr->cmsg_type == IP_RECVDSTADDR) {
+	    struct in_pktinfo *pktinfo;
+	    pktinfo = (struct in_pktinfo *) CMSG_DATA(msghdr);
+	    strncpy(statePtr->dstip, (char *)inet_ntoa(*pktinfo), sizeof(*statePtr));
+	}
+#endif
     }
     
 #ifdef SIPC_IPV6
@@ -1194,7 +1319,9 @@ UdpMulticast(ClientData instanceData, Tcl_Interp *interp,
     if (mreq.imr_multiaddr.s_addr == -1) {
         name = gethostbyname(grp);
         if (name == NULL) {
-            Tcl_SetResult(interp, "invalid group name", TCL_STATIC);
+	    if (interp != NULL) {
+		Tcl_SetResult(interp, "invalid group name", TCL_STATIC);
+	    }
             return TCL_ERROR;
         }
         memcpy(&mreq.imr_multiaddr.s_addr, name->h_addr,
@@ -1203,14 +1330,23 @@ UdpMulticast(ClientData instanceData, Tcl_Interp *interp,
     mreq.imr_interface.s_addr = INADDR_ANY;
     if (setsockopt(statePtr->sock, IPPROTO_IP, action,
                    (const char*)&mreq, sizeof(mreq)) < 0) {
-        Tcl_SetObjResult(interp, ErrorToObj("error changing multicast group"));
+	    if (interp != NULL) {
+		Tcl_SetObjResult(interp, ErrorToObj("error changing multicast group"));
+	    }
         return TCL_ERROR;
     }
 
     if (action == IP_ADD_MEMBERSHIP) {
 	int ndx = LSearch(statePtr->groupsObj, grp);
 	if (ndx == -1) {
-	    statePtr->multicast++;
+	    Tcl_Obj *newPtr;
+ 	    statePtr->multicast++;
+	    if (Tcl_IsShared(statePtr->groupsObj)) {
+		newPtr = Tcl_DuplicateObj(statePtr->groupsObj);
+		Tcl_DecrRefCount(statePtr->groupsObj);
+		Tcl_IncrRefCount(newPtr);
+		statePtr->groupsObj = newPtr;
+	    }
 	    Tcl_ListObjAppendElement(interp, statePtr->groupsObj,
 				     Tcl_NewStringObj(grp,-1));
 	}
@@ -1247,7 +1383,7 @@ udpGetOption(ClientData instanceData, Tcl_Interp *interp,
              CONST84 char *optionName, Tcl_DString *optionValue)
 {
     UdpState *statePtr = (UdpState *)instanceData;
-    CONST84 char * options[] = { "myport", "remote", "peer", "mcastgroups", "mcastloop", "broadcast", "ttl", NULL};
+    CONST84 char * options[] = { "myport", "remote", "peer", "mcastgroups", "mcastloop", "broadcast", "ttl", "dstip", NULL};
     int r = TCL_OK;
 
     if (optionName == NULL) {
@@ -1342,6 +1478,9 @@ udpGetOption(ClientData instanceData, Tcl_Interp *interp,
                 Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
                 sprintf(Tcl_DStringValue(&ds), "%u", tmp);
             }
+
+        } else if (!strcmp("-dstip", optionName)) {
+	    Tcl_DStringAppendElement(&ds, statePtr->dstip);
 	    
         } else {
 	    CONST84 char **p;
@@ -1430,7 +1569,7 @@ udpSetOption(ClientData instanceData, Tcl_Interp *interp,
     } else if (!strcmp("-mcastloop", optionName)) {
 
         int tmp = 1;
-        r = Tcl_GetInt(interp, newValue, &tmp);
+        r = Tcl_GetBoolean(interp, newValue, &tmp);
         if (r == TCL_OK) {
 	    unsigned char ctmp = (unsigned char)tmp;
             if (setsockopt(statePtr->sock, IPPROTO_IP, IP_MULTICAST_LOOP,

@@ -84,6 +84,7 @@ typedef struct UdpState {
   char              peerhost[256];   /* receive packets from */
   uint16_t          peerport;
   uint16_t          localport;
+  char              dstip[256];     /* destination IP address of received packet */
   int               doread;
 #ifdef WIN32
   HWND              hwnd;

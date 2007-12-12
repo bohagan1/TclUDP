@@ -93,7 +93,136 @@ test udp-2.2 {udp_open on named port} {pcOnly} {
         format 0x%04x $check
     } msg] $msg
 } {0 0x007b}
+ 
+test udp-3.0 {add multicast groups} \
+    -body {
+	set s [udp_open]
+	fconfigure $s -mcastadd 224.1.1.1
+    } -result {224.1.1.1} -cleanup {
+        close $s
+    }
 
+test udp-3.1 {fconfigure -mcastgroups shows multicast groups} \
+    -body {
+	set s [udp_open]
+	fconfigure $s -mcastadd 224.1.1.1
+	fconfigure $s -mcastadd 224.1.1.2
+	fconfigure $s -mcastadd 224.1.1.3
+	fconfigure $s -mcastgroups
+    } -result {224.1.1.1 224.1.1.2 224.1.1.3} -cleanup {
+	close $s
+    }
+
+test udp-3.2 {add multicast groups with shared object} \
+    -body {
+	set s [udp_open]
+	set maddr [fconfigure $s -mcastadd 224.1.1.1]
+	set maddr [fconfigure $s -mcastadd 224.1.1.2]
+	set maddr [fconfigure $s -mcastadd 224.1.1.3]
+    } -result {224.1.1.1 224.1.1.2 224.1.1.3} -cleanup {
+	close $s
+    }
+
+test udp-3.3 {drop multicast groups} \
+    -body {
+	set s [udp_open]
+	set maddr [fconfigure $s -mcastadd 224.1.1.1]
+	set maddr [fconfigure $s -mcastadd 224.1.1.2]
+	set maddr [fconfigure $s -mcastadd 224.1.1.3]
+	set maddr [fconfigure $s -mcastdrop 224.1.1.3]
+	set maddr [fconfigure $s -mcastdrop 224.1.1.2]
+	set maddr [fconfigure $s -mcastdrop 224.1.1.1]
+    } -result {} -cleanup {
+	close $s
+    }
+
+test udp-3.4 {drop multicast groups with shared object} \
+    -body {
+	set s [udp_open]
+	set maddr [fconfigure $s -mcastadd 224.1.1.1]
+	set maddr [fconfigure $s -mcastadd 224.1.1.2]
+	set maddr [fconfigure $s -mcastadd 224.1.1.3]
+	set maddr [fconfigure $s -mcastadd 224.1.1.4]
+	set maddr [fconfigure $s -mcastadd 224.1.1.5]
+	set maddr [fconfigure $s -mcastdrop 224.1.1.4]
+	set maddr [fconfigure $s -mcastdrop 224.1.1.5]
+    } -result {224.1.1.1 224.1.1.2 224.1.1.3} -cleanup {
+	close $s
+    }
+
+test udp-3.5 {add empty group} \
+    -body {
+	set s [udp_open]
+	set maddr [fconfigure $s -mcastadd ""]
+    } -returnCodes error -match glob -result {*} -cleanup {
+	close $s
+    }
+
+# Windows does not treat this as an error
+test udp-3.6 {add non-multicast IP as multicast group} \
+    -constraints "unix" \
+    -body {
+	set s [udp_open]
+	set maddr [fconfigure $s -mcastadd "127.0.0.1"]
+    } -returnCodes error -match glob -result {error changing multicast group*} -cleanup {
+	close $s
+    }
+
+test udp-3.7 {drop multicast group that has not been joined} \
+    -body {
+	set s [udp_open]
+	set maddr [fconfigure $s -mcastdrop "224.1.1.1"]
+    } -returnCodes error -match glob -result {error changing multicast group*} -cleanup {
+	close $s
+    }
+
+test udp-3.8 {multicastloop can be set to true} \
+    -body {
+	set s [udp_open]
+	fconfigure $s -mcastloop "true"
+	fconfigure $s -mcastloop
+    } -result {1} -cleanup {
+	close $s
+    }
+
+test udp-3.9 {multicastloop can be set to false} \
+    -body {
+	set s [udp_open]
+	fconfigure $s -mcastloop "true"
+	fconfigure $s -mcastloop "no"
+	fconfigure $s -mcastloop
+    } -result {0} -cleanup {
+	close $s
+    }
+
+# By default, Linux will limit a socket to joining 20 multicast groups.  That
+# can be increased by running this:
+#        sysctl -w net.ipv4.igmp_max_memberships=<new_limit>
+#  At a large number of groups (e.g. > 200), the kernel may run into memory
+#  limits when trying to add additional groups.  This limit can be increased
+#  with this command:
+#        sysctl -w net.core.optmem_max=<new_limit>
+#  Solaris and Windows seem to have no limit
+test udp-3.10 {add lots of multicast groups} \
+    -body {
+	set s [udp_open]
+	for {set m 0} {$m <= 0} {incr m} {
+	    for {set n 0} {$n <= 19} {incr n} {
+		set maddr [fconfigure $s -mcastadd 224.1.$m.$n]
+	    }
+	}
+	llength [fconfigure $s -mcastgroups]
+    } -result {20} -cleanup {
+	close $s
+    }
+
+test udp-4.1 {fconfigure -dstip with no data} \
+    -body {
+	set s [udp_open]
+	fconfigure $s -dstip
+    } -result {{}} -cleanup {
+	close $s
+    }
 
 # -------------------------------------------------------------------------
 # cleanup

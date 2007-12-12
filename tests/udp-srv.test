@@ -37,7 +37,8 @@ set script {
     proc ReadSock {chan} {
         set data [read $chan]
         set peer [fconfigure $chan -peer]
-        puts [list $peer [string length $data] $data]
+        set dstip [fconfigure $chan -dstip]
+        puts [list $peer [string length $data] $data $dstip]
     }
     
     proc ReadControl {chan} {
@@ -57,6 +58,9 @@ set script {
     fconfigure stdin -buffering line
     set socket [udp_open]
     fconfigure $socket -buffering none -encoding binary -translation binary
+    if {%MULTICAST} {
+	fconfigure $socket -mcastadd 224.1.1.1 -mcastloop 1
+    }
     fileevent $socket readable [list ReadSock $socket]
     fileevent stdin readable [list ReadControl stdin]
     Wait 100
@@ -75,10 +79,11 @@ proc Wait {n} {
     vwait ::forever
 }
 
-proc createChildProcess {filename {timeout 5000}} {
+proc createChildProcess {filename {timeout 5000} {multicast 0}} {
     file delete -force $filename
     set f [open $filename w]
-    puts $f [string map [list %TIMEOUT $timeout] $::script]
+    set ::script [string map [list %TIMEOUT $timeout] $::script]
+    puts $f [string map [list %MULTICAST $multicast] $::script]
     close $f
     set p [open |[list [interpreter] $filename] r+]
     fconfigure $p -buffering line
@@ -170,6 +175,36 @@ test udp-srv-4 {basic server operation (short packet)} -constraints {stdio} -set
 } -cleanup {
     closeChildProcess $child
 } -result {1}
+
+test udp-srv-4.1 {basic server operation (read dstip)} -constraints {stdio} -setup {
+    set child [createChildProcess $::scriptName]
+    gets $child port
+} -body {
+    set u [udp_open]
+    fconfigure $u -remote [list localhost $port] -buffering none
+    puts -nonewline $u "\0"
+    close $u
+    Wait 100
+    gets $child r
+     lindex $r 3
+} -cleanup {
+    closeChildProcess $child
+} -result {127.0.0.1}
+
+test udp-srv-4.2 {basic server operation (large packet - multicast)} -constraints {stdio} -setup {
+    set child [createChildProcess $::scriptName 5000 1]
+    gets $child port
+} -body {
+    set u [udp_open]
+    fconfigure $u -remote [list 224.1.1.1 $port]
+    puts -nonewline $u [string repeat x 1024]
+    close $u
+    Wait 100
+    gets $child r
+    list [lindex $r 1] [lindex $r 3]
+} -cleanup {
+    closeChildProcess $child
+} -result {1024 224.1.1.1}
 
 test udp-srv-5.1 {multiple client packets (10)} -constraints {stdio} -setup {
     set child [createChildProcess $::scriptName]

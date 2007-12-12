@@ -93,6 +93,12 @@ With multicast udp the system can choose to receive packets that it has sent
 or it can drop them. This is known as multicast loopback and can be controlled
 using this option. By default the value is true and your application will receive
 its own transmissions.
+ 
+[lst_item "[arg -dstip]"]
+
+Returns the destination IP address of the last packet received.  This is particularly
+useful when a socket has joined multiple multicast groups.  This parameter can be used to
+distinguish which multicast group the packet was sent to.
 
 [list_end]
 
