@@ -1,3 +1,8 @@
+2008-07-05  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* generic/udp_tcl.c: Applied patch 1848365 to accept any boolean
+	value for the -mcastloop option (plus tests).
+
 2007-04-10  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
 	* generic/udp_tcl.c: Applied patch 1693037 from Uwe Klein to
