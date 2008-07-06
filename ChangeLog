@@ -1,13 +1,16 @@
 2008-07-06  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
-	* generic/udp_tcl.c: Applied patch #1838459 to properly handle
-	* tests/udp.test:    appending to a shared list object in 
+	* generic/udp_tcl.c: Applied patch #1838467 (marttj) to avoid a crash
+	* tests/udp.test:    when exiting with an open mcast socket.
+
+	* generic/udp_tcl.c: Applied patch #1838459 (marttj) to properly
+	* tests/udp.test:    handle appending to a shared list object in 
 	                     -mcastadd. Added tests.
 
 2008-07-05  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
-	* generic/udp_tcl.c: Applied patch 1848365 to accept any boolean
-	value for the -mcastloop option (plus tests).
+	* generic/udp_tcl.c: Applied patch 1848365 (marttj) to accept any
+	* tests/udp.test:    boolean value for -mcastloop (plus tests).
 
 2007-04-10  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
