@@ -7,7 +7,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.43 2008/07/06 12:27:30 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.44 2008/07/06 12:39:09 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -482,6 +482,10 @@ udpPeek(ClientData clientData, Tcl_Interp *interp,
     Tcl_Channel chan;
     UdpState *statePtr;
     
+    if (argc < 2) {
+	Tcl_WrongNumArgs(interp, 0, NULL, "udp_peek sock ?buffersize?");
+        return TCL_ERROR;
+    }
     chan = Tcl_GetChannel(interp, (char *)argv[1], NULL);
     if (chan == (Tcl_Channel) NULL) {
         return TCL_ERROR;

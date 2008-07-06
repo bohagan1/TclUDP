@@ -1,5 +1,8 @@
 2008-07-06  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
+	* generic/udp_tcl.c: Applied patch #1828920 (marttj) to prevent a
+	* tests/udp.test:    crash calling udp_peek with wrong args.
+	
 	* generic/udp_tcl.c: Applied patch #1838467 (marttj) to avoid a crash
 	* tests/udp.test:    when exiting with an open mcast socket.
 
