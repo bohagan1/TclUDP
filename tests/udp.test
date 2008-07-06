@@ -9,7 +9,7 @@
 # See the file "license.terms" for information on usage and redistribution
 # of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 #
-# RCS: @(#) $Id: udp.test,v 1.5 2008/07/05 20:41:44 patthoyts Exp $
+# RCS: @(#) $Id: udp.test,v 1.6 2008/07/06 11:59:19 patthoyts Exp $
 
 if {[lsearch [namespace children] ::tcltest] == -1} {
     package require tcltest
@@ -94,24 +94,114 @@ test udp-2.2 {udp_open on named port} {pcOnly} {
     } msg] $msg
 } {0 0x007b}
 
-test udp-3.8 {multicastloop can be set to true} \
-    -body {
-	set s [udp_open]
-	fconfigure $s -mcastloop "true"
-	fconfigure $s -mcastloop
-    } -result {1} -cleanup {
-	close $s
-    }
+test udp-3.0 {test -mcastadd} -setup {
+    set s [udp_open]
+} -body {
+    fconfigure $s -mcastadd 224.0.10.10
+} -cleanup {
+    close $s
+} -result {224.0.10.10}
 
-test udp-3.9 {multicastloop can be set to false} \
-    -body {
-	set s [udp_open]
-	fconfigure $s -mcastloop "true"
-	fconfigure $s -mcastloop "no"
-	fconfigure $s -mcastloop
-    } -result {0} -cleanup {
-	close $s
-    }
+test udp-3.1 {test -mcastadd} -setup {
+    set s [udp_open]
+} -body {
+    fconfigure $s -mcastadd 224.0.10.10
+    fconfigure $s -mcastadd 224.0.10.11
+} -cleanup {
+    close $s
+} -result {224.0.10.10 224.0.10.11}
+
+test udp-3.2 {test -mcastadd} -setup {
+    set s [udp_open]
+} -body {
+    set a [fconfigure $s -mcastadd 224.0.10.10]
+    set a [fconfigure $s -mcastadd 224.0.10.11]
+} -cleanup {
+    close $s
+} -result {224.0.10.10 224.0.10.11}
+
+test udp-3.3 {test -mcastdrop} -setup {
+    set s [udp_open]
+} -body {
+    fconfigure $s -mcastadd 224.0.10.10
+    fconfigure $s -mcastadd 224.0.10.11
+    fconfigure $s -mcastdrop 224.0.10.11
+} -cleanup {
+    close $s
+} -result {224.0.10.10}
+
+test udp-3.4 {test -mcastdrop} -setup {
+    set s [udp_open]
+} -body {
+    set a [fconfigure $s -mcastadd 224.0.10.10]
+    set a [fconfigure $s -mcastadd 224.0.10.11]
+    set a [fconfigure $s -mcastdrop 224.0.10.11]
+} -cleanup {
+    close $s
+} -result {224.0.10.10}
+
+test udp-3.5 {join invalid multicast group} -setup {
+    set s [udp_open]
+} -body {
+    fconfigure $s -mcastadd 192.168.0.1
+} -cleanup {
+    close $s
+} -returnCodes error -match glob -result {*}
+
+test udp-3.6 {drop invalid multicast group} -setup {
+    set s [udp_open]
+} -body {
+    fconfigure $s -mcastdrop 192.168.0.1
+} -cleanup {
+    close $s
+} -returnCodes error -match glob -result {*}
+
+test udp-3.7 {-mcastloop invalid option} -setup {
+    set s [udp_open]
+} -body {
+    fconfigure $s -mcastloop stupid
+} -cleanup {
+    close $s
+} -returnCodes error -match glob -result {expected boolean value *}
+
+test udp-3.8 {-mcastloop is boolean - 1/0} -setup {
+    set s [udp_open]
+} -body {
+    set a [list [fconfigure $s -mcastloop 1]]
+    lappend a [fconfigure $s -mcastloop 0]
+    set a
+} -cleanup {
+    close $s
+} -result {1 0}
+
+test udp-3.9 {-mcastloop is boolean - true/false} -setup {
+    set s [udp_open]
+} -body {
+    set a [list [fconfigure $s -mcastloop true]]
+    lappend a [fconfigure $s -mcastloop false]
+    set a
+} -cleanup {
+    close $s
+} -result {1 0}
+
+test udp-3.10 {-mcastloop is boolean - yes/no} -setup {
+    set s [udp_open]
+} -body {
+    set a [list [fconfigure $s -mcastloop yes]]
+    lappend a [fconfigure $s -mcastloop no]
+    set a
+} -cleanup {
+    close $s
+} -result {1 0}
+
+test udp-3.11 {-mcastloop is boolean - on/off} -setup {
+    set s [udp_open]
+} -body {
+    set a [list [fconfigure $s -mcastloop on]]
+    lappend a [fconfigure $s -mcastloop off]
+} -cleanup {
+    close $s
+} -result {1 0}
 
 # -------------------------------------------------------------------------
 # cleanup

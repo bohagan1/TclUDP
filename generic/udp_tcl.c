@@ -7,7 +7,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.41 2008/07/05 20:41:44 patthoyts Exp $
+ * $Id: udp_tcl.c,v 1.42 2008/07/06 11:59:18 patthoyts Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -1210,7 +1210,14 @@ UdpMulticast(ClientData instanceData, Tcl_Interp *interp,
     if (action == IP_ADD_MEMBERSHIP) {
 	int ndx = LSearch(statePtr->groupsObj, grp);
 	if (ndx == -1) {
+	    Tcl_Obj *newPtr;
 	    statePtr->multicast++;
+	    if (Tcl_IsShared(statePtr->groupsObj)) {
+		newPtr = Tcl_DuplicateObj(statePtr->groupsObj);
+		Tcl_DecrRefCount(statePtr->groupsObj);
+		Tcl_IncrRefCount(newPtr);
+		statePtr->groupsObj = newPtr;
+	    }
 	    Tcl_ListObjAppendElement(interp, statePtr->groupsObj,
 				     Tcl_NewStringObj(grp,-1));
 	}

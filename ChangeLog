@@ -1,3 +1,9 @@
+2008-07-06  Pat Thoyts  <patthoyts@users.sourceforge.net>
+
+	* generic/udp_tcl.c: Applied patch #1838459 to properly handle
+	* tests/udp.test:    appending to a shared list object in 
+	                     -mcastadd. Added tests.
+
 2008-07-05  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
 	* generic/udp_tcl.c: Applied patch 1848365 to accept any boolean
