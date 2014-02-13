@@ -55,7 +55,7 @@ set script {
     set timeout [after %TIMEOUT ::DoTimeout]
     fconfigure stdout -buffering line
     fconfigure stdin -buffering line
-    set socket [udp_open]
+    set socket [udp_open %OPTIONS]
     fconfigure $socket -buffering none -encoding binary -translation binary
     fileevent $socket readable [list ReadSock $socket]
     fileevent stdin readable [list ReadControl stdin]
@@ -75,10 +75,10 @@ proc Wait {n} {
     vwait ::forever
 }
 
-proc createChildProcess {filename {timeout 5000}} {
+proc createChildProcess {filename {timeout 5000} {udp_open_options {}}} {
     file delete -force $filename
     set f [open $filename w]
-    puts $f [string map [list %TIMEOUT $timeout] $::script]
+    puts $f [string map [list %TIMEOUT $timeout %OPTIONS $udp_open_options] $::script]
     close $f
     set p [open |[list [interpreter] $filename] r+]
     fconfigure $p -buffering line
@@ -110,9 +110,8 @@ proc timestamp {cmd {label ""} {t 0}} {
     return
 }
 
-
 test udp-srv-1 {basic server operation (ascii)} -constraints {stdio} -setup {
-    set child [createChildProcess $::scriptName]
+    set child [createChildProcess $::scriptName 10000]
     gets $child port
 } -body {
     set u [udp_open]
@@ -123,9 +122,11 @@ test udp-srv-1 {basic server operation (ascii)} -constraints {stdio} -setup {
     gets $child r
     lindex $r 1
 } -cleanup {
+	puts "closing child process $child"
     closeChildProcess $child
+	puts "closed..."
 } -result {8}
-
+	
 test udp-srv-2 {basic server operation (binary)} -constraints {stdio} -setup {
     set child [createChildProcess $::scriptName]
     gets $child port
@@ -296,6 +297,7 @@ test udp-srv-6.3 {multiple client sockets (10000)} -constraints {stdio slow} -se
     timestamp display 6.3 $t
     closeChildProcess $child
 } -result {10000}
+
 
 # -------------------------------------------------------------------------
 file delete -force $::scriptName

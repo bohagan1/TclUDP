@@ -9,7 +9,7 @@
 # See the file "license.terms" for information on usage and redistribution
 # of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 #
-# RCS: @(#) $Id: udp.test,v 1.8 2008/07/06 12:39:09 patthoyts Exp $
+# RCS: @(#) $Id: udp.test,v 1.9 2014/02/13 20:49:57 huubeikens Exp $
 
 if {[lsearch [namespace children] ::tcltest] == -1} {
     package require tcltest
@@ -165,7 +165,7 @@ test udp-3.7 {-mcastloop invalid option} -setup {
     fconfigure $s -mcastloop stupid
 } -cleanup {
     close $s
-} -returnCodes error -match glob -result {expected boolean value *}
+} -returnCodes error -match glob -result {error setting -mcastloop*}
 
 test udp-3.8 {-mcastloop is boolean - 1/0} -setup {
     set s [udp_open]
@@ -206,21 +206,70 @@ test udp-3.11 {-mcastloop is boolean - on/off} -setup {
     close $s
 } -result {1 0}
 
+test udp-3.12 {test -mcastadd with network interface} -constraints win -setup {
+    set s [udp_open]
+} -body {
+    set a [fconfigure $s -mcastadd {224.0.10.10 1}]
+    set a [fconfigure $s -mcastadd {224.0.10.11 1}]
+} -cleanup {
+    close $s
+} -result {{224.0.10.10 1} {224.0.10.11 1}}
+
+test udp-3.13 {test -mcastadd with invalid network interface}  -constraints win -setup {
+    set s [udp_open]
+} -body {
+    set a [fconfigure $s -mcastadd {224.0.10.11 notanumber}]
+} -cleanup {
+    close $s
+} -returnCodes error -match glob -result {*}
+
+test udp-3.14 {test -mcastadd with network interface} -constraints unix -setup {
+    set s [udp_open]
+} -body {
+	set error 0
+	# loopback interface is either lo (linux) or lo0 (mac)
+    if {[catch {fconfigure $s -mcastadd {224.0.10.10 lo}}] ^ 
+        [catch {fconfigure $s -mcastadd {224.0.10.10 lo0}}]} {
+    	set error 1
+    }
+} -cleanup {
+    close $s
+} -result {1}
+
+test udp-3.15 {test -mcastadd with invalid network interface} -constraints unix -setup {
+    set s [udp_open]
+} -body {
+    set a [fconfigure $s -mcastadd {224.0.10.11 averylongwronginterface}]
+} -cleanup {
+    close $s
+} -returnCodes error -match glob -result {*}
+
+test udp-3.16 {test -mcastadd with invalid network interface} -constraints unix -setup {
+    set s [udp_open]
+} -body {
+    set a [fconfigure $s -mcastadd {224.0.10.11 wrongif}]
+} -cleanup {
+    close $s
+} -returnCodes error -match glob -result {*}
+
 test udp-4.0 {udp_peek} -constraints unix -setup {
     set s [udp_open]
 } -body {
     udp_peek $s
 } -cleanup {
     close $s
-} -result {FIX ME on a unix box}
+} -result {}
 
 test udp-4.1 {udp_peek} -constraints unix -setup {
-    set s [udp_open]
+    set s [udp_open 9009]
+    fconfigure $s -mcastadd 224.0.10.10 -remote [list 224.0.10.10 9009]
+	fconfigure $s -buffering none -blocking 0
 } -body {
+	puts $s "message"
     udp_peek $s
 } -cleanup {
     close $s
-} -result {FIX ME on a unix box}
+} -result {message}
 
 test udp-4.2 "udp_peek: bug #1828920 - args" -constraints unix -setup {
     set s [udp_open]
@@ -228,7 +277,28 @@ test udp-4.2 "udp_peek: bug #1828920 - args" -constraints unix -setup {
     udp_peek
 } -cleanup {
     close $s
-} -returnCodes error -match glob -result {wrong num args: *}
+} -returnCodes error -match glob -result {wrong * args: *}
+
+test udp-5.0 {udp_open with reused port} -body {
+    set s [udp_open 9001 reuse]
+    set u [udp_open 9001 reuse]
+} -cleanup {
+    close $s
+} -match regexp -result {sock\d+}
+
+test udp-5.0 {udp_open with no port reuse option} -body {
+    set s [udp_open 9001 reuse]
+    catch {set u [udp_open 9001]} error
+} -cleanup {
+    close $s
+    close $u
+} -match glob -result {1}
+
+test udp-6.0 {udp_open with ipv6} -body {
+    set s [udp_open 9001 ipv6]
+} -cleanup {
+    close $s
+} -match regexp -result {sock\d+}
 
 test udp-10.1 "bug #1838467 - crash on exit" -setup {
     set s [udp_open]

@@ -37,7 +37,14 @@ than building with VC++ or Cygwin.
 This package includes a Visual Studio project file to help in building
 with VC++.
 
-The package has been built using both VC++6 and Msys + Mingw.
+The package has been built using both VC++6 and Msys + Mingw. 
+
+Microsoft Platform SDK 2003 is required for building. The following minimal
+example will install the extension in the C:\Tcl\lib directory.
+
+	$ cd tcludp/win
+	$ nmake -f makefile.vc realclean all 
+	$ nmake -f makefile.vc install INSTALLDIR=C:\Tcl\lib
 
 FEEDBACK
 ========
