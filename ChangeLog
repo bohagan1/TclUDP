@@ -1,3 +1,11 @@
+2014-02-14  Huub Eikens  <huubeikens@users.sourceforge.net>
+
+	* generic/udp_tcl.c,tests/*.test:
+		- added IPV6 support
+		- enhanced reuse option for use on all platforms
+		- refactored get/set option functions
+		- enhanced mcastadd/drop option to be able to specify network interface
+
 2008-07-06  Pat Thoyts  <patthoyts@users.sourceforge.net>
 
 	* generic/udp_tcl.c: Applied patch #1828920 (marttj) to prevent a
