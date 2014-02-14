@@ -46,6 +46,15 @@ example will install the extension in the C:\Tcl\lib directory.
 	$ nmake -f makefile.vc realclean all 
 	$ nmake -f makefile.vc install INSTALLDIR=C:\Tcl\lib
 
+DOCUMENTATION BUILD
+===================
+
+Use the following command to create the UNIX documentation (based on udp.man file):
+
+	$ cd tcludp
+	$ ./tools/mpexpand.tcl nroff ./doc/udp.man ./doc/udp.n
+	$ nroff -man ./doc/udp.n
+
 FEEDBACK
 ========
 
