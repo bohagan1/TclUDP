@@ -63,7 +63,7 @@
 '\" .UL arg1 arg2
 '\"	Print arg1 underlined, then print arg2 normally.
 '\"
-'\" RCS: @(#) $Id: udp.n,v 1.7 2014/02/14 07:26:57 huubeikens Exp $
+'\" RCS: @(#) $Id: udp.n,v 1.8 2014/02/22 21:06:40 huubeikens Exp $
 '\"
 '\"	# Set up traps and other miscellaneous stuff for Tcl/Tk man pages.
 .if t .wh -1.3i ^B
@@ -270,10 +270,17 @@ socket will be opened on that port. Otherwise the system will choose a port
 and the user can use the \fBudp_conf\fR command to obtain the port number
 if required.
 .sp
-Additional argument may be provided. If \fIreuse\fR is specified the
-SO_REUSEADDR socket option is set which permits multiple sockets to
-be bound to the same address/port combination. By default a IPv4 socket is created. When \fIipv6\fR is specified an IPv6
-socket is created.
+The following keywords can be used to specify options on the opened socket.
+.RS
+.TP
+\fIreuse\fR
+Using this keyword sets the SO_REUSEADDR socket option which permits multiple sockets to
+be bound to the same address/port combination.
+.TP
+\fIipv6\fR
+By default a IPv4 socket is created. When keyword \fIipv6\fR is specified an IPv6
+socket is opened.
+.RE
 .TP
 \fBudp_conf\fR \fIsock\fR \fIhost\fR \fIport\fR
 \fIDeprecated\fR in favour of the standard Tcl \fBfconfigure\fR command.

@@ -23,15 +23,25 @@ Tcl command [cmd fconfigure].
 
 [call [cmd "udp_open"] [opt "[arg port]"] [opt "[arg reuse]"] [opt "[arg ipv6]"]]
 
-[cmd udp_open] will open a UDP socket. If [arg port] is specified the UDP
+[cmd udp_open] will open a UDP socket. If a [arg port] is specified the UDP
 socket will be opened on that port. Otherwise the system will choose a port
 and the user can use the [cmd udp_conf] command to obtain the port number
 if required.
+
 [nl]
-Additional argument may be provided. If [arg reuse] is specified the 
-SO_REUSEADDR socket option is set which permits multiple sockets to 
-be bound to the same address/port combination. By default a IPv4 socket is created. When [arg ipv6] is specified an IPv6
-socket is created. 
+The following keywords can be used to specify options on the opened socket.
+
+[list_begin definitions]
+
+[lst_item "[arg reuse]"]
+Using this keyword sets the SO_REUSEADDR socket option which permits multiple sockets to 
+be bound to the same address/port combination.
+
+[lst_item "[arg ipv6]"]
+By default a IPv4 socket is created. When keyword [arg ipv6] is specified an IPv6
+socket is opened. 
+
+[list_end]
 
 [call [cmd "udp_conf"] [arg "sock"] [arg "host"] [arg "port"]]
 
