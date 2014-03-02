@@ -9,7 +9,7 @@
 # See the file "license.terms" for information on usage and redistribution
 # of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 #
-# RCS: @(#) $Id: udp.test,v 1.9 2014/02/13 20:49:57 huubeikens Exp $
+# RCS: @(#) $Id: udp.test,v 1.10 2014/03/02 07:24:15 huubeikens Exp $
 
 if {[lsearch [namespace children] ::tcltest] == -1} {
     package require tcltest
@@ -299,6 +299,30 @@ test udp-6.0 {udp_open with ipv6} -body {
 } -cleanup {
     close $s
 } -match regexp -result {sock\d+}
+
+test udp-6.1 {test ipv6 mcastadd with an ipv6 group} -setup {
+    set s [udp_open ipv6]
+} -body {
+   fconfigure $s -mcastadd ff15::e755
+} -cleanup {
+    close $s
+} -match regexp -result {ff15::e755}
+
+test udp-6.2 {test ipv6 mcastadd with an ipv4 group} -setup {
+    set s [udp_open ipv6]
+} -body {
+   fconfigure $s -mcastadd 224.0.10.10
+} -cleanup {
+    close $s
+} -returnCodes error -match glob -result {*}
+
+test udp-6.3 {test ipv4 mcastadd with an ipv6 group} -setup {
+    set s [udp_open]
+} -body {
+   fconfigure $s -mcastadd ff15::e755
+} -cleanup {
+    close $s
+} -returnCodes error -match glob -result {*}
 
 test udp-10.1 "bug #1838467 - crash on exit" -setup {
     set s [udp_open]

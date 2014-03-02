@@ -7,7 +7,7 @@
  * Written by Xiaotao Wu
  * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.45 2014/02/13 20:49:57 huubeikens Exp $
+ * $Id: udp_tcl.c,v 1.46 2014/03/02 07:22:20 huubeikens Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -1302,12 +1302,14 @@ UdpMulticast(UdpState *statePtr, Tcl_Interp *interp,
 		hints.ai_protocol = IPPROTO_UDP;
 		
 		r = getaddrinfo(Tcl_GetString(multicastgrp), NULL, &hints, &result);
-		memcpy(&mreq6.ipv6mr_multiaddr, &((struct sockaddr_in6*)(result->ai_addr))->sin6_addr,sizeof(mreq6.ipv6mr_multiaddr));
-		freeaddrinfo(result);
 
 		if (r != 0 ) {
 			Tcl_SetResult(interp, "invalid group name", TCL_STATIC);	
+			freeaddrinfo(result);
 			return TCL_ERROR;
+		} else {
+			memcpy(&mreq6.ipv6mr_multiaddr, &((struct sockaddr_in6*)(result->ai_addr))->sin6_addr,sizeof(mreq6.ipv6mr_multiaddr));
+			freeaddrinfo(result);
 		}
 
 		if (nwinterface_index == -1) {
