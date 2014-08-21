@@ -176,7 +176,7 @@ all: binaries libraries doc
 # of the Makefile, in the "BINARIES" variable.
 #========================================================================
 
-binaries: $(BINARIES) pkgIndex.tcl-hand
+binaries: $(BINARIES) 
 
 libraries:
 
@@ -187,7 +187,7 @@ libraries:
 # end user machine when building from source.
 #========================================================================
 
-DTPLITE=@DTPLITE@
+DTPLITE=$(TCLSH) @DTPLITE@
 doc: udp.n
 
 udp.n: $(srcdir)/doc/udp.man
@@ -281,22 +281,6 @@ VPATH = $(srcdir):$(srcdir)/generic:$(srcdir)/unix:$(srcdir)/win
 
 .c.@OBJEXT@:
 	$(COMPILE) -c `@CYGPATH@ $<` -o $@
-
-#========================================================================
-# Create the pkgIndex.tcl file.
-# It is usually easiest to let Tcl do this for you with pkg_mkIndex, but
-# you may find that you need to customize the package.  If so, either
-# modify the -hand version, or create a pkgIndex.tcl.in file and have
-# the configure script output the pkgIndex.tcl by editing configure.in.
-#========================================================================
-
-pkgIndex.tcl: $(PKG_LIB_FILE)
-	( echo pkg_mkIndex . $(PKG_LIB_FILE) \; exit; ) | $(TCLSH)
-
-pkgIndex.tcl-hand:
-	(echo 'package ifneeded $(PACKAGE_NAME) $(PACKAGE_VERSION) \
-	    [list load [file join $$dir $(PKG_LIB_FILE)]]'\
-	) > pkgIndex.tcl
 
 #========================================================================
 # Distribution creation
