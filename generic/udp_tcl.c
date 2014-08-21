@@ -5,7 +5,7 @@
  * Copyright (c) 2003-2005 Pat Thoyts <patthoyts@users.sourceforge.net>
  *
  * Written by Xiaotao Wu
- * Last modified: 11/03/2000
+ * Last modified: 08/21/2014
  *
  * $Id: udp_tcl.c,v 1.46 2014/03/02 07:22:20 huubeikens Exp $
  ******************************************************************************/
@@ -1100,7 +1100,7 @@ udpInput(ClientData instanceData, char *buf, int bufSize, int *errorCode)
         statePtr->doread = 1;  /* next time we want to behave normally */
         *errorCode = EAGAIN;   /* pretend that we would block */
         UDPTRACE("Pretend we would block\n");
-        return 0;
+        return -1;
     }
     
     *errorCode = 0;
@@ -1116,7 +1116,8 @@ udpInput(ClientData instanceData, char *buf, int bufSize, int *errorCode)
 
     if (packets == NULL) {
         UDPTRACE("packets is NULL\n");
-        return 0;
+        *errorCode = EAGAIN;
+        return -1;
     }
     memcpy(buf, packets->message, packets->actual_size);
     ckfree((char *) packets->message);
@@ -1157,7 +1158,11 @@ udpInput(ClientData instanceData, char *buf, int bufSize, int *errorCode)
     }
     
     UDPTRACE("udpInput end: %d, %s\n", bytesRead, buf);
-    
+
+    if (bytesRead == 0) {
+        *errorCode = EAGAIN;
+        return -1;
+    }
     if (bytesRead > -1) {
         return bytesRead;
     }
