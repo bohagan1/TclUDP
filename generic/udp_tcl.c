@@ -1777,7 +1777,7 @@ udpSetMulticastIFOption(UdpState *statePtr, Tcl_Interp *interp,CONST84 char *new
 {
   if (statePtr->ss_family == AF_INET) {
     struct in_addr interface_addr;
-    if(inet_aton(statePtr->remotehost,&interface_addr)==0) {
+    if(inet_aton(newValue,&interface_addr)==0) {
       if (interp != NULL) {
         Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif (bad IP)"));
       }
@@ -1791,7 +1791,7 @@ udpSetMulticastIFOption(UdpState *statePtr, Tcl_Interp *interp,CONST84 char *new
     }		
   } else {
     struct in6_addr interface_addr;
-    if(inet_pton(AF_INET6,statePtr->remotehost,&interface_addr)==0) {
+    if(inet_pton(AF_INET6,newValue,&interface_addr)==0) {
       if (interp != NULL) {
         Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif (bad IP)"));
       }
