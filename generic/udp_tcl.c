@@ -119,6 +119,7 @@ static int  udpGetService(Tcl_Interp *interp, const char *service,
 static Tcl_Obj *ErrorToObj(const char * prefix);
 static int hasOption(int argc, CONST84 char * argv[],const char* option );
 static int udpSetRemoteOption(UdpState* statePtr, Tcl_Interp *interp, CONST84 char *newValue);
+static int udpSetMulticastIFOption(UdpState* statePtr, Tcl_Interp *interp, CONST84 char *newValue);
 static int udpSetMulticastAddOption(UdpState* statePtr, Tcl_Interp *interp, CONST84 char *newValue);
 static int udpSetMulticastDropOption(UdpState* statePtr, Tcl_Interp *interp, CONST84 char *newValue);
 static int udpSetBroadcastOption(UdpState* statePtr, Tcl_Interp *interp, CONST84 char *newValue);
@@ -427,6 +428,7 @@ udpConf(ClientData clientData, Tcl_Interp *interp,
 		"udp_conf fileId [-mcastadd] [-mcastdrop] \"groupaddr netwif\" | "
 #endif
 		"udp_conf fileId remotehost remoteport | "
+		"udp_conf fileId -mcastif ipaddr | "
 		"udp_conf fileId [-myport] [-remote] [-peer] [-mcastgroups] [-mcastloop] [-broadcast] [-ttl]";
 	
 	if (argc >= 2) {
@@ -450,6 +452,7 @@ udpConf(ClientData clientData, Tcl_Interp *interp,
 			hasOption(argc,argv,"-broadcast") ||
 			hasOption(argc,argv,"-mcastadd") ||
 			hasOption(argc,argv,"-mcastdrop") ||
+			hasOption(argc,argv,"-mcastif") ||
 			hasOption(argc,argv,"-ttl")) { 
 			r = Tcl_SetChannelOption(interp, statePtr->channel, argv[2], argv[3]);
 		} else {
@@ -1036,23 +1039,23 @@ udpOutput(ClientData instanceData, CONST84 char *buf, int toWrite, int *errorCod
 
 		written = sendto(statePtr->sock, buf, toWrite, 0, (struct sockaddr *)&sendaddrv6, socksize);
 	} else {
-		socksize = sizeof(sendaddrv4);
-		memset(&sendaddrv4, 0, socksize);
-        sendaddrv4.sin_addr.s_addr = inet_addr(statePtr->remotehost);
+          socksize = sizeof(sendaddrv4);
+          memset(&sendaddrv4, 0, socksize);
+          struct in_addr remote_addr;
 
-        if (sendaddrv4.sin_addr.s_addr == -1) {
+          if(inet_aton(statePtr->remotehost,&remote_addr)==0) {
             name = gethostbyname(statePtr->remotehost);
-			if (name == NULL) {
-				UDPTRACE("UDP error - gethostbyname");
-				return -1;
-			}
-			memcpy(&sendaddrv4.sin_addr, name->h_addr, sizeof(sendaddrv4.sin_addr));
-		}
-
-		sendaddrv4.sin_family = AF_INET;
-		sendaddrv4.sin_port = statePtr->remoteport;
-
-		written = sendto(statePtr->sock, buf, toWrite, 0, (struct sockaddr *)&sendaddrv4, socksize);
+            if (name == NULL) {
+              UDPTRACE("UDP error - gethostbyname");
+              return -1;
+            }
+            memcpy(&sendaddrv4.sin_addr, name->h_addr, sizeof(sendaddrv4.sin_addr));
+          } else {
+            sendaddrv4.sin_addr=remote_addr;
+          }
+          sendaddrv4.sin_family = AF_INET;
+          sendaddrv4.sin_port = statePtr->remoteport;
+          written = sendto(statePtr->sock, buf, toWrite, 0, (struct sockaddr *)&sendaddrv4, socksize);
 	}
 
 	if (written < 0) {
@@ -1497,6 +1500,8 @@ udpSetOption(ClientData instanceData, Tcl_Interp *interp,
 	
     if (!strcmp("-remote", optionName)) {
 		r = udpSetRemoteOption(statePtr,interp,(const char *)newValue);
+    } else if (!strcmp("-mcastif", optionName)) {
+		r = udpSetMulticastIFOption(statePtr,interp,(const char *)newValue);                
     } else if (!strcmp("-mcastadd", optionName)) {
 		r = udpSetMulticastAddOption(statePtr, interp, (const char *)newValue);		
     } else if (!strcmp("-mcastdrop", optionName)) {
@@ -1756,6 +1761,50 @@ udpSetRemoteOption(UdpState *statePtr, Tcl_Interp *interp,CONST84 char *newValue
 	}
 
 	return result;
+}
+
+
+/*
+ * ----------------------------------------------------------------------
+ * udpSetMulticastIFOption --
+ *
+ *  Specify the default gateway interface for multicast
+ *
+ * ----------------------------------------------------------------------
+ */
+static int
+udpSetMulticastIFOption(UdpState *statePtr, Tcl_Interp *interp,CONST84 char *newValue)
+{
+  if (statePtr->ss_family == AF_INET) {
+    struct in_addr interface_addr;
+    if(inet_aton(statePtr->remotehost,&interface_addr)==0) {
+      if (interp != NULL) {
+        Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif (bad IP)"));
+      }
+      return TCL_ERROR;
+    }
+    if (setsockopt(statePtr->sock, IPPROTO_IP, IP_MULTICAST_IF, (const char*)&interface_addr, sizeof(interface_addr)) < 0) {
+      if (interp != NULL) {
+        Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif"));
+      }
+      return TCL_ERROR;
+    }		
+  } else {
+    struct in6_addr interface_addr;
+    if(inet_pton(AF_INET6,statePtr->remotehost,&interface_addr)==0) {
+      if (interp != NULL) {
+        Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif (bad IP)"));
+      }
+      return TCL_ERROR;
+    }
+    if (setsockopt(statePtr->sock, IPPROTO_IP, IPV6_MULTICAST_IF, (const char*)&interface_addr, sizeof(interface_addr)) < 0) {
+      if (interp != NULL) {
+        Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif"));
+      }
+      return TCL_ERROR;
+    }
+  }
+  return TCL_OK;
 }
 
 /*
