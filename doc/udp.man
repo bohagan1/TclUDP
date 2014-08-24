@@ -3,12 +3,12 @@
           script from tcllib: dtplite -o udp.n nroff udp.man
                               dtplite -o udp.html html udp.man
 }]
-[manpage_begin udp n 1.0.10]
+[manpage_begin udp n 1.0.11]
 [copyright {1999-2000 Columbia University; all rights reserved}]
 [moddesc {Tcl UDP extension}]
 [titledesc {Create UDP sockets in Tcl}]
 [require Tcl 8.2]
-[require udp 1.0]
+[require udp 1.0.11]
 [description]
 
 This package provides support for using UDP through Tcl. The package provides

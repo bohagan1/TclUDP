@@ -9,7 +9,7 @@
 # See the file "license.terms" for information on usage and redistribution
 # of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 #
-# RCS: @(#) $Id: udp.test,v 1.10 2014/03/02 07:24:15 huubeikens Exp $
+# RCS: @(#) $Id: udp.test,v 1.13 2014/08/24 07:51:11 huubeikens Exp $
 
 if {[lsearch [namespace children] ::tcltest] == -1} {
     package require tcltest
@@ -86,16 +86,6 @@ test udp-2.1 {udp_conf using service number} {
         close $s
         set r} msg] $msg
 } {0 {localhost 123}}
-
-test udp-2.2 {udp_open on named port} {pcOnly} {
-    list [catch {
-        set port ntp
-        set s [udp_open $port]
-        set check [udp_conf $s -myport]
-        close $s
-        format 0x%04x $check
-    } msg] $msg
-} {0 0x007b}
 
 test udp-3.0 {test -mcastadd} -setup {
     set s [udp_open]
@@ -261,14 +251,19 @@ test udp-4.0 {udp_peek} -constraints unix -setup {
 } -result {}
 
 test udp-4.1 {udp_peek} -constraints unix -setup {
-    set s [udp_open 9009]
-    fconfigure $s -mcastadd 224.0.10.10 -remote [list 224.0.10.10 9009]
-	fconfigure $s -buffering none -blocking 0
+	set port 9009
+	set client [udp_open] 
+    fconfigure $client -remote [list localhost $port] -buffering none -translation binary 
+    puts -nonewline $client "Hello, World" 
+
+    set srv [udp_open $port] 
+    fconfigure $srv -buffering none -translation binary 
 } -body {
-	puts $s "message"
-    udp_peek $s
+	puts $client "message"
+    udp_peek $srv
 } -cleanup {
-    close $s
+    close $client
+    close $srv
 } -result {message}
 
 test udp-4.2 "udp_peek: bug #1828920 - args" -constraints unix -setup {
@@ -303,7 +298,13 @@ test udp-6.0 {udp_open with ipv6} -body {
 test udp-6.1 {test ipv6 mcastadd with an ipv6 group} -setup {
     set s [udp_open ipv6]
 } -body {
-   fconfigure $s -mcastadd ff15::e755
+	if {[string equal $::tcl_platform(os) Darwin]} {\
+		# On MacOSX the default network interface for IPv6 is not set
+		# Therefor, specifically specify the used interface
+   		fconfigure $s -mcastadd "ff15::e755 en0"
+   	} else {
+   		fconfigure $s -mcastadd ff15::e755
+   	}
 } -cleanup {
     close $s
 } -match regexp -result {ff15::e755}

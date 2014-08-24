@@ -1,3 +1,9 @@
+2014-08-22  Huub Eikens  <huubeikens@users.sourceforge.net>
+
+	* generic/udp_tcl.c,tests/*.test:
+		- solved tcl8.6.2 incompatility issue (see http://core.tcl.tk/tcl/tktview/1ff0660e6e)
+		- updated unit tests
+
 2014-02-14  Huub Eikens  <huubeikens@users.sourceforge.net>
 
 	* generic/udp_tcl.c,tests/*.test:

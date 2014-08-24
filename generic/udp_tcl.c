@@ -5,9 +5,9 @@
  * Copyright (c) 2003-2005 Pat Thoyts <patthoyts@users.sourceforge.net>
  *
  * Written by Xiaotao Wu
- * Last modified: 08/21/2014
+ * Last modified: 11/03/2000
  *
- * $Id: udp_tcl.c,v 1.46 2014/03/02 07:22:20 huubeikens Exp $
+ * $Id: udp_tcl.c,v 1.48 2014/08/24 07:17:21 huubeikens Exp $
  ******************************************************************************/
 
 #if defined(_DEBUG) && !defined(DEBUG)
@@ -493,7 +493,7 @@ udpPeek(ClientData clientData, Tcl_Interp *interp,
         return TCL_ERROR;
     }
     statePtr = (UdpState *) Tcl_GetChannelInstanceData(chan);
-    
+   
     if (argc > 2) {
         buffer_size = atoi(argv[2]);
         if (buffer_size > 16) buffer_size = 16;
@@ -991,7 +991,11 @@ udpGetHandle(ClientData instanceData, int direction, ClientData *handlePtr)
 {
     UdpState *statePtr = (UdpState *) instanceData;
     UDPTRACE("udpGetHandle %ld\n", (long)statePtr->sock);
+#ifndef WIN32
+    *handlePtr = (ClientData) (intptr_t) statePtr->sock;
+#else
     *handlePtr = (ClientData) statePtr->sock;
+#endif
     return TCL_OK;
 }
 
@@ -1094,7 +1098,8 @@ udpInput(ClientData instanceData, char *buf, int bufSize, int *errorCode)
      * returned, and then appends all the characters together.  This
      * is not what we want from UDP, so we fake it by returning a
      * blank every other call.  whenever the doread variable is 1 do
-     * a normal read, otherwise just return 0.
+     * a normal read, otherwise just return -1 to indicate that we want
+     * to receive data again.
      */
     if (statePtr->doread == 0) {
         statePtr->doread = 1;  /* next time we want to behave normally */
@@ -1158,7 +1163,7 @@ udpInput(ClientData instanceData, char *buf, int bufSize, int *errorCode)
     }
     
     UDPTRACE("udpInput end: %d, %s\n", bytesRead, buf);
-
+    
     if (bytesRead == 0) {
         *errorCode = EAGAIN;
         return -1;

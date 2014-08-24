@@ -87,10 +87,11 @@ proc createChildProcess {filename {timeout 5000} {udp_open_options {}}} {
 }
 
 proc closeChildProcess {pipe} {
-    puts $pipe quit
-    while {[gets $pipe line] != -1} { puts "EXTRA: $line" }
-    close $pipe
-    return
+    if {![catch {puts $pipe quit}]} {
+		while {[gets $pipe line] != -1} { puts "EXTRA: $line" }
+		close $pipe
+	}
+	return
 }
 
 proc timestamp {cmd {label ""} {t 0}} {
@@ -203,9 +204,10 @@ test udp-srv-5.2 {multiple client packets (1000)} -constraints {stdio} -setup {
     fconfigure $u -remote [list localhost $port] -buffering none \
         -blocking 0 -encoding binary -translation binary
     for {set n 0} {$n < 1000} {incr n} {
-        puts -nonewline $u "packet $n"
+    	set message "packet $n"
+        puts -nonewline $u $message
         gets $child line
-        incr r
+ 	    incr r
     }
     close $u
     set r
@@ -234,6 +236,36 @@ test udp-srv-5.3 {multiple client packets (10000)} -constraints {stdio slow} -se
     timestamp display 5.3 $t
     closeChildProcess $child
 } -result {10000}
+
+test udp-srv-5.4 {multiple client packets (100) - check packet validity} -constraints {stdio} -setup {
+    set child [createChildProcess $::scriptName]
+    gets $child port
+} -body {
+    set r 0
+    set u [udp_open]
+    fconfigure $u -remote [list localhost $port] -buffering none \
+        -blocking 0 -encoding binary -translation binary
+	for {set n 0} {$n < 100} {incr n} {
+    	set message "packet $n"
+        puts -nonewline $u $message
+        gets $child line
+        
+        # Variable line has syntax:
+        # {<ip address> <port>} <message size> <message>
+        # Check if what we've sent is what we've received
+        if {[string equal $message [lindex $line 2]]} {
+	        incr r
+        } else {
+			lappend errorPackets "Error packet: $line\n"
+		}
+    }
+    close $u
+    # Check the number of valid messages we've received
+    set r
+} -cleanup {
+    closeChildProcess $child
+} -result {100}
+
 
 test udp-srv-6.1 {multiple client sockets (10)} -constraints {stdio} -setup {
     set child [createChildProcess $::scriptName]
