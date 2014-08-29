@@ -5,7 +5,7 @@
  * Copyright (c) 2003-2005 Pat Thoyts <patthoyts@users.sourceforge.net>
  *
  * Written by Xiaotao Wu
- * Last modified: 11/03/2000
+ * Last modified: 08/21/2014
  *
  * $Id: udp_tcl.c,v 1.48 2014/08/24 07:17:21 huubeikens Exp $
  ******************************************************************************/
@@ -1163,7 +1163,11 @@ udpInput(ClientData instanceData, char *buf, int bufSize, int *errorCode)
     }
     
     UDPTRACE("udpInput end: %d, %s\n", bytesRead, buf);
-    
+
+    if (bytesRead == 0) {
+        *errorCode = EAGAIN;
+        return -1;
+    }
     if (bytesRead == 0) {
         *errorCode = EAGAIN;
         return -1;
