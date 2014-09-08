@@ -5451,7 +5451,7 @@ $as_echo "O_NONBLOCK" >&6; }
 if test "${TEA_PLATFORM}" = "windows" ; then
     $as_echo "#define BUILD_udp 1" >>confdefs.h
 
-    CLEANFILES="pkgIndex.tcl *.lib *.dll *.exp *.ilk *.pdb vc*.pch"
+    CLEANFILES="*.lib *.dll *.exp *.ilk *.pdb vc*.pch"
 
     vars="ws2_32.lib"
     for i in $vars; do
@@ -5464,7 +5464,7 @@ if test "${TEA_PLATFORM}" = "windows" ; then
 
 
 else
-    CLEANFILES="pkgIndex.tcl"
+    CLEANFILES=""
         fi
 
 

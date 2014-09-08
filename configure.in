@@ -77,12 +77,12 @@ TEA_ADD_TCL_SOURCES([])
 
 if test "${TEA_PLATFORM}" = "windows" ; then
     AC_DEFINE(BUILD_udp)
-    CLEANFILES="pkgIndex.tcl *.lib *.dll *.exp *.ilk *.pdb vc*.pch"
+    CLEANFILES="*.lib *.dll *.exp *.ilk *.pdb vc*.pch"
     dnl#TEA_ADD_SOURCES([win/winFile.c])
     dnl#TEA_ADD_INCLUDES([-I\"$(${CYGPATH} ${srcdir}/win)\"])
     TEA_ADD_LIBS([ws2_32.lib])
 else
-    CLEANFILES="pkgIndex.tcl"
+    CLEANFILES=""
     dnl#TEA_ADD_SOURCES([unix/unixFile.c])
     dnl#TEA_ADD_LIBS([-lsuperfly])
 fi
