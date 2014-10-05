@@ -1045,6 +1045,26 @@ udpOutput(ClientData instanceData, CONST84 char *buf, int toWrite, int *errorCod
 	} else {
           socksize = sizeof(sendaddrv4);
           memset(&sendaddrv4, 0, socksize);
+#ifdef WIN32
+	/* MinGW, at least, on Windows doesn't grok aton */
+	sendaddrv4.sin_addr.s_addr = inet_addr(statePtr->remotehost);
+
+        if (sendaddrv4.sin_addr.s_addr == -1) {
+            name = gethostbyname(statePtr->remotehost);
+			if (name == NULL) {
+				UDPTRACE("UDP error - gethostbyname");
+				return -1;
+			}
+			memcpy(&sendaddrv4.sin_addr, name->h_addr, sizeof(sendaddrv4.sin_addr));
+		}
+
+		sendaddrv4.sin_family = AF_INET;
+		sendaddrv4.sin_port = statePtr->remoteport;
+
+		written = sendto(statePtr->sock, buf, toWrite, 0, (struct sockaddr *)&sendaddrv4, socksize);
+	}
+
+#else
           struct in_addr remote_addr;
 
           if(inet_aton(statePtr->remotehost,&remote_addr)==0) {
@@ -1061,6 +1081,7 @@ udpOutput(ClientData instanceData, CONST84 char *buf, int toWrite, int *errorCod
           sendaddrv4.sin_port = statePtr->remoteport;
           written = sendto(statePtr->sock, buf, toWrite, 0, (struct sockaddr *)&sendaddrv4, socksize);
 	}
+#endif
 
 	if (written < 0) {
 		UDPTRACE("UDP error - sendto");
@@ -1509,8 +1530,10 @@ udpSetOption(ClientData instanceData, Tcl_Interp *interp,
 	
     if (!strcmp("-remote", optionName)) {
 		r = udpSetRemoteOption(statePtr,interp,(const char *)newValue);
+#ifndef WIN32
     } else if (!strcmp("-mcastif", optionName)) {
-		r = udpSetMulticastIFOption(statePtr,interp,(const char *)newValue);                
+		r = udpSetMulticastIFOption(statePtr,interp,(const char *)newValue);
+#endif
     } else if (!strcmp("-mcastadd", optionName)) {
 		r = udpSetMulticastAddOption(statePtr, interp, (const char *)newValue);		
     } else if (!strcmp("-mcastdrop", optionName)) {
@@ -1772,7 +1795,7 @@ udpSetRemoteOption(UdpState *statePtr, Tcl_Interp *interp,CONST84 char *newValue
 	return result;
 }
 
-
+#ifndef WIN32
 /*
  * ----------------------------------------------------------------------
  * udpSetMulticastIFOption --
@@ -1815,6 +1838,7 @@ udpSetMulticastIFOption(UdpState *statePtr, Tcl_Interp *interp,CONST84 char *new
   }
   return TCL_OK;
 }
+#endif
 
 /*
  * ----------------------------------------------------------------------
