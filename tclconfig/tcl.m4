@@ -1426,6 +1426,7 @@ AC_DEFUN([TEA_CONFIG_CFLAGS], [
 	CYGWIN_*)
 	    SHLIB_CFLAGS=""
 	    SHLIB_LD='${CC} -shared'
+	    SHLIB_LD_LIBS="${SHLIB_LD_LIBS} -Wl,--out-implib,\$[@].a"
 	    SHLIB_SUFFIX=".dll"
 	    EXEEXT=".exe"
 	    do64bit_ok=yes
@@ -1592,7 +1593,14 @@ AC_DEFUN([TEA_CONFIG_CFLAGS], [
 		LDFLAGS=""
 		;;
 	    *)
-		SHLIB_CFLAGS="-fPIC"
+		case "$arch" in
+		alpha|sparc64)
+		    SHLIB_CFLAGS="-fPIC"
+		    ;;
+		*)
+		    SHLIB_CFLAGS="-fpic"
+		    ;;
+		esac
 		SHLIB_LD='${CC} -shared ${SHLIB_CFLAGS}'
 		SHLIB_SUFFIX=".so"
 		AS_IF([test $doRpath = yes], [
@@ -1640,8 +1648,7 @@ AC_DEFUN([TEA_CONFIG_CFLAGS], [
 	    # This configuration from FreeBSD Ports.
 	    SHLIB_CFLAGS="-fPIC"
 	    SHLIB_LD="${CC} -shared"
-	    TCL_SHLIB_LD_EXTRAS="-Wl,-soname=\$[@]"
-	    TK_SHLIB_LD_EXTRAS="-Wl,-soname,\$[@]"
+	    SHLIB_LD_LIBS="${SHLIB_LD_LIBS} -Wl,-soname,\$[@]"
 	    SHLIB_SUFFIX=".so"
 	    LDFLAGS=""
 	    AS_IF([test $doRpath = yes], [
@@ -1655,9 +1662,9 @@ AC_DEFUN([TEA_CONFIG_CFLAGS], [
 	    case $system in
 	    FreeBSD-3.*)
 		# Version numbers are dot-stripped by system policy.
-		TCL_TRIM_DOTS=`echo ${VERSION} | tr -d .`
+		TCL_TRIM_DOTS=`echo ${PACKAGE_VERSION} | tr -d .`
 		UNSHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}.a'
-		SHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}.so'
+		SHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}\$\{DBGX\}.so.1'
 		TCL_LIB_VERSIONS_OK=nodots
 		;;
 	    esac
@@ -3210,14 +3217,19 @@ AC_DEFUN([TEA_SETUP_COMPILER_CC], [
     AC_PROG_CC
     AC_PROG_CPP
 
-    INSTALL="\$(SHELL) \$(srcdir)/tclconfig/install-sh -c"
+    INSTALL='$(SHELL) $(srcdir)/tclconfig/install-sh -c'
+    INSTALL_DATA_DIR='${INSTALL} -d -m 755'
+    INSTALL_DATA='${INSTALL} -m 644'
+    INSTALL_PROGRAM='${INSTALL}'
+    INSTALL_SCRIPT='${INSTALL}'
+    INSTALL_LIBRARY='${INSTALL_DATA}'
+
     AC_SUBST(INSTALL)
-    INSTALL_DATA="\${INSTALL} -m 644"
+    AC_SUBST(INSTALL_DATA_DIR)
     AC_SUBST(INSTALL_DATA)
-    INSTALL_PROGRAM="\${INSTALL}"
     AC_SUBST(INSTALL_PROGRAM)
-    INSTALL_SCRIPT="\${INSTALL}"
     AC_SUBST(INSTALL_SCRIPT)
+    AC_SUBST(INSTALL_LIBRARY)
 
     #--------------------------------------------------------------------
     # Checks to see if the make program sets the $MAKE variable.
