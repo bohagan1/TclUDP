@@ -1,5 +1,5 @@
 
-  generated: {2014-10-05 05:38:04 UTC}
+  generated: {2015-09-26 02:36:32 UTC}
   release: trunk
   name: tcludp
   description: {This project is a fossilized clone of the TclUDP project}
@@ -12,7 +12,7 @@
       project-name: {Tcl UDP}
       project-code: e69877eecb8bde9f7df59b4d80ed30cb2a92bd97
       release: trunk
-      url: http:///fossil/tcludp
+      url: http://fossil.etoyoc.com/fossil/tcludp
       project-short-name: tcludp
     }
   }
@@ -21,7 +21,21 @@
       name: trunk
       distribution: official
       checkout: trunk
-      timestamp: {2014-10-05 05:38:04 UTC}
+      timestamp: {2015-09-26 02:36:32 UTC}
+    }
+  }
+  module/ {
+    generic {
+      name: generic
+      path: generic
+      class: binary
+      sources: udp_tcl.c
+    }
+    win {
+      name: win
+      path: win
+      class: binary
+      sources: nmakehlp.c
     }
   }
   package/ {
