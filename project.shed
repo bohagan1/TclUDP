@@ -1,0 +1,34 @@
+
+  generated: {2014-10-05 05:38:04 UTC}
+  release: trunk
+  name: tcludp
+  description: {This project is a fossilized clone of the TclUDP project}
+  uuid: e69877eecb8bde9f7df59b4d80ed30cb2a92bd97
+  class: tea
+  distribution/ {
+    official {
+      name: official
+      class: fossil
+      project-name: {Tcl UDP}
+      project-code: e69877eecb8bde9f7df59b4d80ed30cb2a92bd97
+      release: trunk
+      url: http:///fossil/tcludp
+      project-short-name: tcludp
+    }
+  }
+  release/ {
+    trunk {
+      name: trunk
+      distribution: official
+      checkout: trunk
+      timestamp: {2014-10-05 05:38:04 UTC}
+    }
+  }
+  package/ {
+    {udp 1.0.10} {
+      name: udp
+      version: 1.0.10
+      class: binary
+      build: tea
+    }
+  }
