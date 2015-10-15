@@ -9,53 +9,52 @@ e69877eecb8bde9f7df59b4d80ed30cb2a92bd97 {
     class: generic
     description: {This project is a fossilized clone of the TclUDP project}
     distribution: fossil
-    generated: {2015-09-26 02:53:04 UTC}
+    generated: {2015-10-15 16:49:26 UTC}
     release: trunk
   }
   release/ {
-    015f6185-d2ad-49a7-a77f-8e82987c84b8
+    d2589ffee214af6b266a7e3ab33723fb4c684932
   }
   distribution/ {
-    58f5faf4-cfb2-4c35-99d6-73a1c8c6d424
+    d898a992c32949dff8270138c84c2b6a8b6fd47a
   }
   package/ {
-    81712310-3760-43e0-9d45-87f322023771
+    ae10700e35b4f7325f91d59d0806b58387173ba0
   }
   module/ {
-    e67e576c-5543-4f76-957b-66a9ac7eb0bd
-    7bf8720f-bb92-4298-9d62-bedab2ebfdc2
+    d88612032c08f08aba1a2ce9b681dffeba8441c0
+    ced46f0730fddbc8015f406a5015206b51ac8071
   }
 }
-015f6185-d2ad-49a7-a77f-8e82987c84b8 {
+d2589ffee214af6b266a7e3ab33723fb4c684932 {
   entity {
     name: trunk
-    shed_class: generic
+    shed_class: release
     version: {}
   }
   meta {
     checkout: trunk
-    class: release
-    timestamp: {2015-09-26 02:53:04 UTC}
+    class: generic
+    timestamp: {2015-10-15 16:49:26 UTC}
   }
 }
-58f5faf4-cfb2-4c35-99d6-73a1c8c6d424 {
+d898a992c32949dff8270138c84c2b6a8b6fd47a {
   entity {
     name: fossil
-    shed_class: generic
+    shed_class: distribution
     version: {}
   }
   meta {
     class: generic
     format: fossil
     project: e69877eecb8bde9f7df59b4d80ed30cb2a92bd97
-    project-code: e69877eecb8bde9f7df59b4d80ed30cb2a92bd97
     project-name: {Tcl UDP}
     project-short-name: tcludp
     release: trunk
     url: http://fossil.etoyoc.com/fossil/tcludp
   }
 }
-81712310-3760-43e0-9d45-87f322023771 {
+ae10700e35b4f7325f91d59d0806b58387173ba0 {
   entity {
     name: udp
     shed_class: package
@@ -66,7 +65,7 @@ e69877eecb8bde9f7df59b4d80ed30cb2a92bd97 {
     class: binary
   }
 }
-e67e576c-5543-4f76-957b-66a9ac7eb0bd {
+d88612032c08f08aba1a2ce9b681dffeba8441c0 {
   entity {
     name: generic
     shed_class: module
@@ -79,7 +78,7 @@ e67e576c-5543-4f76-957b-66a9ac7eb0bd {
     path: generic
   }
 }
-7bf8720f-bb92-4298-9d62-bedab2ebfdc2 {
+ced46f0730fddbc8015f406a5015206b51ac8071 {
   entity {
     name: win
     shed_class: module
