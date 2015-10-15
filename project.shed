@@ -1,48 +1,94 @@
 
-  generated: {2015-09-26 02:36:32 UTC}
-  release: trunk
-  name: tcludp
-  description: {This project is a fossilized clone of the TclUDP project}
-  uuid: e69877eecb8bde9f7df59b4d80ed30cb2a92bd97
-  class: tea
-  distribution/ {
-    official {
-      name: official
-      class: fossil
-      project-name: {Tcl UDP}
-      project-code: e69877eecb8bde9f7df59b4d80ed30cb2a92bd97
-      release: trunk
-      url: http://fossil.etoyoc.com/fossil/tcludp
-      project-short-name: tcludp
-    }
+e69877eecb8bde9f7df59b4d80ed30cb2a92bd97 {
+  entity {
+    name: tcludp
+    shed_class: project
+    version: {}
+  }
+  meta {
+    class: generic
+    description: {This project is a fossilized clone of the TclUDP project}
+    distribution: fossil
+    generated: {2015-09-26 02:53:04 UTC}
+    release: trunk
   }
   release/ {
-    trunk {
-      name: trunk
-      distribution: official
-      checkout: trunk
-      timestamp: {2015-09-26 02:36:32 UTC}
-    }
+    015f6185-d2ad-49a7-a77f-8e82987c84b8
   }
-  module/ {
-    generic {
-      name: generic
-      path: generic
-      class: binary
-      sources: udp_tcl.c
-    }
-    win {
-      name: win
-      path: win
-      class: binary
-      sources: nmakehlp.c
-    }
+  distribution/ {
+    58f5faf4-cfb2-4c35-99d6-73a1c8c6d424
   }
   package/ {
-    {udp 1.0.10} {
-      name: udp
-      version: 1.0.10
-      class: binary
-      build: tea
-    }
+    81712310-3760-43e0-9d45-87f322023771
   }
+  module/ {
+    e67e576c-5543-4f76-957b-66a9ac7eb0bd
+    7bf8720f-bb92-4298-9d62-bedab2ebfdc2
+  }
+}
+015f6185-d2ad-49a7-a77f-8e82987c84b8 {
+  entity {
+    name: trunk
+    shed_class: generic
+    version: {}
+  }
+  meta {
+    checkout: trunk
+    class: release
+    timestamp: {2015-09-26 02:53:04 UTC}
+  }
+}
+58f5faf4-cfb2-4c35-99d6-73a1c8c6d424 {
+  entity {
+    name: fossil
+    shed_class: generic
+    version: {}
+  }
+  meta {
+    class: generic
+    format: fossil
+    project: e69877eecb8bde9f7df59b4d80ed30cb2a92bd97
+    project-code: e69877eecb8bde9f7df59b4d80ed30cb2a92bd97
+    project-name: {Tcl UDP}
+    project-short-name: tcludp
+    release: trunk
+    url: http://fossil.etoyoc.com/fossil/tcludp
+  }
+}
+81712310-3760-43e0-9d45-87f322023771 {
+  entity {
+    name: udp
+    shed_class: package
+    version: 1.0.10
+  }
+  meta {
+    build: tea
+    class: binary
+  }
+}
+e67e576c-5543-4f76-957b-66a9ac7eb0bd {
+  entity {
+    name: generic
+    shed_class: module
+    version: {}
+  }
+  meta {
+    class: source
+    package-provide: {}
+    package-require: {}
+    path: generic
+  }
+}
+7bf8720f-bb92-4298-9d62-bedab2ebfdc2 {
+  entity {
+    name: win
+    shed_class: module
+    version: {}
+  }
+  meta {
+    class: source
+    package-provide: {}
+    package-require: {}
+    path: win
+  }
+}
