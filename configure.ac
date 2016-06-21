@@ -28,7 +28,15 @@ AC_INIT([udp], [1.0.10])
 #--------------------------------------------------------------------
 
 TEA_INIT([3.10])
-
+AC_PROG_LN_S
+CONFIG_CLEAN_FILES=
+if test ! -d $srcdir/tclconfig ; then
+    if test -d $srcdir/../tclconfig ; then
+        $LN_S $srcdir/../tclconfig tclconfig
+        CONFIG_CLEAN_FILES=tclconfig
+    fi
+fi
+AC_SUBST(CONFIG_CLEAN_FILES)
 AC_CONFIG_AUX_DIR(tclconfig)
 
 TEA_PATH_TCLCONFIG
@@ -165,4 +173,4 @@ TEA_PROG_DTPLITE
 # which require substituting the AC variables in.  Include these here.
 #--------------------------------------------------------------------
 
-AC_OUTPUT([Makefile pkgIndex.tcl practcl.rc:tclconfig/practcl.rc.in])
+AC_OUTPUT([Makefile pkgIndex.tcl config.tcl:tclconfig/config.tcl.in])
