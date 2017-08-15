@@ -265,7 +265,11 @@ int
 udpOpen(ClientData clientData, Tcl_Interp *interp,
         int argc, CONST84 char * argv[]) 
 {
+#ifdef WIN32
+    SOCKET sock;
+#else
     int sock;
+#endif
     char channelName[20];
     UdpState *statePtr;
     uint16_t localport = 0;
@@ -639,7 +643,7 @@ UDP_CheckProc(ClientData data, int flags)
 				 * not work correctly in case of multithreaded. Also inet_ntop() is
 				 * not available in older windows versions.
 				 */
-				if (WSAAddressToString((struct sockaddr *)&recvaddr,socksize,
+				if (WSAAddressToStringA((struct sockaddr *)&recvaddr,socksize,
 					NULL,remoteaddr,&remoteaddrlen)==0) {
 					/* 
 					 * We now have an address in the format of <ip address>:<port> 
@@ -828,7 +832,7 @@ Udp_WinHasSockets(Tcl_Interp *interp)
          */
         
         if ((info.dwPlatformId != VER_PLATFORM_WIN32s)
-            || (SearchPath(NULL, "WINSOCK", ".DLL", 0, NULL, NULL) != 0)) {
+            || (SearchPathA(NULL, "WINSOCK", ".DLL", 0, NULL, NULL) != 0)) {
             hasSockets = InitSockets();
         }
         
@@ -880,7 +884,11 @@ Udp_WinHasSockets(Tcl_Interp *interp)
 static int 
 udpClose(ClientData instanceData, Tcl_Interp *interp)
 {
+#ifdef _WIN32
+    SOCKET sock;
+#else
     int sock;
+#endif
     int errorCode = 0;
     int objc;
     Tcl_Obj **objv;
@@ -1932,7 +1940,7 @@ udpTrace(const char *format, ...)
     static char buffer[1024];
     va_start (args, format);
     _vsnprintf(buffer, 1023, format, args);
-    OutputDebugString(buffer);
+    OutputDebugStringA(buffer);
 
 #else /* ! WIN32 */
 

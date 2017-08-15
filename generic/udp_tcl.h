@@ -87,7 +87,11 @@ typedef struct PacketList {
 
 typedef struct UdpState {
   Tcl_Channel       channel;
+#ifdef _WIN32
+  SOCKET            sock;
+#else
   int               sock;
+#endif
   char              remotehost[256]; /* send packets to */
   uint16_t          remoteport;
   char              peerhost[256];   /* receive packets from */
