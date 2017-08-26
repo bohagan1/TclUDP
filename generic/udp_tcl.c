@@ -812,29 +812,10 @@ Udp_WinHasSockets(Tcl_Interp *interp)
     DWORD id;
     
     if (!initialized) {
-        OSVERSIONINFO info;
-        
         initialized = 1;
         
-        /*
-         * Find out if we're running on Win32s.
-         */
-        
-        info.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-        GetVersionEx(&info);
-        
-        /*
-         * Check to see if Sockets are supported on this system.  Since
-         * win32s panics if we call WSAStartup on a system that doesn't
-         * have winsock.dll, we need to look for it on the system first.
-         * If we find winsock, then load the library and initialize the
-         * stub table.
-         */
-        
-        if ((info.dwPlatformId != VER_PLATFORM_WIN32s)
-            || (SearchPathA(NULL, "WINSOCK", ".DLL", 0, NULL, NULL) != 0)) {
-            hasSockets = InitSockets();
-        }
+        /* Load the library and initialize the stub table. */
+        hasSockets = InitSockets();
         
         /*
          * Start the socketThread window and set the thread priority of the
