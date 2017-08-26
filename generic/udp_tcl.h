@@ -112,6 +112,13 @@ typedef struct UdpState {
 } UdpState;
 
 
+#if defined(WIN32) && defined(_M_AMD64)
+# define SOCKET_PRINTF_FMT "%I64u"
+#else
+# define SOCKET_PRINTF_FMT "%d"
+#endif
+
+
 EXTERN int Udp_Init(Tcl_Interp *interp);
 EXTERN int Udp_SafeInit(Tcl_Interp *interp);
 

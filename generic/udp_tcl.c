@@ -378,7 +378,7 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
     statePtr = (UdpState *) ckalloc((unsigned) sizeof(UdpState));
     memset(statePtr, 0, sizeof(UdpState));
     statePtr->sock = sock;
-    sprintf(channelName, "sock%d", statePtr->sock);
+    sprintf(channelName, "sock" SOCKET_PRINTF_FMT, statePtr->sock);
     statePtr->channel = Tcl_CreateChannel(&Udp_ChannelType, channelName,
                                           (ClientData) statePtr,
                                           (TCL_READABLE | TCL_WRITABLE | TCL_MODE_NONBLOCKING));
@@ -949,7 +949,7 @@ udpClose(ClientData instanceData, Tcl_Interp *interp)
 #ifndef WIN32
         sprintf(errBuf, "udp_close: %d, error: %d\n", sock, errorCode);
 #else
-        sprintf(errBuf, "udp_cose: %d, error: %d\n", sock, WSAGetLastError());
+        sprintf(errBuf, "udp_close: " SOCKET_PRINTF_FMT ", error: %d\n", sock, WSAGetLastError());
 #endif
         UDPTRACE("UDP error - close %d", sock);
     } else {
