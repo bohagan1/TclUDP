@@ -432,7 +432,7 @@ install-libraries:
         @if exist $(LIBDIR)\NUL $(CPY) $(LIBDIR)\*.tcl "$(SCRIPT_INSTALL_DIR)" >NUL
         @echo Installing package index in '$(SCRIPT_INSTALL_DIR)'
         @type << >"$(SCRIPT_INSTALL_DIR)\pkgIndex.tcl"
-    package ifneeded $(PROJECT) $(DOTVERSION) "[list load [file join $$dir $(PROJECT)$(VERSION)$(SUFX).$(EXT)] tdom]; [list source [file join $$dir tdom.tcl]]"
+    package ifneeded $(PROJECT) $(DOTVERSION) "[list load [file join $$dir $(PROJECT)$(VERSION)$(SUFX).$(EXT)] $(PROJECT)]"
 <<
 
 install-docs: $(PRJDOCS)

@@ -590,7 +590,7 @@ TCL_VERSION	= $(TCL_MAJOR_VERSION)$(TCL_MINOR_VERSION)
 !if $(TCLINSTALL)
 TCLSH		= "$(_TCLDIR)\bin\tclsh$(TCL_VERSION)$(SUFX).exe"
 !if !exist($(TCLSH)) && $(TCL_THREADS)
-TCLSH           = "$(_TCLDIR)\bin\tclsh$(TCL_VERSION)t$(SUFX).exe"
+TCLSH           = "$(_TCLDIR)\bin\tclsh$(TCL_VERSION).exe"
 !endif
 TCLSTUBLIB	= "$(_TCLDIR)\lib\tclstub$(TCL_VERSION).lib"
 TCLIMPLIB	= "$(_TCLDIR)\lib\tcl$(TCL_VERSION)$(SUFX).lib"
@@ -603,7 +603,7 @@ TCL_INCLUDES    = -I"$(_TCLDIR)\include"
 !else
 TCLSH		= "$(_TCLDIR)\win\$(BUILDDIRTOP)\tclsh$(TCL_VERSION)$(SUFX).exe"
 !if !exist($(TCLSH)) && $(TCL_THREADS)
-TCLSH		= "$(_TCLDIR)\win\$(BUILDDIRTOP)\tclsh$(TCL_VERSION)t$(SUFX).exe"
+TCLSH		= "$(_TCLDIR)\win\$(BUILDDIRTOP)\tclsh$(TCL_VERSION).exe"
 !endif
 TCLSTUBLIB	= "$(_TCLDIR)\win\$(BUILDDIRTOP)\tclstub$(TCL_VERSION).lib"
 TCLIMPLIB	= "$(_TCLDIR)\win\$(BUILDDIRTOP)\tcl$(TCL_VERSION)$(SUFX).lib"
