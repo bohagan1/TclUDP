@@ -224,7 +224,7 @@ cdebug	= -Zi -WX $(DEBUGFLAGS)
 !endif
 
 ### Declarations common to all compiler options
-cwarn = $(WARNINGS) -D _CRT_SECURE_NO_DEPRECATE -D _CRT_NONSTDC_NO_DEPRECATE
+cwarn = $(WARNINGS) -D _CRT_SECURE_NO_DEPRECATE -D _CRT_NONSTDC_NO_DEPRECATE -D _WINSOCK_DEPRECATED_NO_WARNINGS
 cflags = -nologo -c $(COMPILERFLAGS) $(cwarn) -Fp$(TMP_DIR)^\
 
 !if $(MSVCRT)
@@ -248,7 +248,7 @@ cflags = $(cflags) -DUSE_TK_STUBS
 !endif
 !endif
 
-DEFS            =-DHAVE_MEMMOVE=1 -DXML_DTD=1 -DXML_NS=1 -DTDOM_NO_UNKNOWN_CMD=1
+DEFS            =-DHAVE_MEMMOVE=1 
 DEFS_EXPAT	=-DXMLIMPORT=__declspec(dllexport)
 INCLUDES	= -I"$(WINDIR)" -I"$(GENERICDIR)" -I"$(EXPATDIR)" $(TCL_INCLUDES)
 BASE_CFLAGS	= $(cflags) $(cdebug) $(crt) $(INCLUDES)
