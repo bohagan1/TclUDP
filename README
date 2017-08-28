@@ -50,21 +50,18 @@ WINDOWS BUILD
 =============
 
 See the tcl/win/README file included in the Tcl src dist for details
-about how to build the extension under Windows. We suggest using
-the Msys + Mingw build process since it is significantly easier
-than building with VC++ or Cygwin.
+about how to build the extension under Windows.
 
-This package includes a Visual Studio project file to help in building
-with VC++.
-
-The package has been built using both VC++6 and Msys + Mingw. 
-
-Microsoft Platform SDK 2003 is required for building. The following minimal
-example will install the extension in the C:\Tcl\lib directory.
+The following minimal example will build and install the extension in the
+C:\Tcl\lib directory.
 
 	$ cd tcludp/win
 	$ nmake -f makefile.vc realclean all 
-	$ nmake -f makefile.vc install INSTALLDIR=C:\Tcl\lib
+	$ nmake -f makefile.vc install INSTALLDIR=C:\Tcl
+
+The Visual Studio project file included in the win directory
+is *ancient* and deprecated. It is not suitable for modern versions
+of Tcl and Visual Studio.
 
 DOCUMENTATION BUILD
 ===================

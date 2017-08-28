@@ -265,7 +265,11 @@ int
 udpOpen(ClientData clientData, Tcl_Interp *interp,
         int argc, CONST84 char * argv[]) 
 {
+#ifdef WIN32
+    SOCKET sock;
+#else
     int sock;
+#endif
     char channelName[20];
     UdpState *statePtr;
     uint16_t localport = 0;
@@ -374,7 +378,7 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
     statePtr = (UdpState *) ckalloc((unsigned) sizeof(UdpState));
     memset(statePtr, 0, sizeof(UdpState));
     statePtr->sock = sock;
-    sprintf(channelName, "sock%d", statePtr->sock);
+    sprintf(channelName, "sock" SOCKET_PRINTF_FMT, statePtr->sock);
     statePtr->channel = Tcl_CreateChannel(&Udp_ChannelType, channelName,
                                           (ClientData) statePtr,
                                           (TCL_READABLE | TCL_WRITABLE | TCL_MODE_NONBLOCKING));
@@ -639,7 +643,7 @@ UDP_CheckProc(ClientData data, int flags)
 				 * not work correctly in case of multithreaded. Also inet_ntop() is
 				 * not available in older windows versions.
 				 */
-				if (WSAAddressToString((struct sockaddr *)&recvaddr,socksize,
+				if (WSAAddressToStringA((struct sockaddr *)&recvaddr,socksize,
 					NULL,remoteaddr,&remoteaddrlen)==0) {
 					/* 
 					 * We now have an address in the format of <ip address>:<port> 
@@ -808,29 +812,10 @@ Udp_WinHasSockets(Tcl_Interp *interp)
     DWORD id;
     
     if (!initialized) {
-        OSVERSIONINFO info;
-        
         initialized = 1;
         
-        /*
-         * Find out if we're running on Win32s.
-         */
-        
-        info.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-        GetVersionEx(&info);
-        
-        /*
-         * Check to see if Sockets are supported on this system.  Since
-         * win32s panics if we call WSAStartup on a system that doesn't
-         * have winsock.dll, we need to look for it on the system first.
-         * If we find winsock, then load the library and initialize the
-         * stub table.
-         */
-        
-        if ((info.dwPlatformId != VER_PLATFORM_WIN32s)
-            || (SearchPath(NULL, "WINSOCK", ".DLL", 0, NULL, NULL) != 0)) {
-            hasSockets = InitSockets();
-        }
+        /* Load the library and initialize the stub table. */
+        hasSockets = InitSockets();
         
         /*
          * Start the socketThread window and set the thread priority of the
@@ -880,7 +865,11 @@ Udp_WinHasSockets(Tcl_Interp *interp)
 static int 
 udpClose(ClientData instanceData, Tcl_Interp *interp)
 {
+#ifdef _WIN32
+    SOCKET sock;
+#else
     int sock;
+#endif
     int errorCode = 0;
     int objc;
     Tcl_Obj **objv;
@@ -941,7 +930,7 @@ udpClose(ClientData instanceData, Tcl_Interp *interp)
 #ifndef WIN32
         sprintf(errBuf, "udp_close: %d, error: %d\n", sock, errorCode);
 #else
-        sprintf(errBuf, "udp_cose: %d, error: %d\n", sock, WSAGetLastError());
+        sprintf(errBuf, "udp_close: " SOCKET_PRINTF_FMT ", error: %d\n", sock, WSAGetLastError());
 #endif
         UDPTRACE("UDP error - close %d", sock);
     } else {
@@ -1932,7 +1921,7 @@ udpTrace(const char *format, ...)
     static char buffer[1024];
     va_start (args, format);
     _vsnprintf(buffer, 1023, format, args);
-    OutputDebugString(buffer);
+    OutputDebugStringA(buffer);
 
 #else /* ! WIN32 */
 
