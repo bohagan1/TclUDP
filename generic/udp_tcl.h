@@ -87,7 +87,11 @@ typedef struct PacketList {
 
 typedef struct UdpState {
   Tcl_Channel       channel;
+#ifdef _WIN32
+  SOCKET            sock;
+#else
   int               sock;
+#endif
   char              remotehost[256]; /* send packets to */
   uint16_t          remoteport;
   char              peerhost[256];   /* receive packets from */
@@ -106,6 +110,13 @@ typedef struct UdpState {
   int               multicast;       /* indicator set for multicast add */
   Tcl_Obj          *groupsObj;       /* list of the mcast groups */
 } UdpState;
+
+
+#if defined(WIN32) && defined(_M_AMD64)
+# define SOCKET_PRINTF_FMT "%I64u"
+#else
+# define SOCKET_PRINTF_FMT "%d"
+#endif
 
 
 EXTERN int Udp_Init(Tcl_Interp *interp);
