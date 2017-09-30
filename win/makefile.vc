@@ -175,137 +175,14 @@ PRJDOCS = \
 # Target names and paths ( shouldn't need changing )
 #-------------------------------------------------------------------------
 
-BINROOT		= .
-ROOT            = ..
-
-PRJIMPLIB	= $(OUT_DIR)\$(PROJECT)$(VERSION)$(SUFX).lib
 PRJLIBNAME	= $(PROJECT)$(VERSION)$(SUFX).$(EXT)
 PRJLIB		= $(OUT_DIR)\$(PRJLIBNAME)
 
-PRJSTUBLIBNAME	= $(STUBPREFIX)$(VERSION).lib
-PRJSTUBLIB	= $(OUT_DIR)\$(PRJSTUBLIBNAME)
-
-### Make sure we use backslash only.
-PRJ_INSTALL_DIR         = $(_INSTALLDIR)\$(PROJECT)$(DOTVERSION)
-LIB_INSTALL_DIR		= $(PRJ_INSTALL_DIR)
-BIN_INSTALL_DIR		= $(PRJ_INSTALL_DIR)
-DOC_INSTALL_DIR		= $(PRJ_INSTALL_DIR)
-SCRIPT_INSTALL_DIR	= $(PRJ_INSTALL_DIR)
-DEMO_INSTALL_DIR	= $(PRJ_INSTALL_DIR)\demos
-INCLUDE_INSTALL_DIR	= $(_TCLDIR)\include
-
-### The following paths CANNOT have spaces in them.
-GENERICDIR	= $(ROOT)\generic
-WINDIR		= $(ROOT)\win
-LIBDIR          = $(ROOT)\library
-DOCDIR		= $(ROOT)\doc
-DEMODIR		= $(ROOT)\demos
-TOOLSDIR	= $(ROOT)\tools
-COMPATDIR	= $(ROOT)\compat
-EXPATDIR        = $(ROOT)\expat
-
-
-#---------------------------------------------------------------------
-# Compile flags
-#---------------------------------------------------------------------
-
-!if !$(DEBUG)
-!if $(OPTIMIZING)
-### This cranks the optimization level to maximize speed
-cdebug	= $(OPTIMIZATIONS)
-!else
-cdebug	=
-!endif
-!else if "$(MACHINE)" == "IA64" || "$(MACHINE)" == "AMD64"
-### Warnings are too many, can't support warnings into errors.
-cdebug	= -Zi -Od $(DEBUGFLAGS)
-!else
-cdebug	= -Zi -WX $(DEBUGFLAGS)
-!endif
-
-### Declarations common to all compiler options
-cwarn = $(WARNINGS) -D _CRT_SECURE_NO_DEPRECATE -D _CRT_NONSTDC_NO_DEPRECATE -D _WINSOCK_DEPRECATED_NO_WARNINGS
-cflags = -nologo -c $(COMPILERFLAGS) $(cwarn) -Fp$(TMP_DIR)^\
-
-!if $(MSVCRT)
-!if $(DEBUG) && !$(UNCHECKED)
-crt = -MDd
-!else
-crt = -MD
-!endif
-!else
-!if $(DEBUG) && !$(UNCHECKED)
-crt = -MTd
-!else
-crt = -MT
-!endif
-!endif
-
-!if !$(STATIC_BUILD)
-cflags = $(cflags) -DUSE_TCL_STUBS
-!if defined(TKSTUBLIB)
-cflags = $(cflags) -DUSE_TK_STUBS
-!endif
-!endif
-
-DEFS            =-DHAVE_MEMMOVE=1 
-DEFS_EXPAT	=-DXMLIMPORT=__declspec(dllexport)
-INCLUDES	= -I"$(WINDIR)" -I"$(GENERICDIR)" -I"$(EXPATDIR)" $(TCL_INCLUDES)
-BASE_CFLAGS	= $(cflags) $(cdebug) $(crt) $(INCLUDES)
-CON_CFLAGS	= $(cflags) $(cdebug) $(crt) -DCONSOLE
-TCL_CFLAGS      = -DPACKAGE_NAME="\"$(PROJECT)\"" \
+PRJ_DEFINES     = -DPACKAGE_NAME="\"$(PROJECT)\"" \
 		  -DPACKAGE_VERSION="\"$(DOTVERSION)\"" \
-		  $(BASE_CFLAGS) $(OPTDEFINES) $(DEFS)
-
-#---------------------------------------------------------------------
-# Link flags
-#---------------------------------------------------------------------
-
-!if $(DEBUG)
-ldebug	= -debug:full -debugtype:cv
-!if $(MSVCRT)
-ldebug = $(ldebug) -nodefaultlib:msvcrt
-!endif
-!else
-ldebug	= -release -opt:ref -opt:icf,3
-!endif
-
-### Declarations common to all linker options
-lflags	= -nologo -machine:$(MACHINE) $(LINKERFLAGS) $(ldebug)
-
-!if $(PROFILE)
-lflags	= $(lflags) -profile
-!endif
-
-!if $(ALIGN98_HACK) && !$(STATIC_BUILD)
-### Align sections for PE size savings.
-lflags	= $(lflags) -opt:nowin98
-!else if !$(ALIGN98_HACK) && $(STATIC_BUILD)
-### Align sections for speed in loading by choosing the virtual page size.
-lflags	= $(lflags) -align:4096
-!endif
-
-!if $(LOIMPACT)
-lflags	= $(lflags) -ws:aggressive
-!endif
-
-dlllflags = $(lflags) -dll
-conlflags = $(lflags) -subsystem:console
-guilflags = $(lflags) -subsystem:windows
-!if !$(STATIC_BUILD)
-baselibs  = $(TCLSTUBLIB)
-!if defined(TKSTUBLIB)
-baselibs  = $(baselibs) $(TKSTUBLIB)
-!endif
-!endif
-
-baselibs = $(baselibs) ws2_32.lib
-
-# Avoid 'unresolved external symbol __security_cookie' errors.
-# c.f. http://support.microsoft.com/?id=894573
-!if "$(MACHINE)" == "IA64" || "$(MACHINE)" == "AMD64"
-baselibs   = $(baselibs) bufferoverflowU.lib
-!endif
+		  -D_CRT_SECURE_NO_WARNINGS \
+		  -D_WINSOCK_DEPRECATED_NO_WARNINGS
+PRJ_LIBS	= ws2_32.lib
 
 #---------------------------------------------------------------------
 # TclTest flags
@@ -353,36 +230,13 @@ setup:
 	@if not exist $(TMP_DIR)\nul mkdir $(TMP_DIR)
 
 $(PRJLIB): $(DLLOBJS)
-!if $(STATIC_BUILD)
-	$(lib32) -nologo -out:$@ @<<
-$**
-<<
-!else
-	$(link32) $(dlllflags) -base:0x109E0000 -out:$@ $(baselibs) @<<
-$**
-<<
+	$(MAKEBINCMD) $** 
 	$(_VC_MANIFEST_EMBED_DLL)
-	-@del $*.exp
-!endif
+	@if exist $*.exp del $*.exp
 
 #---------------------------------------------------------------------
 # Implicit rules
 #---------------------------------------------------------------------
-
-{$(WINDIR)}.c{$(TMP_DIR)}.obj::
-    $(cc32) $(TCL_CFLAGS) -DBUILD_$(PROJECT) -Fo$(TMP_DIR)\ @<<
-$<
-<<
-
-{$(GENERICDIR)}.c{$(TMP_DIR)}.obj::
-    $(cc32) $(TCL_CFLAGS) -DBUILD_$(PROJECT) -Fo$(TMP_DIR)\ @<<
-$<
-<<
-
-{$(COMPATDIR)}.c{$(TMP_DIR)}.obj::
-    $(cc32) $(TCL_CFLAGS) -DBUILD_$(PROJECT) -Fo$(TMP_DIR)\ @<<
-$<
-<<
 
 {$(WINDIR)}.rc{$(TMP_DIR)}.res:
 	$(rc32) -fo $@ -r -i "$(GENERICDIR)" -D__WIN32__ \
@@ -412,7 +266,7 @@ set f [open $$name w]; puts -nonewline $$f $$d; close $$f
 <<
 
 .SUFFIXES:
-.SUFFIXES:.c .rc .man
+.SUFFIXES: .man
 
 #---------------------------------------------------------------------
 # Installation. (EDIT)
@@ -449,16 +303,6 @@ install-demos:
 #---------------------------------------------------------------------
 # Clean up
 #---------------------------------------------------------------------
-
-clean:
-	@if exist $(TMP_DIR)\nul $(RMDIR) $(TMP_DIR)
-	@if exist $(WINDIR)\versions.vc del $(WINDIR)\versions.vc
-	@if exist $(WINDIR)\vercl.i del $(WINDIR)\vercl.i
-	@if exist $(WINDIR)\vercl.x del $(WINDIR)\vercl.x
-	@if exist $(WINDIR)\_junk.pch del $(WINDIR)\_junk.pch
-
-realclean: clean
-	@if exist $(OUT_DIR)\nul $(RMDIR) $(OUT_DIR)
 
 distclean: realclean
 	@if exist $(WINDIR)\nmakehlp.exe del $(WINDIR)\nmakehlp.exe
