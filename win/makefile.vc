@@ -159,14 +159,11 @@ Please `cd` to its location first.
 #-------------------------------------------------------------------------
 
 PROJECT = udp
-!include "rules.vc"
+!include "rules-ext.vc"
 
-DOTVERSION      = 1.0.11
-VERSION         = $(DOTVERSION:.=)
-
-DLLOBJS = \
+PRJ_OBJS = \
 	$(TMP_DIR)\udp_tcl.obj \
-	$(TMP_DIR)\tcludp.res
+	$(TMP_DIR)\$(PROJECT).res
 
 PRJDOCS = \
 	$(OUT_DIR)\udp.html
@@ -175,84 +172,37 @@ PRJDOCS = \
 # Target names and paths ( shouldn't need changing )
 #-------------------------------------------------------------------------
 
-PRJLIBNAME	= $(PROJECT)$(VERSION)$(SUFX).$(EXT)
-PRJLIB		= $(OUT_DIR)\$(PRJLIBNAME)
 
-PRJ_DEFINES     = -DPACKAGE_NAME="\"$(PROJECT)\"" \
-		  -DPACKAGE_VERSION="\"$(DOTVERSION)\"" \
-		  -D_CRT_SECURE_NO_WARNINGS \
+PRJ_DEFINES     = -D_CRT_SECURE_NO_WARNINGS \
 		  -D_WINSOCK_DEPRECATED_NO_WARNINGS
 PRJ_LIBS	= ws2_32.lib
 
-#---------------------------------------------------------------------
-# TclTest flags
-#---------------------------------------------------------------------
+# Define the standard targets
+!include "$(_RULESDIR)\targets.vc"
 
-!IF "$(TESTPAT)" != ""
-TESTFLAGS = $(TESTFLAGS) -file $(TESTPAT)
-!ENDIF
+# We will use the standard resource template instead of writing our own
+$(TMP_DIR)\$(PROJECT).res: default-rc
 
 #---------------------------------------------------------------------
 # Project specific targets (EDIT)
 #---------------------------------------------------------------------
 
 all:	    setup $(PROJECT)
-$(PROJECT): setup $(PRJLIB)
 doc:        setup $(PRJDOCS)
-install:    install-binaries install-libraries install-docs install-demos
+install:    install-docs install-demos
+pkgindex:   default-pkgindex
 
-
-# Tests need to ensure we load the right dll file we
-# have to handle the output differently on Win9x.
-#
-!if "$(OS)" == "Windows_NT"  || "$(MSVCDIR)" == "IDE"
 test: setup $(PROJECT)
         $(TCLSH) <<
 load $(PRJLIB:\=/)
-cd "$(ROOT)/tests"
+cd {$(ROOT)/tests}
 set argv "$(TESTFLAGS)"
 source all.tcl
 <<
-!else
-test: setup $(PROJECT)
-        echo Please wait while the test results are collected
-        $(TCLSH) << >tests.log
-load $(PRJLIB:\=/)
-cd "$(ROOT)/tests"
-set argv "$(TESTFLAGS)"
-source all.tcl
-<<
-        type tests.log | more
-!endif
-
-setup:
-	@if not exist $(OUT_DIR)\nul mkdir $(OUT_DIR)
-	@if not exist $(TMP_DIR)\nul mkdir $(TMP_DIR)
-
-$(PRJLIB): $(DLLOBJS)
-	$(MAKEBINCMD) $** 
-	$(_VC_MANIFEST_EMBED_DLL)
-	@if exist $*.exp del $*.exp
 
 #---------------------------------------------------------------------
 # Implicit rules
 #---------------------------------------------------------------------
-
-{$(WINDIR)}.rc{$(TMP_DIR)}.res:
-	$(rc32) -fo $@ -r -i "$(GENERICDIR)" -D__WIN32__ \
-                -DCOMMAVERSION=$(DOTVERSION:.=,),0 \
-                -DDOTVERSION=\"$(DOTVERSION)\" \
-                -DVERSION=\"$(VERSION)$(SUFX)\" \
-!if $(DEBUG)
-	-d DEBUG \
-!endif
-!if $(TCL_THREADS)
-	-d TCL_THREADS \
-!endif
-!if $(STATIC_BUILD)
-	-d STATIC_BUILD \
-!endif
-	$<
 
 DOC2HTML = $(TCLSH) "$(TOOLSDIR)\mpexpand.tcl" html
 
@@ -265,29 +215,7 @@ set d [regsub {</head>} $$d {<link rel="stylesheet" href="manpage.css" type="tex
 set f [open $$name w]; puts -nonewline $$f $$d; close $$f
 <<
 
-.SUFFIXES:
 .SUFFIXES: .man
-
-#---------------------------------------------------------------------
-# Installation. (EDIT)
-#
-# You may need to modify this section to reflect the final distribution
-# of your files and possibly to generate documentation.
-#
-#---------------------------------------------------------------------
-
-install-binaries:
-	@echo Installing binaries to '$(SCRIPT_INSTALL_DIR)'
-	@if not exist $(SCRIPT_INSTALL_DIR)\nul mkdir "$(SCRIPT_INSTALL_DIR)"
-	@$(CPY) $(PRJLIB) "$(SCRIPT_INSTALL_DIR)" >NUL
-
-install-libraries:
-        @echo Installing libraries to '$(SCRIPT_INSTALL_DIR)'
-        @if exist $(LIBDIR)\NUL $(CPY) $(LIBDIR)\*.tcl "$(SCRIPT_INSTALL_DIR)" >NUL
-        @echo Installing package index in '$(SCRIPT_INSTALL_DIR)'
-        @type << >"$(SCRIPT_INSTALL_DIR)\pkgIndex.tcl"
-    package ifneeded $(PROJECT) $(DOTVERSION) "[list load [file join $$dir $(PROJECT)$(VERSION)$(SUFX).$(EXT)] $(PROJECT)]"
-<<
 
 install-docs: $(PRJDOCS)
 	@echo Installing documentation to '$(DOC_INSTALL_DIR)'
@@ -300,10 +228,3 @@ install-demos:
 	@if not exist $(DEMO_INSTALL_DIR)\nul mkdir "$(DEMO_INSTALL_DIR)"
 	@$(CPY) $(DEMODIR)\*.tcl "$(DEMO_INSTALL_DIR)" >NUL
 
-#---------------------------------------------------------------------
-# Clean up
-#---------------------------------------------------------------------
-
-distclean: realclean
-	@if exist $(WINDIR)\nmakehlp.exe del $(WINDIR)\nmakehlp.exe
-	@if exist $(WINDIR)\nmakehlp.obj del $(WINDIR)\nmakehlp.obj
