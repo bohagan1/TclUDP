@@ -143,30 +143,12 @@ Please `cd` to its location first.
 !error $(MSG)
 !endif
 
-#-------------------------------------------------------------------------
-# Project specific information (EDIT)
-#
-# You should edit this with the name and version of your project. This
-# information is used to generate the name of the package library and
-# it's install location.
-#
-# For example, the sample extension is  going to build sample04.dll and
-# would install it into $(INSTALLDIR)\lib\sample04
-#
-# You need to specify the object files that need to be linked into your
-# binary here.
-#
-#-------------------------------------------------------------------------
-
 PROJECT = udp
 !include "rules-ext.vc"
 
-PRJ_OBJS = \
-	$(TMP_DIR)\udp_tcl.obj \
-	$(TMP_DIR)\$(PROJECT).res
+PRJ_OBJS = $(TMP_DIR)\udp_tcl.obj
 
-PRJDOCS = \
-	$(OUT_DIR)\udp.html
+PRJ_DOCS = $(OUT_DIR)\udp.html
 
 #-------------------------------------------------------------------------
 # Target names and paths ( shouldn't need changing )
@@ -180,15 +162,11 @@ PRJ_LIBS	= ws2_32.lib
 # Define the standard targets
 !include "$(_RULESDIR)\targets.vc"
 
-# We will use the standard resource template instead of writing our own
-$(TMP_DIR)\$(PROJECT).res: default-rc
-
 #---------------------------------------------------------------------
 # Project specific targets (EDIT)
 #---------------------------------------------------------------------
 
-all:	    setup $(PROJECT)
-doc:        setup $(PRJDOCS)
+doc:        setup $(PRJ_DOCS)
 install:    install-docs install-demos
 pkgindex:   default-pkgindex
 
@@ -217,11 +195,11 @@ set f [open $$name w]; puts -nonewline $$f $$d; close $$f
 
 .SUFFIXES: .man
 
-install-docs: $(PRJDOCS)
+install-docs: $(PRJ_DOCS)
 	@echo Installing documentation to '$(DOC_INSTALL_DIR)'
 	@if not exist $(DOC_INSTALL_DIR)\NUL mkdir "$(DOC_INSTALL_DIR)"
 	@$(CPY) "$(DOCDIR)\manpage.css" "$(DOC_INSTALL_DIR)\" >NUL
-	@for %i in ($(PRJDOCS)) do @$(CPY) %i "$(DOC_INSTALL_DIR)\" > NUL
+	@for %i in ($(PRJ_DOCS)) do @$(CPY) %i "$(DOC_INSTALL_DIR)\" > NUL
 
 install-demos:
 	@echo Installing demos to '$(DEMO_INSTALL_DIR)'
