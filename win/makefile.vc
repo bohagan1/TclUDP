@@ -32,10 +32,11 @@ PRJ_DOCS = $(OUT_DIR)\udp.html
 
 # Project specific targets
 
-install:    install-docs default-install-demos
+install:    default-install-demos
 pkgindex:   default-pkgindex
 
 # Implicit rule to generate html from man files
+# NOTE: this requires doctools from tcllib
 DOC2HTML = $(TCLSH) "$(TOOLSDIR)\mpexpand.tcl" html
 {$(DOCDIR)}.man{$(OUT_DIR)}.html:
 	$(DOC2HTML) $< $@
