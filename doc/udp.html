@@ -1,0 +1,291 @@
+
+<!DOCTYPE html><html><head>
+<title>udp - Tcl UDP extension</title>
+<style type="text/css"><!--
+    HTML {
+	background: 	#FFFFFF;
+	color: 		black;
+    }
+    BODY {
+	background: 	#FFFFFF;
+	color:	 	black;
+    }
+    DIV.doctools {
+	margin-left:	10%;
+	margin-right:	10%;
+    }
+    DIV.doctools H1,DIV.doctools H2 {
+	margin-left:	-5%;
+    }
+    H1, H2, H3, H4 {
+	margin-top: 	1em;
+	font-family:	sans-serif;
+	font-size:	large;
+	color:		#005A9C;
+	background: 	transparent;
+	text-align:		left;
+    }
+    H1.doctools_title {
+	text-align: center;
+    }
+    UL,OL {
+	margin-right: 0em;
+	margin-top: 3pt;
+	margin-bottom: 3pt;
+    }
+    UL LI {
+	list-style: disc;
+    }
+    OL LI {
+	list-style: decimal;
+    }
+    DT {
+	padding-top: 	1ex;
+    }
+    UL.doctools_toc,UL.doctools_toc UL, UL.doctools_toc UL UL {
+	font:		normal 12pt/14pt sans-serif;
+	list-style:	none;
+    }
+    LI.doctools_section, LI.doctools_subsection {
+	list-style: 	none;
+	margin-left: 	0em;
+	text-indent:	0em;
+	padding: 	0em;
+    }
+    PRE {
+	display: 	block;
+	font-family:	monospace;
+	white-space:	pre;
+	margin:		0%;
+	padding-top:	0.5ex;
+	padding-bottom:	0.5ex;
+	padding-left:	1ex;
+	padding-right:	1ex;
+	width:		100%;
+    }
+    PRE.doctools_example {
+	color: 		black;
+	background: 	#f5dcb3;
+	border:		1px solid black;
+    }
+    UL.doctools_requirements LI, UL.doctools_syntax LI {
+	list-style: 	none;
+	margin-left: 	0em;
+	text-indent:	0em;
+	padding:	0em;
+    }
+    DIV.doctools_synopsis {
+	color: 		black;
+	background: 	#80ffff;
+	border:		1px solid black;
+	font-family:	serif;
+	margin-top: 	1em;
+	margin-bottom: 	1em;
+    }
+    UL.doctools_syntax {
+	margin-top: 	1em;
+	border-top:	1px solid black;
+    }
+    UL.doctools_requirements {
+	margin-bottom: 	1em;
+	border-bottom:	1px solid black;
+    }
+--></style>
+<link rel="stylesheet" href="manpage.css" type="text/css"></head>
+<!-- Generated from file 'udp.man' by tcllib/doctools with format 'html'
+   -->
+<!-- Copyright &amp;copy; 1999-2000 Columbia University; all rights reserved
+   -->
+<!-- udp.n
+   -->
+<body><div class="doctools">
+<h1 class="doctools_title">udp(n) 1.0.11  &quot;Tcl UDP extension&quot;</h1>
+<div id="name" class="doctools_section"><h2><a name="name">Name</a></h2>
+<p>udp - Create UDP sockets in Tcl</p>
+</div>
+<div id="toc" class="doctools_section"><h2><a name="toc">Table Of Contents</a></h2>
+<ul class="doctools_toc">
+<li class="doctools_section"><a href="#toc">Table Of Contents</a></li>
+<li class="doctools_section"><a href="#synopsis">Synopsis</a></li>
+<li class="doctools_section"><a href="#section1">Description</a></li>
+<li class="doctools_section"><a href="#section2">COMMANDS</a></li>
+<li class="doctools_section"><a href="#section3">EXAMPLES</a></li>
+<li class="doctools_section"><a href="#section4">HISTORY</a></li>
+<li class="doctools_section"><a href="#see-also">See Also</a></li>
+<li class="doctools_section"><a href="#keywords">Keywords</a></li>
+<li class="doctools_section"><a href="#copyright">Copyright</a></li>
+</ul>
+</div>
+<div id="synopsis" class="doctools_section"><h2><a name="synopsis">Synopsis</a></h2>
+<div class="doctools_synopsis">
+<ul class="doctools_requirements">
+<li>package require <b class="pkgname">Tcl 8.2</b></li>
+<li>package require <b class="pkgname">udp 1.0.11</b></li>
+</ul>
+<ul class="doctools_syntax">
+<li><a href="#1"><b class="cmd">udp_open</b> <span class="opt">?<i class="arg">port</i>?</span> <span class="opt">?<i class="arg">reuse</i>?</span> <span class="opt">?<i class="arg">ipv6</i>?</span></a></li>
+<li><a href="#2"><b class="cmd">udp_conf</b> <i class="arg">sock</i> <i class="arg">host</i> <i class="arg">port</i></a></li>
+<li><a href="#3"><b class="cmd">udp_conf</b> <i class="arg">sock</i> <i class="arg"><span class="opt">?-myport?</span></i> <i class="arg"><span class="opt">?-remote?</span></i> <i class="arg"><span class="opt">?-peer?</span></i> <i class="arg"><span class="opt">?-broadcast bool?</span></i> <i class="arg"><span class="opt">?-ttl count?</span></i> <i class="arg"><span class="opt">?-mcastadd &quot;groupaddr <span class="opt">?netwif?</span>&quot;?</span></i> <i class="arg"><span class="opt">?-mcastdrop &quot;groupaddr <span class="opt">?netwif?</span>&quot;?</span></i> <i class="arg"><span class="opt">?-mcastgroups?</span></i> <i class="arg"><span class="opt">?-mcastloop bool?</span></i></a></li>
+<li><a href="#4"><b class="cmd">udp_peek</b> <i class="arg">sock</i> <span class="opt">?<i class="arg">buffersize</i>?</span></a></li>
+</ul>
+</div>
+</div>
+<div id="section1" class="doctools_section"><h2><a name="section1">Description</a></h2>
+<p>This package provides support for using UDP through Tcl. The package provides
+a new channel type and attempts to permit the use of packet oriented UDP
+over stream oriented Tcl channels. The package defined three commands but
+<b class="cmd">udp_conf</b> should be considered depreciated in favour of the standard
+Tcl command <b class="cmd">fconfigure</b>.</p>
+</div>
+<div id="section2" class="doctools_section"><h2><a name="section2">COMMANDS</a></h2>
+<dl class="doctools_definitions">
+<dt><a name="1"><b class="cmd">udp_open</b> <span class="opt">?<i class="arg">port</i>?</span> <span class="opt">?<i class="arg">reuse</i>?</span> <span class="opt">?<i class="arg">ipv6</i>?</span></a></dt>
+<dd><p><b class="cmd">udp_open</b> will open a UDP socket. If a <i class="arg">port</i> is specified the UDP
+socket will be opened on that port. Otherwise the system will choose a port
+and the user can use the <b class="cmd">udp_conf</b> command to obtain the port number
+if required.</p>
+<p>The following keywords can be used to specify options on the opened socket.</p>
+<dl class="doctools_definitions">
+<dt><i class="arg">reuse</i></dt>
+<dd><p>Using this keyword sets the SO_REUSEADDR socket option which permits multiple sockets to 
+be bound to the same address/port combination.</p></dd>
+<dt><i class="arg">ipv6</i></dt>
+<dd><p>By default a IPv4 socket is created. When keyword <i class="arg">ipv6</i> is specified an IPv6
+socket is opened.</p></dd>
+</dl></dd>
+<dt><a name="2"><b class="cmd">udp_conf</b> <i class="arg">sock</i> <i class="arg">host</i> <i class="arg">port</i></a></dt>
+<dd><p><em>Deprecated</em> in favour of the standard Tcl <b class="cmd">fconfigure</b> command.</p>
+<p><b class="cmd">udp_conf</b> in this configuration is used to specify the remote destination
+for packets written to this <i class="arg">sock</i>. You must call this command before
+writing data to the UDP socket.</p></dd>
+<dt><a name="3"><b class="cmd">udp_conf</b> <i class="arg">sock</i> <i class="arg"><span class="opt">?-myport?</span></i> <i class="arg"><span class="opt">?-remote?</span></i> <i class="arg"><span class="opt">?-peer?</span></i> <i class="arg"><span class="opt">?-broadcast bool?</span></i> <i class="arg"><span class="opt">?-ttl count?</span></i> <i class="arg"><span class="opt">?-mcastadd &quot;groupaddr <span class="opt">?netwif?</span>&quot;?</span></i> <i class="arg"><span class="opt">?-mcastdrop &quot;groupaddr <span class="opt">?netwif?</span>&quot;?</span></i> <i class="arg"><span class="opt">?-mcastgroups?</span></i> <i class="arg"><span class="opt">?-mcastloop bool?</span></i></a></dt>
+<dd><p><em>Deprecated</em> in favour of the standard Tcl <b class="cmd">fconfigure</b> command.</p>
+<p>In addition to being used to configure the remote host, the <b class="cmd">udp_conf</b>
+command is used to obtain information about the UDP socket. NOTE all these options
+are now available using the standard Tcl <b class="cmd">fconfigure</b> command.</p>
+<dl class="doctools_definitions">
+<dt><i class="arg">-myport</i></dt>
+<dd><p>Returns the local port number of the socket.</p></dd>
+<dt><i class="arg">-remote</i></dt>
+<dd><p>Returns the remote hostname and port number as set using 
+<b class="cmd">udp_conf</b> <i class="arg">sock</i> <i class="arg">host</i> <i class="arg">port</i>.</p></dd>
+<dt><i class="arg">-peer</i></dt>
+<dd><p>Returns the remote hostname and port number for the packet most recently
+received by this socket.</p></dd>
+<dt><i class="arg">-broadcast <span class="opt">?boolean?</span></i></dt>
+<dd><p>UDP packets can listen and send on the broadcast address. For some systems 
+a flag must be set on the socket to use broadcast. 
+With no argument this option will return the broadcast setting. With a 
+boolean argument the setting can be modified. This option is not permitted when
+using IPv6.</p></dd>
+<dt><i class="arg">-ttl <span class="opt">?count?</span></i></dt>
+<dd><p>The time-to-live is given as the number of router hops the packet may do. For
+multicast packets this is important in specifying the distribution of the
+packet. The system default for multicast is 1 which restricts the packet 
+to the local subnet. To permit packets to pass routers, you must increase the
+ttl. A value of 31 should keep it within a site, while 255 is global.</p></dd>
+<dt><i class="arg">-mcastadd</i> groupaddr</dt>
+<dd></dd>
+<dt><i class="arg">-mcastadd</i> &quot;groupaddr netwif&quot;</dt>
+<dd></dd>
+<dt><i class="arg">-mcastdrop</i> groupaddr</dt>
+<dd></dd>
+<dt><i class="arg">-mcastdrop</i> &quot;groupaddr netwif&quot;</dt>
+<dd></dd>
+<dt><i class="arg">-mcastgroups</i></dt>
+<dd><p><b class="package">tcludp</b> sockets can support IPv4 and IPv6 multicast operations. To receive
+multicast packets the application has to notify the operating system that
+it should join a particular multicast group. For IPv4 these are specified as addresses
+in the range 224.0.0.0 to 239.255.255.255.</p>
+<p>When specifying only the <i class="arg">groupaddr</i> the system will determine the network interface to use. 
+Specifying the <i class="arg">netwif</i> will join a multicast group on a specific network interface.
+This is useful on a multihomed system with multiple network interfaces.
+On windows you must specify the network interface index. For other platforms the network
+interface (e.g. 'eth0') name can be specified.</p>
+<p>To view the current set of multicast groups for a channel use <i class="arg">-mcastgroups</i></p></dd>
+<dt><i class="arg">-mcastloop <span class="opt">?boolean?</span></i></dt>
+<dd><p>With multicast udp the system can choose to receive packets that it has sent
+or it can drop them. This is known as multicast loopback and can be controlled
+using this option. By default the value is true and your application will receive
+its own transmissions.</p></dd>
+</dl></dd>
+<dt><a name="4"><b class="cmd">udp_peek</b> <i class="arg">sock</i> <span class="opt">?<i class="arg">buffersize</i>?</span></a></dt>
+<dd><p>Examine a packet without removing it from the buffer. Option <i class="arg">buffersize</i> specifies the 
+maximum buffer size. Value must be between 0 and 16.</p>
+<p>This function is not available on windows.</p></dd>
+</dl>
+</div>
+<div id="section3" class="doctools_section"><h2><a name="section3">EXAMPLES</a></h2>
+<pre class="doctools_example">
+# Send data to a remote UDP socket
+proc udp_puts {host port} {
+    set s [udp_open]
+    fconfigure $s -remote [list $host $port]
+    puts $s &quot;Hello, World&quot;
+    close $f
+}
+</pre>
+<pre class="doctools_example">
+# A simple UDP server
+package require udp
+proc udpEventHandler {sock} {
+    set pkt [read $sock]
+    set peer [fconfigure $sock -peer]
+    puts &quot;$peer: [string length $pkt] {$pkt}&quot;
+    return
+}
+proc udp_listen {port} {
+    set srv [udp_open $port]
+    fconfigure $srv -buffering none -translation binary
+    fileevent $srv readable [list ::udpEventHandler $srv]
+    puts &quot;Listening on udp port: [fconfigure $srv -myport]&quot;
+    return $srv
+}
+set sock [udp_listen 53530]
+vwait forever
+close $sock
+</pre>
+<pre class="doctools_example">
+# A multicast demo.
+proc udpEvent {chan} {
+    set data [read $chan]
+    set peer [fconfigure $chan -peer]
+    puts &quot;$peer [string length $data] '$data'&quot;
+    if {[string match &quot;QUIT*&quot; $data]} {
+        close $chan
+        set ::forever 1
+    }
+    return
+}
+set group 224.5.1.21
+set port  7771
+set s [udp_open $port]
+fconfigure $s -buffering none -blocking 0
+fconfigure $s -mcastadd $group -remote [list $group $port]
+fileevent $s readable [list udpEvent $s]
+puts -nonewline $s &quot;hello, world&quot;
+set ::forever 0
+vwait ::forever
+exit
+</pre>
+</div>
+<div id="section4" class="doctools_section"><h2><a name="section4">HISTORY</a></h2>
+<p>Some of the code in this extension is copied from Michael Miller's tcludp
+package. (http://www.neosoft.com/tcl/ftparchive/sorted/comm/tcludp-1.0/)
+Compared with Michael's UDP extension, this extension provides Windows
+support and provides the ability of using 'gets/puts' to read/write
+the socket. In addition, it provides more configuration ability.</p>
+<p>Enhancements to support binary data and to setup the package for the Tcl
+Extension Architecture by Pat Thoyts.</p>
+<p>Support for IPv6 and allowing a multicast join on a specific network interface is added by Huub Eikens.</p>
+</div>
+<div id="see-also" class="doctools_section"><h2><a name="see-also">See Also</a></h2>
+<p>socket(n)</p>
+</div>
+<div id="keywords" class="doctools_section"><h2><a name="keywords">Keywords</a></h2>
+<p>networking, socket, udp</p>
+</div>
+<div id="copyright" class="doctools_section"><h2><a name="copyright">Copyright</a></h2>
+<p>Copyright &copy; 1999-2000 Columbia University; all rights reserved</p>
+</div>
+</div></body></html>
