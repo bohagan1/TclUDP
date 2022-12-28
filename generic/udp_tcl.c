@@ -287,7 +287,7 @@ udpConf(ClientData clientData, Tcl_Interp *interp,
 	}
 
 	if (r != TCL_OK) {
-		Tcl_SetResult (interp, errmsg, NULL);
+		Tcl_SetResult (interp, errmsg, TCL_VOLATILE);
 	}
 	return r;
 }
@@ -1910,7 +1910,7 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
     unsigned long status = 1;
     socklen_t len;
 	short ss_family = AF_INET; /* Default ipv4 */
-	char errmsg[] = "upd_open [remoteport] [ipv6] [reuse]";
+	char errmsg[] = "udp_open [remoteport] [ipv6] [reuse]";
 	int remaining_options = argc;
 
     if (argc >= 2) {
@@ -1926,7 +1926,7 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
 		/* The remaining option must be the port (if specified) */
 		if (remaining_options == 2) {
 		   if (udpGetService(interp, argv[1], &localport) != TCL_OK) {
-				Tcl_SetResult (interp, errmsg, NULL);
+				Tcl_SetResult (interp, errmsg, TCL_VOLATILE);
 				return TCL_ERROR;
 		   }
 		}
