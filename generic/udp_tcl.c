@@ -31,6 +31,9 @@ typedef int socklen_t;
 #error "Neither sys/ioctl.h nor sys/filio.h found. We need ioctl()"
 #endif
 #endif /* WIN32 */
+#if defined(HAVE_STRERROR)
+#include <string.h>
+#endif
 
 #if HAVE_FCNTL_H
 #  include <fcntl.h>
@@ -1733,7 +1736,6 @@ ErrorToObj(const char * prefix)
     Tcl_AppendUnicodeToObj(errObj, (LPWSTR)sMsg, len - 1);
     LocalFree(sMsg);
 #elif defined(HAVE_STRERROR)
-    extern int errno;
     errObj = Tcl_NewStringObj(prefix, -1);
     Tcl_AppendStringsToObj(errObj, ": ", strerror(errno), NULL);
 #endif
