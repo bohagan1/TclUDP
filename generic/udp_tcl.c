@@ -440,12 +440,13 @@ UDP_CheckProc(ClientData data, int flags)
             socksize = sizeof(recvaddr);
             memset(&recvaddr, 0, socksize);
 
-            message = (char *)ckalloc(MAXBUFFERSIZE);
+            /* reserve one more byte for terminating null byte */
+	    message = (char *)ckalloc(MAXBUFFERSIZE+1);
             if (message == NULL) {
                 UDPTRACE("ckalloc error\n");
                 exit(1);
             }
-            memset(message, 0, MAXBUFFERSIZE);
+            memset(message, 0, MAXBUFFERSIZE+1);
 
             actual_size = recvfrom(statePtr->sock, message, buffer_size, 0,
                                    (struct sockaddr *)&recvaddr, &socksize);
@@ -919,6 +920,8 @@ ClientData instanceData, CONST84 char *buf, int toWrite, int *errorCode
 /*
  * ----------------------------------------------------------------------
  * udpInput
+ *    buf is allocated in UDP_CheckProc with MAXBUFFERSIZE+1
+ *    bufSize comes from Tcl default size
  * ----------------------------------------------------------------------
  */
 static int udpInput(
@@ -972,8 +975,12 @@ ClientData instanceData, char *buf, int bufSize, int *errorCode
         return -1;
     }
     memcpy(buf, packets->message, packets->actual_size);
+    /* VERY TRICKY: add null-terminating byte, we reserved MAXBUFFERSIZE+1 */ 
+    if (packets->actual_size <= bufSize) {
+        buf[packets->actual_size] = '\0';
+    }
     ckfree((char *) packets->message);
-    UDPTRACE("udp_recv message\n%s", buf);
+    UDPTRACE("udp_recv message\n%s\n", buf);
     bufSize = packets->actual_size;
     strcpy(statePtr->peerhost, packets->r_host);
     statePtr->peerport = packets->r_port;
