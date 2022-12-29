@@ -1167,7 +1167,6 @@ UdpMulticast(UdpState *statePtr, Tcl_Interp *interp,
 
 		if (r != 0 ) {
 			Tcl_SetResult(interp, "invalid group name", TCL_STATIC);
-			freeaddrinfo(result);
 			return TCL_ERROR;
 		} else {
 			memcpy(&mreq6.ipv6mr_multiaddr, &((struct sockaddr_in6*)(result->ai_addr))->sin6_addr,sizeof(mreq6.ipv6mr_multiaddr));
