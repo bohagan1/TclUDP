@@ -1092,12 +1092,14 @@ UdpMulticast(UdpState *statePtr, Tcl_Interp *interp,
 #ifdef WIN32
 			if ( Tcl_GetIntFromObj(interp,nw_interface,&nwinterface_index) == TCL_ERROR && nwinterface_index < 1) {
 				Tcl_SetResult(interp, "not a valid network interface index; should start with 1", TCL_STATIC);
+				Tcl_DecrRefCount(tcllist);
 				return TCL_ERROR;
 			}
 #else
 			int lenPtr = -1;
 			if (nw_interface->length > IFNAMSIZ ) {
 				Tcl_SetResult(interp, "unknown network interface", TCL_STATIC);
+				Tcl_DecrRefCount(tcllist);
 				return TCL_ERROR;
 			}
 
@@ -1106,12 +1108,14 @@ UdpMulticast(UdpState *statePtr, Tcl_Interp *interp,
 				strcpy(ifreq.ifr_name,Tcl_GetStringFromObj(nw_interface,&lenPtr));
 				if (ioctl(statePtr->sock, SIOCGIFADDR, &ifreq) < 0 ) {
 					Tcl_SetResult(interp, "unknown network interface", TCL_STATIC);
+					Tcl_DecrRefCount(tcllist);
 					return TCL_ERROR;
 				}
 			}
 			nwinterface_index = if_nametoindex(Tcl_GetStringFromObj(nw_interface,&lenPtr));
 			if (nwinterface_index == 0 ) {
 				Tcl_SetResult(interp, "unknown network interface", TCL_STATIC);
+				Tcl_DecrRefCount(tcllist);
 				return TCL_ERROR;
 			}
 #endif /* ! WIN32 */
@@ -1119,6 +1123,7 @@ UdpMulticast(UdpState *statePtr, Tcl_Interp *interp,
 			Tcl_ListObjIndex(interp, tcllist, 0, &multicastgrp);
 		} else {
 			Tcl_SetResult(interp, "multicast group and/or local network interface not specified", TCL_STATIC);
+			Tcl_DecrRefCount(tcllist);
 			return TCL_ERROR;
 		}
 	}
@@ -1136,6 +1141,7 @@ UdpMulticast(UdpState *statePtr, Tcl_Interp *interp,
 				if (interp != NULL) {
 					Tcl_SetResult(interp, "invalid group name", TCL_STATIC);
 				}
+				Tcl_DecrRefCount(tcllist);
 				return TCL_ERROR;
 			}
 			memcpy(&mreq.imr_multiaddr.s_addr, name->h_addr, sizeof(mreq.imr_multiaddr));
@@ -1157,6 +1163,7 @@ UdpMulticast(UdpState *statePtr, Tcl_Interp *interp,
 			if (interp != NULL) {
 				Tcl_SetObjResult(interp, ErrorToObj("error changing multicast group"));
 			}
+			Tcl_DecrRefCount(tcllist);
 			return TCL_ERROR;
 		}
 	} else {
@@ -1174,6 +1181,7 @@ UdpMulticast(UdpState *statePtr, Tcl_Interp *interp,
 
 		if (r != 0 ) {
 			Tcl_SetResult(interp, "invalid group name", TCL_STATIC);
+			Tcl_DecrRefCount(tcllist);
 			return TCL_ERROR;
 		} else {
 			memcpy(&mreq6.ipv6mr_multiaddr, &((struct sockaddr_in6*)(result->ai_addr))->sin6_addr,sizeof(mreq6.ipv6mr_multiaddr));
@@ -1192,11 +1200,13 @@ UdpMulticast(UdpState *statePtr, Tcl_Interp *interp,
 			if (interp != NULL) {
 				Tcl_SetObjResult(interp, ErrorToObj("error changing multicast group"));
 			}
+			Tcl_DecrRefCount(tcllist);
 			return TCL_ERROR;
 		}
 	}
+	Tcl_DecrRefCount(tcllist);
 
-    if (action == IP_ADD_MEMBERSHIP || action == IPV6_JOIN_GROUP) {
+	if (action == IP_ADD_MEMBERSHIP || action == IPV6_JOIN_GROUP) {
 		int ndx = LSearch(statePtr->groupsObj, grp);
 		if (ndx == -1) {
 			Tcl_Obj *newPtr;
@@ -1210,27 +1220,27 @@ UdpMulticast(UdpState *statePtr, Tcl_Interp *interp,
 			Tcl_ListObjAppendElement(interp, statePtr->groupsObj,
 				Tcl_NewStringObj(grp,-1));
 		}
-    } else {
+	} else {
 		int ndx = LSearch(statePtr->groupsObj, grp);
 		if (ndx != -1) {
 			Tcl_Obj *old, *ptr;
-            int dup = 0;
+			int dup = 0;
 			old = ptr = statePtr->groupsObj;
 			statePtr->multicast--;
 			if ((dup = Tcl_IsShared(ptr))) {
 				ptr = Tcl_DuplicateObj(ptr);
 			}
 			Tcl_ListObjReplace(interp, ptr, ndx, 1, 0, NULL);
-            if (dup) {
+			if (dup) {
 				statePtr->groupsObj = ptr;
 				Tcl_IncrRefCount(ptr);
 				Tcl_DecrRefCount(old);
-            }
+			}
 		}
-    }
-    if (interp != NULL)
-        Tcl_SetObjResult(interp, statePtr->groupsObj);
-    return TCL_OK;
+	}
+	if (interp != NULL)
+		Tcl_SetObjResult(interp, statePtr->groupsObj);
+	return TCL_OK;
 }
 
 /*
@@ -1623,7 +1633,7 @@ udpSetRemoteOption(UdpState *statePtr, Tcl_Interp *interp,CONST86 char *newValue
 	} else {
 		Tcl_SetObjResult(interp, Tcl_NewStringObj(newValue,-1));
 	}
-
+	Tcl_DecrRefCount(valPtr);
 	return result;
 }
 
