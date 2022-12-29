@@ -394,7 +394,7 @@ UDP_SetupProc(ClientData data, int flags)
 
     WaitForSingleObject(sockListLock, INFINITE);
     for (statePtr = sockList; statePtr != NULL; statePtr=statePtr->next) {
-        if (statePtr->packetNum > 0) {
+        if (statePtr->packetNum > 0 && statePtr->threadId == Tcl_GetCurrentThread()) {
             UDPTRACE("UDP_SetupProc\n");
             Tcl_SetMaxBlockTime(&blockTime);
             break;
