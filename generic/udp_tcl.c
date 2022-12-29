@@ -87,7 +87,7 @@ struct ipv6_mreq {
 
 FILE *dbg;
 
-#define MAXBUFFERSIZE 4096
+#define MAXBUFFERSIZE 65535
 
 static char errBuf[256];
 
@@ -2019,6 +2019,7 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
     statePtr->channel = Tcl_CreateChannel(&Udp_ChannelType, channelName,
                                           (ClientData) statePtr,
                                           (TCL_READABLE | TCL_WRITABLE | TCL_MODE_NONBLOCKING));
+    Tcl_SetChannelBufferSize(statePtr->channel, MAXBUFFERSIZE);
     statePtr->doread = 1;
     statePtr->multicast = 0;
     statePtr->groupsObj = Tcl_NewListObj(0, NULL);
