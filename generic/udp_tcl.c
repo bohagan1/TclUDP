@@ -40,8 +40,8 @@ typedef int socklen_t;
 #endif
 
 /* Tcl 8.4 CONST support */
-#ifndef CONST84
-#define CONST84
+#ifndef CONST86
+#define CONST86
 #endif
 
 /* bug #1240127: May not be found on certain versions of mingw-gcc */
@@ -95,9 +95,9 @@ static char errBuf[256];
  * Tcl command procedures
  */
 int Udp_CmdProc(ClientData, Tcl_Interp *, int, Tcl_Obj *CONST []);
-int udpOpen(ClientData , Tcl_Interp *, int , CONST84 char * []);
-int udpConf(ClientData , Tcl_Interp *, int , CONST84 char * []);
-int udpPeek(ClientData , Tcl_Interp *, int , CONST84 char * []);
+int udpOpen(ClientData , Tcl_Interp *, int , CONST86 char * []);
+int udpConf(ClientData , Tcl_Interp *, int , CONST86 char * []);
+int udpPeek(ClientData , Tcl_Interp *, int , CONST86 char * []);
 
 /*
  * internal functions
@@ -109,16 +109,16 @@ static void udpTrace(const char *format, ...);
 static int  udpGetService(Tcl_Interp *interp, const char *service,
                           unsigned short *servicePort);
 static Tcl_Obj *ErrorToObj(const char * prefix);
-static int hasOption(int argc, CONST84 char * argv[],const char* option );
-static int udpSetRemoteOption(UdpState* statePtr, Tcl_Interp *interp, CONST84 char *newValue);
-static int udpSetMulticastIFOption(UdpState* statePtr, Tcl_Interp *interp, CONST84 char *newValue);
-static int udpSetMulticastAddOption(UdpState* statePtr, Tcl_Interp *interp, CONST84 char *newValue);
-static int udpSetMulticastDropOption(UdpState* statePtr, Tcl_Interp *interp, CONST84 char *newValue);
-static int udpSetBroadcastOption(UdpState* statePtr, Tcl_Interp *interp, CONST84 char *newValue);
+static int hasOption(int argc, CONST86 char * argv[],const char* option );
+static int udpSetRemoteOption(UdpState* statePtr, Tcl_Interp *interp, CONST86 char *newValue);
+static int udpSetMulticastIFOption(UdpState* statePtr, Tcl_Interp *interp, CONST86 char *newValue);
+static int udpSetMulticastAddOption(UdpState* statePtr, Tcl_Interp *interp, CONST86 char *newValue);
+static int udpSetMulticastDropOption(UdpState* statePtr, Tcl_Interp *interp, CONST86 char *newValue);
+static int udpSetBroadcastOption(UdpState* statePtr, Tcl_Interp *interp, CONST86 char *newValue);
 static int udpGetBroadcastOption(UdpState* statePtr, Tcl_Interp *interp, int* value);
-static int udpSetMcastloopOption(UdpState* statePtr, Tcl_Interp *interp, CONST84 char *newValue);
+static int udpSetMcastloopOption(UdpState* statePtr, Tcl_Interp *interp, CONST86 char *newValue);
 static int udpGetMcastloopOption(UdpState *statePtr, Tcl_Interp *interp, unsigned char * value);
-static int udpSetTtlOption(UdpState* statePtr, Tcl_Interp *interp, CONST84 char *newValue);
+static int udpSetTtlOption(UdpState* statePtr, Tcl_Interp *interp, CONST86 char *newValue);
 static int udpGetTtlOption(UdpState *statePtr, Tcl_Interp *interp,unsigned int *value);
 
 /*
@@ -218,7 +218,7 @@ Udp_CmdProc(ClientData clientData, Tcl_Interp *interp,
  * ----------------------------------------------------------------------
  */
 static int
-hasOption(int argc, CONST84 char * argv[],const char* option )
+hasOption(int argc, CONST86 char * argv[],const char* option )
 {
 	int i;
 	for (i=0;i<argc;i++) {
@@ -238,7 +238,7 @@ hasOption(int argc, CONST84 char * argv[],const char* option )
 */
 int
 udpConf(ClientData clientData, Tcl_Interp *interp,
-		int argc, CONST84 char * argv[])
+		int argc, CONST86 char * argv[])
 {
 	Tcl_Channel chan;
 	char remoteOptions[255];
@@ -300,7 +300,7 @@ udpConf(ClientData clientData, Tcl_Interp *interp,
  */
 int
 udpPeek(ClientData clientData, Tcl_Interp *interp,
-        int argc, CONST84 char * argv[])
+        int argc, CONST86 char * argv[])
 {
 #ifndef WIN32
     int buffer_size = 16;
@@ -830,7 +830,7 @@ ClientData instanceData, int direction, ClientData *handlePtr
  * ----------------------------------------------------------------------
  */
 static int udpOutput(
-ClientData instanceData, CONST84 char *buf, int toWrite, int *errorCode
+ClientData instanceData, CONST86 char *buf, int toWrite, int *errorCode
 )
 {
 	UdpState *statePtr = (UdpState *) instanceData;
@@ -1240,11 +1240,11 @@ UdpMulticast(UdpState *statePtr, Tcl_Interp *interp,
 */
 static int udpGetOption(
 ClientData instanceData, Tcl_Interp *interp,
-CONST84 char *optionName, Tcl_DString *optionValue
+CONST86 char *optionName, Tcl_DString *optionValue
 )
 {
 	UdpState *statePtr = (UdpState *)instanceData;
-	CONST84 char * options[] = { "myport", "remote", "peer", "mcastgroups", "mcastloop", "broadcast", "ttl", NULL};
+	CONST86 char * options[] = { "myport", "remote", "peer", "mcastgroups", "mcastloop", "broadcast", "ttl", NULL};
 	int r = TCL_OK;
 
 	if (optionName == NULL) {
@@ -1324,7 +1324,7 @@ CONST84 char *optionName, Tcl_DString *optionValue
 				sprintf(Tcl_DStringValue(&ds), "%u", tmp);
 			}
 		} else {
-			CONST84 char **p;
+			CONST86 char **p;
 			Tcl_DString tmp;
 			Tcl_DStringInit(&tmp);
 			for (p = options; *p != NULL; p++)
@@ -1353,11 +1353,11 @@ CONST84 char *optionName, Tcl_DString *optionValue
  */
 static int udpSetOption(
 ClientData instanceData, Tcl_Interp *interp,
-CONST84 char *optionName, CONST84 char *newValue
+CONST86 char *optionName, CONST86 char *newValue
 )
 {
     UdpState *statePtr = (UdpState *)instanceData;
-    CONST84 char * options = "remote mcastadd mcastdrop mcastloop broadcast ttl";
+    CONST86 char * options = "remote mcastadd mcastdrop mcastloop broadcast ttl";
     int r = TCL_OK;
 
     if (!strcmp("-remote", optionName)) {
@@ -1430,7 +1430,7 @@ udpGetTtlOption(UdpState *statePtr, Tcl_Interp *interp,unsigned int *value)
  * ----------------------------------------------------------------------
  */
 static int
-udpSetTtlOption(UdpState *statePtr, Tcl_Interp *interp,CONST84 char *newValue)
+udpSetTtlOption(UdpState *statePtr, Tcl_Interp *interp,CONST86 char *newValue)
 {
 	int result = TCL_ERROR;
 	int tmp = 0;
@@ -1500,7 +1500,7 @@ udpGetMcastloopOption(UdpState *statePtr, Tcl_Interp *interp, unsigned char * va
  * ----------------------------------------------------------------------
  */
 static int
-udpSetMcastloopOption(UdpState *statePtr, Tcl_Interp *interp,CONST84 char *newValue)
+udpSetMcastloopOption(UdpState *statePtr, Tcl_Interp *interp,CONST86 char *newValue)
 {
 	int result = TCL_ERROR;
 	int tmp = 1;
@@ -1558,7 +1558,7 @@ udpGetBroadcastOption(UdpState *statePtr, Tcl_Interp *interp, int* value)
  * ----------------------------------------------------------------------
  */
 static int
-udpSetBroadcastOption(UdpState *statePtr, Tcl_Interp *interp,CONST84 char *newValue)
+udpSetBroadcastOption(UdpState *statePtr, Tcl_Interp *interp,CONST86 char *newValue)
 {
 	int result;
 	int tmp = 1;
@@ -1591,7 +1591,7 @@ udpSetBroadcastOption(UdpState *statePtr, Tcl_Interp *interp,CONST84 char *newVa
  * ----------------------------------------------------------------------
  */
 static int
-udpSetRemoteOption(UdpState *statePtr, Tcl_Interp *interp,CONST84 char *newValue)
+udpSetRemoteOption(UdpState *statePtr, Tcl_Interp *interp,CONST86 char *newValue)
 {
 	int result;
 
@@ -1637,7 +1637,7 @@ udpSetRemoteOption(UdpState *statePtr, Tcl_Interp *interp,CONST84 char *newValue
  * ----------------------------------------------------------------------
  */
 static int
-udpSetMulticastIFOption(UdpState *statePtr, Tcl_Interp *interp,CONST84 char *newValue)
+udpSetMulticastIFOption(UdpState *statePtr, Tcl_Interp *interp,CONST86 char *newValue)
 {
   if (statePtr->ss_family == AF_INET) {
     struct in_addr interface_addr;
@@ -1681,7 +1681,7 @@ udpSetMulticastIFOption(UdpState *statePtr, Tcl_Interp *interp,CONST84 char *new
  * ----------------------------------------------------------------------
  */
 static int
-udpSetMulticastAddOption(UdpState *statePtr, Tcl_Interp *interp,CONST84 char *newValue)
+udpSetMulticastAddOption(UdpState *statePtr, Tcl_Interp *interp,CONST86 char *newValue)
 {
  	int result;
 
@@ -1704,7 +1704,7 @@ udpSetMulticastAddOption(UdpState *statePtr, Tcl_Interp *interp,CONST84 char *ne
  * ----------------------------------------------------------------------
  */
 static int
-udpSetMulticastDropOption(UdpState *statePtr, Tcl_Interp *interp,CONST84 char *newValue)
+udpSetMulticastDropOption(UdpState *statePtr, Tcl_Interp *interp,CONST86 char *newValue)
 {
  	int result;
 
@@ -1900,7 +1900,7 @@ static Tcl_ChannelType Udp_ChannelType = {
  */
 int
 udpOpen(ClientData clientData, Tcl_Interp *interp,
-        int argc, CONST84 char * argv[])
+        int argc, CONST86 char * argv[])
 {
 #ifdef WIN32
     SOCKET sock;
