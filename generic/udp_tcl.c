@@ -1968,6 +1968,7 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
 #ifdef WIN32
     if (SetHandleInformation((HANDLE)sock, HANDLE_FLAG_INHERIT, 0) == 0) {
         Tcl_AppendResult(interp, "failed to set close-on-exec bit", NULL);
+        closesocket(sock);
         return TCL_ERROR;
     }
 #endif /* WIN32 */
