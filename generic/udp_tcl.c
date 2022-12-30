@@ -1904,7 +1904,7 @@ static Tcl_ChannelType Udp_ChannelType = {
  * ----------------------------------------------------------------------
  * udpOpen --
  *
- *  opens a UDP socket and addds the file descriptor to the tcl
+ *  opens a UDP socket and adds the file descriptor to the tcl
  *  interpreter
  * ----------------------------------------------------------------------
  */
@@ -1926,7 +1926,7 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
     unsigned long status = 1;
     socklen_t len;
 	short ss_family = AF_INET; /* Default ipv4 */
-	char errmsg[] = "udp_open [remoteport] [ipv6] [reuse]";
+	char errmsg[] = "udp_open [localport] [ipv6] [reuse]";
 	int remaining_options = argc;
 
     if (argc >= 2) {
@@ -1959,7 +1959,7 @@ udpOpen(ClientData clientData, Tcl_Interp *interp,
     }
 
     /*
-     * bug #1477669: avoid socket inheritence after exec
+     * bug #1477669: avoid socket inheritance after exec
      */
 
 #if HAVE_FLAG_FD_CLOEXEC
