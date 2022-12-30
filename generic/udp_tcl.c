@@ -127,6 +127,7 @@ static int udpGetTtlOption(UdpState *statePtr, Tcl_Interp *interp,unsigned int *
 #ifdef WIN32
 
 int  UdpEventProc(Tcl_Event *evPtr, int flags);
+static int  UdpDeleteEvent(Tcl_Event *evPtr, ClientData channel);
 static void UDP_SetupProc(ClientData data, int flags);
 void UDP_CheckProc(ClientData data, int flags);
 int  Udp_WinHasSockets(Tcl_Interp *interp);
@@ -373,6 +374,25 @@ UdpEventProc(Tcl_Event *evPtr, int flags)
     UDPTRACE("UdpEventProc\n");
     Tcl_NotifyChannel(eventPtr->chan, mask);
     return 1;
+}
+
+/*
+ * ----------------------------------------------------------------------
+ * UdpDeleteEvent --
+ *
+ *  Remove any queued UDP events from the event queue.  Called from
+ *  Tcl_DeleteEvents when the channel is closed.  Tests each passed
+ *  event, and returns 1 if the event should be deleted, 0 otherwise.
+ *
+ * ----------------------------------------------------------------------
+ */
+static int
+UdpDeleteEvent(Tcl_Event *evPtr, ClientData channel)
+{
+    UdpEvent *eventPtr = (UdpEvent *) evPtr;
+
+    return eventPtr->header.proc == UdpEventProc &&
+		eventPtr->chan == (Tcl_Channel)channel;
 }
 
 /*
@@ -714,6 +734,9 @@ ClientData instanceData, Tcl_Interp *interp
     sock = statePtr->sock;
 
 #ifdef WIN32
+
+    /* Delete any queued events for this channel. */
+    Tcl_DeleteEvents(UdpDeleteEvent, (ClientData)statePtr->channel);
 
     /* remove the statePtr from the list */
     for (tmp = p = sockList; p != NULL; tmp = p, p = p->next) {
