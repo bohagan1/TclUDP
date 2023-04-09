@@ -26,7 +26,7 @@
 #define WIN32
 #endif
 
-#ifdef WIN32
+#ifdef _WIN32
 #  if !defined( _WIN32_WINNT ) || ( _WIN32_WINNT < 0x0501 )
 #    undef  _WIN32_WINNT
 #    define _WIN32_WINNT 0x0501
@@ -52,7 +52,7 @@
 #  include <arpa/inet.h>
 #  include <netdb.h>
 #  include <net/if.h>
-#endif /* WIN32 */
+#endif /* _WIN32 */
 
 #include <stdio.h>
 #include <string.h>
@@ -66,7 +66,7 @@
 #define TCL_STORAGE_CLASS DLLEXPORT
 #endif /* BUILD_udp */
 
-#ifdef WIN32
+#ifdef _WIN32
 
 typedef u_short uint16_t;
 
@@ -83,7 +83,7 @@ typedef struct PacketList {
   struct PacketList *next;
 } PacketList;
 
-#endif /* WIN32 */
+#endif /* _WIN32 */
 
 typedef struct UdpState {
   Tcl_Channel       channel;
@@ -98,7 +98,7 @@ typedef struct UdpState {
   uint16_t          peerport;
   uint16_t          localport;
   int               doread;
-#ifdef WIN32
+#ifdef _WIN32
   HWND              hwnd;
   PacketList        *packets;
   PacketList        *packetsTail;
@@ -112,7 +112,7 @@ typedef struct UdpState {
 } UdpState;
 
 
-#if defined(WIN32) && defined(_M_AMD64)
+#if defined(_WIN32) && defined(_M_AMD64)
 # define SOCKET_PRINTF_FMT "%I64u"
 #else
 # define SOCKET_PRINTF_FMT "%d"
