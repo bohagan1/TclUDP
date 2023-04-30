@@ -1,5 +1,11 @@
-#
-# Tcl package index file
-#
-package ifneeded @PACKAGE_NAME@ @PACKAGE_VERSION@ \
-    [list load [file join $dir @PKG_LIB_FILE@] @PACKAGE_NAME@]
+if {[package vsatisfies [package present Tcl] 8.5-]} {
+	package ifneeded @PACKAGE_NAME@ @PACKAGE_VERSION@ [list apply {{dir} {
+		if {[string tolower [file extension @PKG_LIB_FILE8@]] in [list ".dll" ".so"]} {
+			load [file join $dir @EXTENSION_TARGET@] [string totitle @PACKAGE_NAME@]
+		} else {
+			load {} [string totitle @PACKAGE_NAME@]
+		}
+	}} $dir]
+} elseif {[package vsatisfies [package present Tcl] 8.4]} {
+	package ifneeded @PACKAGE_NAME@ @PACKAGE_VERSION@ [list load [file join $dir @EXTENSION_TARGET@] [string totitle @PACKAGE_NAME@]]
+}

@@ -33,9 +33,6 @@ PRJ_DOCS = $(OUT_DIR)\udp.html
 
 # Project specific targets
 
-install:    default-install-demos default-install-docs-html
-pkgindex:   default-pkgindex
-
 # Implicit rule to generate html from man files
 # NOTE: this requires doctools from tcllib hence it is not intended
 # to be run during install. Rather, use it to generate a new version
@@ -55,4 +52,7 @@ set f [open $$name w]; puts -nonewline $$f $$d; close $$f
 # Cannot use default-install-docs because we generate docs on the fly
 doc:        setup $(PRJ_DOCS)
 
+pkgindex: default-pkgindex
+install: default-pkgindex-tea default-install doc default-install-demos
+test: default-test
 
