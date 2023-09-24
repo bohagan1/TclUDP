@@ -14,6 +14,13 @@
 #define DEBUG
 #endif
 
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
+#include <limits.h>
+#include <errno.h>
+#include <sys/types.h>
+#include "tcl.h"
 #include "udp_tcl.h"
 
 #ifdef _WIN32
@@ -146,10 +153,24 @@ int Udp_Init(Tcl_Interp *interp)
     dbg = fopen("udp.dbg", "wt");
 #endif
 
+#if TCL_MAJOR_VERSION > 8
 #ifdef USE_TCL_STUBS
-    Tcl_InitStubs(interp, "8.4", 0);
+    if (Tcl_InitStubs(interp, "9.0", 0) == NULL) {
+	return TCL_ERROR;
+    }
+#endif
+    if (Tcl_PkgRequire(interp, "Tcl", "9.0-", 0) == NULL) {
+	return TCL_ERROR;
+    }
 #else
-    Tcl_PkgRequire(interp, "Tcl", "8.4-", 0)
+#ifdef USE_TCL_STUBS
+    if (Tcl_InitStubs(interp, "8.4", 0) == NULL) {
+	return TCL_ERROR;
+    }
+#endif
+    if (Tcl_PkgRequire(interp, "Tcl", "8.4-", 0) == NULL) {
+	return TCL_ERROR;
+    }
 #endif
 
 #ifdef _WIN32
@@ -159,15 +180,15 @@ int Udp_Init(Tcl_Interp *interp)
     Tcl_CreateEventSource(UDP_SetupProc, UDP_CheckProc, NULL);
 #endif
 
-    Tcl_CreateCommand(interp, "udp_open", udpOpen ,
-		      (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
-    Tcl_CreateCommand(interp, "udp_conf", udpConf ,
-		      (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
-    Tcl_CreateCommand(interp, "udp_peek", udpPeek ,
-		      (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
+    /* Create package commands */
+    Tcl_CreateCommand(interp, "udp_open", udpOpen,
+	(ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
+    Tcl_CreateCommand(interp, "udp_conf", udpConf,
+	(ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
+    Tcl_CreateCommand(interp, "udp_peek", udpPeek,
+	(ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
 
-    r = Tcl_PkgProvide(interp, PACKAGE_NAME, PACKAGE_VERSION);
-    return r;
+    return Tcl_PkgProvide(interp, PACKAGE_NAME, PACKAGE_VERSION);
 }
 
 int Udp_SafeInit(Tcl_Interp *interp)
@@ -1027,10 +1048,10 @@ static int udpInput(ClientData instanceData, char *buf, int bufSize, int *errorC
  *
  * LSearch --
  *
- * 	Find a string item in a list and return the index of -1.
+ * 	Find a string item in a list or return -1 if not found.
  */
 
-static int LSearch(Tcl_Obj *listObj, const char *group)
+static Tcl_Size LSearch(Tcl_Obj *listObj, const char *group)
 {
     int objc, n;
     Tcl_Obj **objv;
@@ -1057,7 +1078,8 @@ static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp,
 {
     int r;
     Tcl_Obj *tcllist , *multicastgrp , *nw_interface;
-    int len,result;
+    Tcl_Size len
+    int result;
     int nwinterface_index =-1;
 #ifndef _WIN32
     struct ifreq ifreq;
@@ -1081,7 +1103,7 @@ static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp,
 		return TCL_ERROR;
 	    }
 #else
-	    int lenPtr = -1;
+	    Tcl_Size lenPtr = -1;
 	    if (nw_interface->length > IFNAMSIZ ) {
 		Tcl_SetResult(interp, "unknown network interface", TCL_STATIC);
 		Tcl_DecrRefCount(tcllist);
@@ -1192,7 +1214,7 @@ static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp,
     Tcl_DecrRefCount(tcllist);
 
     if (action == IP_ADD_MEMBERSHIP || action == IPV6_JOIN_GROUP) {
-	int ndx = LSearch(statePtr->groupsObj, grp);
+	Tcl_Size ndx = LSearch(statePtr->groupsObj, grp);
 	if (ndx == -1) {
 	    Tcl_Obj *newPtr;
 	    statePtr->multicast++;
@@ -1206,7 +1228,7 @@ static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp,
 		Tcl_NewStringObj(grp,-1));
 	}
     } else {
-	int ndx = LSearch(statePtr->groupsObj, grp);
+	Tcl_Size ndx = LSearch(statePtr->groupsObj, grp);
 	if (ndx != -1) {
 	    Tcl_Obj *old, *ptr;
 	    int dup = 0;
@@ -1576,7 +1598,7 @@ static int udpSetRemoteOption(UdpState *statePtr, Tcl_Interp *interp, const char
 {
     int result;
     Tcl_Obj *valPtr;
-    int len;
+    Tcl_Size len;
 
     valPtr = Tcl_NewStringObj(newValue, -1);
     result = Tcl_ListObjLength(interp, valPtr, &len);
@@ -1711,7 +1733,7 @@ static Tcl_Obj * ErrorToObj(const char * prefix)
 			 (LPWSTR)&sMsg, 0, NULL);
     errObj = Tcl_NewStringObj(prefix, -1);
     Tcl_AppendToObj(errObj, ": ", -1);
-    Tcl_AppendUnicodeToObj(errObj, (LPWSTR)sMsg, len - 1);
+    Tcl_AppendUnicodeToObj(errObj, (LPWSTR)sMsg, (Tcl_Size) (len - 1));
     LocalFree(sMsg);
 #elif defined(HAVE_STRERROR)
     errObj = Tcl_NewStringObj(prefix, -1);
@@ -1820,14 +1842,13 @@ int UdpSockGetPort(interp, string, proto, portPtr)
     return TCL_OK;
 }
 
-
-
 /*
  * This structure describes the channel type for accessing UDP.
  */
 static Tcl_ChannelType Udp_ChannelType = {
     "udp",                 /* Type name.                                    */
-#ifdef TCL_CHANNEL_VERSION_5
+    /* TCL 8.5 and later */
+#if TCL_MAJOR_VERSION > 8 || defined(TCL_CHANNEL_VERSION_5)
     TCL_CHANNEL_VERSION_5, /* v5 channel */
     udpClose,              /* Close channel, clean instance data            */
     udpInput,              /* Handle read request                           */
@@ -1844,7 +1865,7 @@ static Tcl_ChannelType Udp_ChannelType = {
     NULL,		   /* Wide seek proc. */
     NULL,		   /* Thread action. */
     NULL,		   /* Truncate. */
-#elif TCL_CHANNEL_VERSION_4
+#else
     TCL_CHANNEL_VERSION_4, /* v4 channel */
     udpClose,              /* Close channel, clean instance data            */
     udpInput,              /* Handle read request                           */
@@ -1854,22 +1875,12 @@ static Tcl_ChannelType Udp_ChannelType = {
     udpGetOption,          /* Get options.                        NULL'able */
     udpWatch,              /* Initialize notifier                           */
     udpGetHandle,          /* Get OS handle from the channel.               */
-    NULL,		   /* close2proc */
+    udpClose2,		   /* close2proc */
     NULL,     		   /* Set blocking/nonblocking behaviour. NULL'able */
     NULL,		   /* Flush proc. */
     NULL,		   /* Handling of events bubbling up. */
     NULL,		   /* Wide seek proc. */
     NULL,		   /* Thread action. */
-#else
-    NULL,		   /* Set blocking/nonblocking behaviour. NULL'able */
-    udpClose,              /* Close channel, clean instance data            */
-    udpInput,              /* Handle read request                           */
-    udpOutput,             /* Handle write request                          */
-    NULL,                  /* Seek proc. */
-    udpSetOption,          /* Set options.                        NULL'able */
-    udpGetOption,          /* Get options.                        NULL'able */
-    udpWatch,              /* Initialize notifier                           */
-    udpGetHandle,          /* Get OS handle from the channel.               */
 #endif
 };
 

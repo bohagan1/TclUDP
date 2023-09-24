@@ -54,12 +54,12 @@
 #  include <net/if.h>
 #endif /* _WIN32 */
 
-#include <stdio.h>
-#include <string.h>
-#include <limits.h>
-#include <errno.h>
-#include <sys/types.h>
-#include "tcl.h"
+/*
+ * Backwards compatibility for size type change
+ */
+#if TCL_MAJOR_VERSION < 9 && TCL_MINOR_VERSION < 7
+#   define Tcl_Size int
+#endif
 
 #ifdef BUILD_udp
 #undef TCL_STORAGE_CLASS
