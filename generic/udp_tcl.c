@@ -1914,6 +1914,12 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int argc, const char * ar
     return TCL_OK;
 }
 
+#if TCL_MAJOR_VERSION > 8
+#define MIN_VERSION "9.0"
+#else
+#define MIN_VERSION "8.4"
+#endif
+
 /*
  * ----------------------------------------------------------------------
  * udpInit
@@ -1925,25 +1931,14 @@ int Udp_Init(Tcl_Interp *interp) {
     dbg = fopen("udp.dbg", "wt");
 #endif
 
-#if TCL_MAJOR_VERSION > 8
 #ifdef USE_TCL_STUBS
-    if (Tcl_InitStubs(interp, "9.0", 0) == NULL) {
+    if (Tcl_InitStubs(interp, MIN_VERSION, 0) == NULL) {
 	return TCL_ERROR;
     }
 #endif
-    if (Tcl_PkgRequire(interp, "Tcl", "9.0-", 0) == NULL) {
+    if (Tcl_PkgRequire(interp, "Tcl", MIN_VERSION, 0) == NULL) {
 	return TCL_ERROR;
     }
-#else
-#ifdef USE_TCL_STUBS
-    if (Tcl_InitStubs(interp, "8.4", 0) == NULL) {
-	return TCL_ERROR;
-    }
-#endif
-    if (Tcl_PkgRequire(interp, "Tcl", "8.4-", 0) == NULL) {
-	return TCL_ERROR;
-    }
-#endif
 
 #ifdef _WIN32
     if (Udp_WinHasSockets(interp) != TCL_OK) {
