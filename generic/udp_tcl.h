@@ -18,14 +18,6 @@
 #  include "../config.h"
 #endif
 
-#if STDC_HEADERS
-#  include <stdlib.h>
-#endif
-
-#if defined(_WIN32) && !defined(WIN32)
-#define WIN32
-#endif
-
 #ifdef _WIN32
 #  if !defined( _WIN32_WINNT ) || ( _WIN32_WINNT < 0x0501 )
 #    undef  _WIN32_WINNT
