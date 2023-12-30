@@ -123,6 +123,7 @@ static UdpState *sockList;
  * ----------------------------------------------------------------------
  */
 int Udp_CmdProc(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
+    (void) clientData;
     Tcl_SetResult(interp, "E_NOTIMPL", TCL_STATIC);
     return TCL_ERROR;
 }
@@ -165,6 +166,7 @@ int udpConf(ClientData clientData, Tcl_Interp *interp, int argc, const char * ar
     UdpState *statePtr = NULL;
     int r = TCL_ERROR;
     Tcl_DString ds;
+    (void) clientData;
     char errmsg[] =
 	"udp_conf fileId [-mcastadd] [-mcastdrop] groupaddr | "
 #ifdef _WIN32
@@ -227,6 +229,7 @@ int udpPeek(ClientData clientData, Tcl_Interp *interp, int argc, const char * ar
     struct sockaddr_storage recvaddr;
     Tcl_Channel chan;
     UdpState *statePtr;
+    (void) clientData;
 
     if (argc < 2) {
 	Tcl_WrongNumArgs(interp, 0, NULL, "udp_peek sock ?buffersize?");
@@ -313,6 +316,7 @@ static int UdpDeleteEvent(Tcl_Event *evPtr, ClientData channel) {
 static void UDP_SetupProc(ClientData data, int flags) {
     UdpState *statePtr;
     Tcl_Time blockTime = { 0, 0 };
+    (void) data;
 
     /* UDPTRACE("setupProc\n"); */
 
@@ -353,6 +357,7 @@ void UDP_CheckProc(ClientData data, int flags) {
     memset(hostaddr, 0 , sizeof(hostaddr));
     memset(remoteaddr,0,sizeof(remoteaddr));
 #endif /*  _WIN32 */
+    (void) data;
 
     /* UDPTRACE("checkProc\n"); */
 
@@ -1787,6 +1792,7 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int argc, const char * ar
     short ss_family = AF_INET; /* Default ipv4 */
     char errmsg[] = "udp_open [localport] [ipv6] [reuse]";
     int remaining_options = argc;
+    (void) clientData;
 
     if (argc >= 2) {
 	if (hasOption(argc,argv,"reuse")) {
