@@ -279,14 +279,14 @@ test udp-5.0 {udp_open with reused port} -body {
     set u [udp_open 9001 reuse]
 } -cleanup {
     close $s
+    close $u
 } -match regexp -result {sock\d+}
 
-test udp-5.0 {udp_open with no port reuse option} -body {
+test udp-5.1 {udp_open with no port reuse option} -body {
     set s [udp_open 9001 reuse]
     catch {set u [udp_open 9001]} error
 } -cleanup {
     close $s
-    close $u
 } -match glob -result {1}
 
 test udp-6.0 {udp_open with ipv6} -body {
