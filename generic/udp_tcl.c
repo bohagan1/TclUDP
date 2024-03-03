@@ -137,7 +137,7 @@ enum _cfg_opts {
 int udpConf(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
     Tcl_Channel chan;
     UdpState *statePtr = NULL;
-    int opt;
+    Tcl_Size opt;
 
     Tcl_ResetResult(interp);
 
@@ -278,7 +278,7 @@ int udpPeek(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 	statePtr->peerport = ntohs(((struct sockaddr_in*)&recvaddr)->sin_port);
     }
 
-    Tcl_AppendResult(interp, message, (char *)NULL);
+    Tcl_AppendResult(interp, message, (char *) NULL);
     return TCL_OK;
 #else /* _WIN32 */
     Tcl_SetResult(interp, "udp_peek not implemented for this platform", TCL_STATIC);
@@ -596,7 +596,7 @@ int Udp_WinHasSockets(Tcl_Interp *interp) {
 	return TCL_OK;
     }
     if (interp != NULL) {
-	Tcl_AppendResult(interp, "sockets are not available on this system", NULL);
+	Tcl_AppendResult(interp, "sockets are not available on this system", (char *) NULL);
     }
     return TCL_ERROR;
 }
@@ -632,7 +632,7 @@ static int udpClose(ClientData instanceData, Tcl_Interp *interp) {
     int sock;
 #endif
     int errorCode = 0;
-    int objc;
+    Tcl_Size objc;
     Tcl_Obj **objv;
     UdpState *statePtr = (UdpState *) instanceData;
 #ifdef _WIN32
@@ -666,11 +666,10 @@ static int udpClose(ClientData instanceData, Tcl_Interp *interp) {
      * If there are multicast groups added they should be dropped.
      */
     if (statePtr->groupsObj) {
-	int n = 0;
 	Tcl_Obj *dupGroupList = Tcl_DuplicateObj(statePtr->groupsObj);
 	Tcl_IncrRefCount(dupGroupList);
 	Tcl_ListObjGetElements(interp, dupGroupList, &objc, &objv);
-	for (n = 0; n < objc; n++) {
+	for (Tcl_Size n = 0; n < objc; n++) {
 	    if (statePtr->ss_family==AF_INET) {
 		UdpMulticast(statePtr, interp, Tcl_GetString(objv[n]), IP_DROP_MEMBERSHIP);
 	    } else {
@@ -964,7 +963,7 @@ static int udpInput(ClientData instanceData, char *buf, int bufSize, int *errorC
  */
 
 static Tcl_Size LSearch(Tcl_Obj *listObj, const char *group) {
-    int objc, n;
+    Tcl_Size objc, n;
     Tcl_Obj **objv;
     Tcl_ListObjGetElements(NULL, listObj, &objc, &objv);
     for (n = 0; n < objc; n++) {
@@ -1014,22 +1013,23 @@ static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp,
 	    }
 #else
 	    Tcl_Size lenPtr = -1;
-	    if (nw_interface->length > IFNAMSIZ ) {
-		Tcl_SetResult(interp, "unknown network interface", TCL_STATIC);
+	    char *name = Tcl_GetStringFromObj(nw_interface,&lenPtr);
+	    if (lenPtr > IFNAMSIZ ) {
+		Tcl_SetResult(interp, "network interface name too long", TCL_STATIC);
 		Tcl_DecrRefCount(tcllist);
 		return TCL_ERROR;
 	    }
 
 	    if (statePtr->ss_family == AF_INET) {
 		/* For IPv4, we need the network interface address. */
-		strcpy(ifreq.ifr_name,Tcl_GetStringFromObj(nw_interface,&lenPtr));
+		strcpy(ifreq.ifr_name, name);
 		if (ioctl(statePtr->sock, SIOCGIFADDR, &ifreq) < 0 ) {
 		Tcl_SetResult(interp, "unknown network interface", TCL_STATIC);
 		Tcl_DecrRefCount(tcllist);
 		return TCL_ERROR;
 		}
 	    }
-	    nwinterface_index = if_nametoindex(Tcl_GetStringFromObj(nw_interface,&lenPtr));
+	    nwinterface_index = if_nametoindex(name);
 	    if (nwinterface_index == 0 ) {
 		Tcl_SetResult(interp, "unknown network interface", TCL_STATIC);
 		Tcl_DecrRefCount(tcllist);
@@ -1491,7 +1491,7 @@ static Tcl_Obj * ErrorToObj(const char * prefix) {
     LocalFree(sMsg);
 #elif defined(HAVE_STRERROR)
     errObj = Tcl_NewStringObj(prefix, -1);
-    Tcl_AppendStringsToObj(errObj, ": ", strerror(errno), NULL);
+    Tcl_AppendStringsToObj(errObj, ": ", strerror(errno), (char *) NULL);
 #endif
     return errObj;
 }
@@ -1549,7 +1549,7 @@ static int udpGetOption(ClientData instanceData, Tcl_Interp *interp,
 	   }
 
 	} else if (!strcmp("-mcastgroups", optionName)) {
-	    int objc, n;
+	    Tcl_Size objc, n;
 	    Tcl_Obj **objv;
 	    Tcl_ListObjGetElements(interp, statePtr->groupsObj, &objc, &objv);
 	    for (n = 0; n < objc; n++) {
@@ -1745,8 +1745,6 @@ static int udpGetService(Tcl_Interp *interp, const char *service, uint16_t *serv
  */
 static Tcl_ChannelType Udp_ChannelType = {
     "udp",                 /* Type name.                                    */
-    /* TCL 8.5 and later */
-#if TCL_MAJOR_VERSION > 8 || defined(TCL_CHANNEL_VERSION_5)
     TCL_CHANNEL_VERSION_5, /* v5 channel */
     udpClose,              /* Close channel, clean instance data            */
     udpInput,              /* Handle read request                           */
@@ -1763,23 +1761,6 @@ static Tcl_ChannelType Udp_ChannelType = {
     NULL,		   /* Wide seek proc. */
     NULL,		   /* Thread action. */
     NULL,		   /* Truncate. */
-#else
-    TCL_CHANNEL_VERSION_4, /* v4 channel */
-    udpClose,              /* Close channel, clean instance data            */
-    udpInput,              /* Handle read request                           */
-    udpOutput,             /* Handle write request                          */
-    NULL,                  /* Seek proc. */
-    udpSetOption,          /* Set options.                        NULL'able */
-    udpGetOption,          /* Get options.                        NULL'able */
-    udpWatch,              /* Initialize notifier                           */
-    udpGetHandle,          /* Get OS handle from the channel.               */
-    udpClose2,		   /* close2proc */
-    NULL,     		   /* Set blocking/nonblocking behaviour. NULL'able */
-    NULL,		   /* Flush proc. */
-    NULL,		   /* Handling of events bubbling up. */
-    NULL,		   /* Wide seek proc. */
-    NULL,		   /* Thread action. */
-#endif
 };
 
 static const char *open_opts[] = {
@@ -1806,7 +1787,8 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
     char channelName[20];
     UdpState *statePtr;
     uint16_t localport = 0;
-    int reuse = 0, opt;
+    int reuse = 0;
+    Tcl_Size opt;
     struct sockaddr_storage addr,sockaddr;
     socklen_t addr_len;
     unsigned long status = 1;
@@ -1845,7 +1827,7 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 	snprintf(errBuf, 255, "failed to create socket");
 	errBuf[255] = 0;
 	UDPTRACE("%s\n", errBuf);
-	Tcl_AppendResult(interp, errBuf, (char *)NULL);
+	Tcl_AppendResult(interp, errBuf, (char *) NULL);
 	return TCL_ERROR;
     }
 
@@ -1857,7 +1839,7 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 #else
 #ifdef _WIN32
     if (SetHandleInformation((HANDLE)sock, HANDLE_FLAG_INHERIT, 0) == 0) {
-	Tcl_AppendResult(interp, "failed to set close-on-exec bit", NULL);
+	Tcl_AppendResult(interp, "failed to set close-on-exec bit", (char *) NULL);
         closesocket(sock);
 	return TCL_ERROR;
     }
@@ -1930,7 +1912,7 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
     statePtr->packetsTail = NULL;
 #endif
     /* Tcl_SetChannelOption(interp, statePtr->channel, "-blocking", "0"); */
-    Tcl_AppendResult(interp, channelName, (char *)NULL);
+    Tcl_AppendResult(interp, channelName, (char *) NULL);
 #ifdef _WIN32
     WaitForSingleObject(sockListLock, INFINITE);
     statePtr->next = sockList;
