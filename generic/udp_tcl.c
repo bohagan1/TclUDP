@@ -1489,7 +1489,7 @@ static Tcl_Obj * ErrorToObj(const char * prefix) {
     Tcl_AppendToObj(errObj, ": ", -1);
     Tcl_AppendUnicodeToObj(errObj, (LPWSTR)sMsg, (Tcl_Size) (len - 1));
     LocalFree(sMsg);
-#elif defined(HAVE_STRERROR)
+#else
     errObj = Tcl_NewStringObj(prefix, -1);
     Tcl_AppendStringsToObj(errObj, ": ", strerror(errno), (char *) NULL);
 #endif
@@ -1533,7 +1533,7 @@ static int udpGetOption(ClientData instanceData, Tcl_Interp *interp,
 	    sprintf(Tcl_DStringValue(&ds), "%u", ntohs(statePtr->localport));
 
 	} else if (!strcmp("-remote", optionName)) {
-	    if (statePtr->remotehost && *statePtr->remotehost) {
+	    if (*statePtr->remotehost) {
 		Tcl_DStringSetLength(&dsInt, TCL_INTEGER_SPACE);
 		sprintf(Tcl_DStringValue(&dsInt), "%u", ntohs(statePtr->remoteport));
 		Tcl_DStringAppendElement(&ds, statePtr->remotehost);
@@ -1541,7 +1541,7 @@ static int udpGetOption(ClientData instanceData, Tcl_Interp *interp,
 	    }
 
 	} else if (!strcmp("-peer", optionName)) {
-           if (statePtr->peerhost && *statePtr->peerhost) {
+           if (*statePtr->peerhost) {
 		Tcl_DStringSetLength(&dsInt, TCL_INTEGER_SPACE);
 		sprintf(Tcl_DStringValue(&dsInt), "%u", statePtr->peerport);
 		Tcl_DStringAppendElement(&ds, statePtr->peerhost);
@@ -1954,7 +1954,6 @@ int Udp_CmdProc(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *co
  * ----------------------------------------------------------------------
  */
 int Udp_Init(Tcl_Interp *interp) {
-    int r = TCL_OK;
 #if defined(DEBUG) && !defined(_WIN32)
     dbg = fopen("udp.dbg", "wt");
 #endif
