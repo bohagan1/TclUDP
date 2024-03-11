@@ -318,8 +318,20 @@ $(PKG_STUB_LIB_FILE): $(PKG_STUB_OBJECTS)
 
 VPATH = $(srcdir):$(srcdir)/generic:$(srcdir)/unix:$(srcdir)/win:$(srcdir)/macosx
 
-.c.@OBJEXT@:
+.c.@OBJEXT@: udpUuid.h
 	$(COMPILE) -c `@CYGPATH@ $<` -o $@
+
+$(srcdir)/manifest.uuid:
+	printf "git-" >$(srcdir)/manifest.uuid
+	(cd $(srcdir); git rev-parse HEAD >>$(srcdir)/manifest.uuid || \
+	    (printf "svn-r" >$(srcdir)/manifest.uuid ; \
+	    svn info --show-item last-changed-revision >>$(srcdir)/manifest.uuid) || \
+	    printf "unknown" >$(srcdir)/manifest.uuid)
+
+udpUuid.h:	$(srcdir)/manifest.uuid
+	echo "#define UDP_VERSION_UUID \\" >$@
+	cat $(srcdir)/manifest.uuid >>$@
+	echo "" >>$@
 
 #========================================================================
 # Distribution creation
@@ -351,9 +363,9 @@ dist: dist-clean
 	    $(srcdir)/tclconfig/license.terms $(DIST_DIR)/tclconfig/
 
 	# Extension files
- 	$(DIST_INSTALL_DATA) \
-	    $(srcdir)/ChangeLog $(srcdir)/license.terms \
-	    $(srcdir)/README $(srcdir)/pkgIndex.tcl.in $(DIST_DIR)/
+ 	$(DIST_INSTALL_DATA) $(srcdir)/ChangeLog \
+	    $(srcdir)/license.terms $(srcdir)/pkgIndex.tcl.in \
+	    $(srcdir)/README $(srcdir)/manifest.uuid $(DIST_DIR)/
 
 	list='demos doc generic tests tools win'; \
 	for p in $$list; do \

@@ -69,8 +69,17 @@ doc:        setup $(PRJ_DOCS)
 all: default-target
 
 clean: default-clean
+	@if exist $(WIN_DIR)\vfsUuid.h del $(WIN_DIR)\vfsUuid.h
 
 realclean: default-hose
+	@if exist $(WIN_DIR)\vfsUuid.h del $(WIN_DIR)\vfsUuid.h
+ 
+$(ROOT)\manifest.uuid:
+   copy $(WIN_DIR)\gitmanifest.in $(ROOT)\manifest.uuid
+   git rev-parse HEAD >>$(ROOT)\manifest.uuid
+
+$(WIN_DIR)\udpUuid.h:	$(ROOT)\manifest.uuid
+	copy $(WIN_DIR)\udpUuid.h.in+$(ROOT)\manifest.uuid $(WIN_DIR)\udpUuid.h
 
 pkgindex: default-pkgindex
 
