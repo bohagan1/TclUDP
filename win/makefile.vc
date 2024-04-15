@@ -69,21 +69,30 @@ doc:        setup $(PRJ_DOCS)
 all: default-target
 
 clean: default-clean
-	@if exist $(WIN_DIR)\vfsUuid.h del $(WIN_DIR)\vfsUuid.h
 
 realclean: default-hose
-	@if exist $(WIN_DIR)\vfsUuid.h del $(WIN_DIR)\vfsUuid.h
  
 $(ROOT)\manifest.uuid:
-   copy $(WIN_DIR)\gitmanifest.in $(ROOT)\manifest.uuid
-   git rev-parse HEAD >>$(ROOT)\manifest.uuid
+    if not exist $(ROOT)\manifest.uuid (
+	copy $(WIN_DIR)\gitmanifest.in $(ROOT)\manifest.uuid
+	where git
+	if ERRORLEVEL 0 (
+	    git rev-parse HEAD >>$(ROOT)\manifest.uuid
+	) else (
+	    echo unknown >>$(ROOT)\manifest.uuid
+	)
+    )
 
-$(WIN_DIR)\udpUuid.h:	$(ROOT)\manifest.uuid
-	copy $(WIN_DIR)\udpUuid.h.in+$(ROOT)\manifest.uuid $(WIN_DIR)\udpUuid.h
+$(TMP_DIR)\udpUuid.h:	$(ROOT)\manifest.uuid
+	copy $(WIN_DIR)\udpUuid.h.in+$(ROOT)\manifest.uuid $(TMP_DIR)\udpUuid.h
+	echo: >>$(TMP_DIR)\udpUuid.h
 
 pkgindex: default-pkgindex
 
 install: default-pkgindex-tea default-install doc default-install-demos
+  
+ # Explicit dependency rules
+$(GENERICDIR)\udp_tcl.c: $(TMP_DIR)\udpUuid.h
 
 # Test package
 test: default-test
