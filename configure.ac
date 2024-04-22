@@ -9,11 +9,11 @@ dnl	to configure the system for the local environment.
 #-----------------------------------------------------------------------
 
 #-----------------------------------------------------------------------
-# Set your package name and version numbers here.
-#
 # This initializes the environment with PACKAGE_NAME and PACKAGE_VERSION
 # set as provided.  These will also be added as -D defs in your Makefile
 # so you can encode the package version directly into the source files.
+# This will also define a special symbol for Windows (BUILD_<PACKAGE_NAME>
+# so that we create the export library with the dll.
 #-----------------------------------------------------------------------
 
 AC_INIT([udp],[1.0.12])
@@ -66,7 +66,6 @@ TEA_SETUP_COMPILER
 TEA_BLOCKING_STYLE
 
 #-----------------------------------------------------------------------
-# __CHANGE__
 # Specify the C source files to compile in TEA_ADD_SOURCES,
 # public headers that need to be installed in TEA_ADD_HEADERS,
 # stub library C source files to compile in TEA_ADD_STUB_SOURCES,
@@ -93,17 +92,14 @@ TEA_ADD_TCL_SOURCES([])
 # TEA_ADD_* any platform specific compiler/build info here.
 #--------------------------------------------------------------------
 
-#CLEANFILES="$CLEANFILES pkgIndex.tcl"
+TEA_ADD_CLEANFILES([pkgIndex.tcl])
+
 if test "${TEA_PLATFORM}" = "windows" ; then
     AC_DEFINE(BUILD_udp)
-    CLEANFILES="*.lib *.dll *.exp *.ilk *.pdb vc*.pch"
-    #TEA_ADD_SOURCES([win/winFile.c])
-    #TEA_ADD_INCLUDES([-I\"$(${CYGPATH} ${srcdir}/win)\"])
+    TEA_ADD_CLEANFILES([pkgIndex.tcl *.lib *.dll *.exp *.ilk *.pdb vc*.pch])
     TEA_ADD_LIBS([ws2_32.lib])
 else
-    CLEANFILES=""
-    #TEA_ADD_SOURCES([unix/unixFile.c])
-    #TEA_ADD_LIBS([-lsuperfly])
+    TEA_ADD_CLEANFILES([pkgIndex.tcl *.so])
 fi
 
 #--------------------------------------------------------------------

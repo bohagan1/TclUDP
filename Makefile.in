@@ -160,7 +160,7 @@ PKG_CFLAGS	= @PKG_CFLAGS@
 DEFS		= @DEFS@ $(PKG_CFLAGS)
 
 # Move pkgIndex.tcl to 'BINARIES' var if it is generated in the Makefile
-CONFIG_CLEAN_FILES = Makefile pkgIndex.tcl
+CONFIG_CLEAN_FILES = Makefile pkgIndex.tcl udpUuid.h
 CLEANFILES	= @CLEANFILES@
 
 CPPFLAGS	= @CPPFLAGS@
@@ -347,25 +347,26 @@ DIST_INSTALL_DATA	= CPPROG='cp -p' $(INSTALL) -m 644
 DIST_INSTALL_SCRIPT	= CPPROG='cp -p' $(INSTALL) -m 755
 
 dist-clean:
-	rm -rf $(DIST_DIR) $(DIST_ROOT)/$(PKG_DIR).tar.*
+	rm -rf $(DIST_DIR) $(top_builddir)/$(PKG_DIR).tar.*
 
 dist: dist-clean
 	$(INSTALL_DATA_DIR) $(DIST_DIR)
 
 	# TEA files
 	$(DIST_INSTALL_DATA) $(srcdir)/Makefile.in \
-	    $(srcdir)/aclocal.m4 $(srcdir)/configure.ac $(DIST_DIR)/
+		$(srcdir)/aclocal.m4 $(srcdir)/configure.ac $(DIST_DIR)/
 	$(DIST_INSTALL_SCRIPT) $(srcdir)/configure $(DIST_DIR)/
 
+	# TEA files
 	$(INSTALL_DATA_DIR) $(DIST_DIR)/tclconfig
 	$(DIST_INSTALL_DATA) $(srcdir)/tclconfig/README.txt \
 	    $(srcdir)/tclconfig/tcl.m4 $(srcdir)/tclconfig/install-sh \
 	    $(srcdir)/tclconfig/license.terms $(DIST_DIR)/tclconfig/
 
 	# Extension files
- 	$(DIST_INSTALL_DATA) $(srcdir)/ChangeLog \
-	    $(srcdir)/license.terms $(srcdir)/pkgIndex.tcl.in \
-	    $(srcdir)/README $(srcdir)/manifest.uuid $(DIST_DIR)/
+	$(DIST_INSTALL_DATA) $(srcdir)/ChangeLog \
+	    $(srcdir)/license.terms $(srcdir)/manifest.uuid \
+	    $(srcdir)/README.txt $(srcdir)/pkgIndex.tcl.in $(DIST_DIR)/
 
 	list='demos doc generic tests tools win'; \
 	for p in $$list; do \
@@ -376,6 +377,8 @@ dist: dist-clean
 	done
 
 	(cd $(DIST_ROOT); $(COMPRESS);)
+	cd $(top_builddir)
+	mv $(DIST_ROOT)/$(PKG_DIR).tar.gz $(top_builddir)
 
 #========================================================================
 # End of user-definable section
@@ -395,6 +398,7 @@ distclean: clean
 	-rm -f *.tab.c
 	-rm -f $(CONFIG_CLEAN_FILES)
 	-rm -f config.cache config.log config.status
+	-rm -fR autom4te.cache
 
 #========================================================================
 # Install binary object libraries.  On Windows this includes both .dll and
@@ -434,6 +438,7 @@ install-lib-binaries: binaries
 	    echo " Install pkgIndex.tcl $(DESTDIR)$(pkglibdir)"; \
 	    $(INSTALL_DATA) pkgIndex.tcl "$(DESTDIR)$(pkglibdir)"; \
 	fi
+	#$(INSTALL_DATA) udpConfig.sh $(DESTDIR)$(libdir)
 
 #========================================================================
 # Install binary executables (e.g. .exe files and dependent .dll files)
