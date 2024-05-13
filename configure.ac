@@ -80,7 +80,7 @@ TEA_ADD_INCLUDES([])
 TEA_ADD_LIBS([])
 TEA_ADD_CFLAGS([])
 TEA_ADD_STUB_SOURCES([])
-TEA_ADD_TCL_SOURCES([])
+TEA_ADD_TCL_SOURCES([license.terms])
 
 #--------------------------------------------------------------------
 # You can add more files to clean if your extension creates any extra
@@ -92,15 +92,16 @@ TEA_ADD_TCL_SOURCES([])
 # TEA_ADD_* any platform specific compiler/build info here.
 #--------------------------------------------------------------------
 
-TEA_ADD_CLEANFILES([pkgIndex.tcl])
+TEA_ADD_CLEANFILES([pkgIndex.tcl Makefile])
 
 if test "${TEA_PLATFORM}" = "windows" ; then
     AC_DEFINE(BUILD_udp)
-    TEA_ADD_CLEANFILES([pkgIndex.tcl *.lib *.dll *.exp *.ilk *.pdb vc*.pch])
+    TEA_ADD_CLEANFILES([*.lib *.dll *.exp *.ilk *.pdb vc*.pch])
     TEA_ADD_LIBS([ws2_32.lib])
 else
-    TEA_ADD_CLEANFILES([pkgIndex.tcl *.so])
+    TEA_ADD_CLEANFILES([*.so])
 fi
+AC_SUBST(CLEANFILES)
 
 #--------------------------------------------------------------------
 # Choose which headers you need.  Extension authors should try very
@@ -143,6 +144,16 @@ TEA_CONFIG_CFLAGS
 #--------------------------------------------------------------------
 
 TEA_ENABLE_SYMBOLS
+ 
+#--------------------------------------------------------------------
+# Everyone should be linking against the Tcl stub library.  If you
+# can't for some reason, remove this definition.  If you aren't using
+# stubs, you also need to modify the SHLIB_LD_LIBS setting below to
+# link against the non-stubbed Tcl library.  Add Tk too if necessary.
+#--------------------------------------------------------------------
+
+AC_DEFINE(USE_TCL_STUBS)
+#AC_DEFINE(USE_TK_STUBS)
 
 #--------------------------------------------------------------------
 # This macro generates a line to use when building a library.  It
@@ -167,7 +178,7 @@ TEA_PROG_TCLSH
 # Setup a *Config.sh.in configuration file.
 #--------------------------------------------------------------------
 
-#TEA_EXPORT_CONFIG([sample])
+#TEA_EXPORT_CONFIG([udp])
 #AC_SUBST(SAMPLE_VAR)
 
 #--------------------------------------------------------------------
@@ -189,7 +200,7 @@ TEA_PROG_DTPLITE
 #--------------------------------------------------------------------
 
 AC_CONFIG_FILES([Makefile pkgIndex.tcl])
-#AC_CONFIG_FILES([sampleConfig.sh])
+#AC_CONFIG_FILES([udpConfig.sh])
 
 #--------------------------------------------------------------------
 # Finally, substitute all of the various values into the files
