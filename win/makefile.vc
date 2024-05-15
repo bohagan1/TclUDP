@@ -1,14 +1,14 @@
 #------------------------------------------------------------- -*- makefile -*-
 #
-# Makefile for tcludp
+# Makefile for TCL UDP Extension
 #
 # Basic build, test and install
-#   nmake /f makefile.vc INSTALLDIR=c:\tcl
-#   nmake /f makefile.vc INSTALLDIR=c:\tcl test
-#   nmake /f makefile.vc INSTALLDIR=c:\tcl install
+#   nmake /f makefile.vc INSTALLDIR=c:\path\to\tcl TCLDIR=c:\path\to\tcl\sources
+#   nmake /f makefile.vc INSTALLDIR=c:\path\to\tcl TCLDIR=c:\path\to\tcl\sources test
+#   nmake /f makefile.vc INSTALLDIR=c:\path\to\tcl TCLDIR=c:\path\to\tcl\sources install
 #
 # For other build options (debug, static etc.),
-# See TIP 477 (https://core.tcl.tk/tips/doc/trunk/tip/477.md) for
+# See TIP 477 (https://core.tcl-lang.org/tips/doc/main/tip/477.md) for
 # detailed documentation.
 # 
 # See the file "license.terms" for information on usage and redistribution
@@ -16,9 +16,15 @@
 #
 #------------------------------------------------------------------------------
 
+#-------------------------------------------------------------------------
+# Project specific information
+#-------------------------------------------------------------------------
+
 # The name of the package
 PROJECT = udp
+
 !include "rules-ext.vc"
+
 
 # Define the object files and resource file that make up the extension.
 # Note the resource file does not makes sense if doing a static library build
@@ -27,25 +33,20 @@ PROJECT = udp
 PRJ_OBJS = $(TMP_DIR)\udp_tcl.obj
 
 # Define any additional project include flags
-PRJ_INCLUDES =
+PRJ_INCLUDES = -I"$(TMP_DIR)"
 
 # Define any additional compiler flags that might be required for the project
-PRJ_DEFINES     = -D_CRT_SECURE_NO_WARNINGS \
-		  -D_WINSOCK_DEPRECATED_NO_WARNINGS \
-		  -D_WIN32
+PRJ_DEFINES = -D_CRT_SECURE_NO_WARNINGS -D_WINSOCK_DEPRECATED_NO_WARNINGS -D_WIN32
 
 # Define any additional project needed libraries
-PRJ_LIBS	= ws2_32.lib
+PRJ_LIBS = WS2_32.Lib
 
-PRJ_DOCS = $(OUT_DIR)\udp.html
-
-# Use standard rules
-!include "rules.vc"
-
-# Define the standard targets
+# Define the standard targets which calls rules.vc
 !include "targets.vc"
 
+#---------------------------------------------------------------------
 # Project specific targets
+#---------------------------------------------------------------------
 
 # Implicit rule to generate html from man files
 # NOTE: this requires doctools from tcllib hence it is not intended
@@ -63,15 +64,19 @@ set f [open $$name w]; puts -nonewline $$f $$d; close $$f
 
 .SUFFIXES: .man
 
-# Cannot use default-install-docs because we generate docs on the fly
-doc:        setup $(PRJ_DOCS)
- 
-all: default-target
+
+all: setup default-target
 
 clean: default-clean
 
 realclean: default-hose
- 
+
+# We must define a pkgindex target that will create a pkgIndex.tcl
+# file in the $(OUT_DIR) directory. We can just redirect to the
+# default-pkgindex target for our sample extension.
+pkgindex: default-pkgindex-tea
+
+# Manifest which defines fossil/git commit id for build-info command
 $(ROOT)\manifest.uuid:
     if not exist $(ROOT)\manifest.uuid (
 	copy $(WIN_DIR)\gitmanifest.in $(ROOT)\manifest.uuid
@@ -87,11 +92,14 @@ $(TMP_DIR)\udpUuid.h:	$(ROOT)\manifest.uuid
 	copy $(WIN_DIR)\udpUuid.h.in+$(ROOT)\manifest.uuid $(TMP_DIR)\udpUuid.h
 	echo: >>$(TMP_DIR)\udpUuid.h
 
-pkgindex: default-pkgindex
 
-install: default-pkgindex-tea default-install doc default-install-demos
-  
- # Explicit dependency rules
+# The default install target only installs binaries and scripts so add
+# an additional target for our documentation. Note this *adds* a target
+# since no commands are listed after it. The original targets for
+# install (from targets.vc) will remain.
+install: pkgindex default-install default-install-docs-html default-install-docs-n default-install-demos
+
+# Explicit dependency rules
 $(GENERICDIR)\udp_tcl.c: $(TMP_DIR)\udpUuid.h
 
 # Test package
