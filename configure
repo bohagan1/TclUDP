@@ -4962,7 +4962,6 @@ $as_echo "O_NONBLOCK" >&6; }
 
 
 #-----------------------------------------------------------------------
-# __CHANGE__
 # Specify the C source files to compile in TEA_ADD_SOURCES,
 # public headers that need to be installed in TEA_ADD_HEADERS,
 # stub library C source files to compile in TEA_ADD_STUB_SOURCES,
@@ -5064,7 +5063,7 @@ $as_echo "O_NONBLOCK" >&6; }
 
 
 
-    vars=""
+    vars="license.terms"
     for i in $vars; do
 	# check for existence, be strict because it is installed
 	if test ! -f "${srcdir}/$i" ; then
@@ -5085,13 +5084,16 @@ $as_echo "O_NONBLOCK" >&6; }
 # TEA_ADD_* any platform specific compiler/build info here.
 #--------------------------------------------------------------------
 
-#CLEANFILES="$CLEANFILES pkgIndex.tcl"
+
+    CLEANFILES="$CLEANFILES pkgIndex.tcl Makefile"
+
+
 if test "${TEA_PLATFORM}" = "windows" ; then
     $as_echo "#define BUILD_udp 1" >>confdefs.h
 
-    CLEANFILES="*.lib *.dll *.exp *.ilk *.pdb vc*.pch"
-    #TEA_ADD_SOURCES([win/winFile.c])
-    #TEA_ADD_INCLUDES([-I\"$(${CYGPATH} ${srcdir}/win)\"])
+
+    CLEANFILES="$CLEANFILES *.lib *.dll *.exp *.ilk *.pdb vc*.pch"
+
 
     vars="ws2_32.lib"
     for i in $vars; do
@@ -5104,10 +5106,11 @@ if test "${TEA_PLATFORM}" = "windows" ; then
 
 
 else
-    CLEANFILES=""
-    #TEA_ADD_SOURCES([unix/unixFile.c])
-    #TEA_ADD_LIBS([-lsuperfly])
+
+    CLEANFILES="$CLEANFILES *.so"
+
 fi
+
 
 #--------------------------------------------------------------------
 # Choose which headers you need.  Extension authors should try very
@@ -8066,6 +8069,17 @@ $as_echo "enabled $tcl_ok debugging" >&6; }
 
 
 #--------------------------------------------------------------------
+# Everyone should be linking against the Tcl stub library.  If you
+# can't for some reason, remove this definition.  If you aren't using
+# stubs, you also need to modify the SHLIB_LD_LIBS setting below to
+# link against the non-stubbed Tcl library.  Add Tk too if necessary.
+#--------------------------------------------------------------------
+
+$as_echo "#define USE_TCL_STUBS 1" >>confdefs.h
+
+#AC_DEFINE(USE_TK_STUBS)
+
+#--------------------------------------------------------------------
 # This macro generates a line to use when building a library.  It
 # depends on values set by the TEA_ENABLE_SHARED, TEA_ENABLE_SYMBOLS,
 # and TEA_LOAD_TCLCONFIG macros above.
@@ -8256,7 +8270,7 @@ $as_echo "${TCLSH_PROG}" >&6; }
 # Setup a *Config.sh.in configuration file.
 #--------------------------------------------------------------------
 
-#TEA_EXPORT_CONFIG([sample])
+#TEA_EXPORT_CONFIG([udp])
 #AC_SUBST(SAMPLE_VAR)
 
 #--------------------------------------------------------------------
@@ -8279,7 +8293,7 @@ done
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for usable FD_CLOEXEC flag" >&5
 $as_echo_n "checking for usable FD_CLOEXEC flag... " >&6; }
-if ${tcludp_cloexec+:} false; then :
+if ${tcludp_cv_cloexec+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -8301,15 +8315,15 @@ fcntl(1, F_SETFD, FD_CLOEXEC);
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  tcludp_cloexec=yes
+  tcludp_cv_cloexec=yes
 else
-  tcludp_cloexec=no
+  tcludp_cv_cloexec=no
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcludp_cloexec" >&5
-$as_echo "$tcludp_cloexec" >&6; }
-    if test "$tcludp_cloexec" = "yes" ; then
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $tcludp_cv_cloexec" >&5
+$as_echo "$tcludp_cv_cloexec" >&6; }
+    if test "$tcludp_cv_cloexec" = "yes" ; then
 
 $as_echo "#define HAVE_FLAG_FD_CLOEXEC 1" >>confdefs.h
 
@@ -8478,9 +8492,9 @@ fi
 # substituting the AC variables in. Include these here.
 #--------------------------------------------------------------------
 
-ac_config_files="$ac_config_files Makefile pkgIndex.tcl"
+ac_config_files="$ac_config_files pkgIndex.tcl"
 
-#AC_CONFIG_FILES([sampleConfig.sh])
+#AC_CONFIG_FILES([udpConfig.sh])
 
 #--------------------------------------------------------------------
 # Finally, substitute all of the various values into the files
@@ -9193,7 +9207,6 @@ cat >>$CONFIG_STATUS <<\_ACEOF || ac_write_fail=1
 for ac_config_target in $ac_config_targets
 do
   case $ac_config_target in
-    "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "pkgIndex.tcl") CONFIG_FILES="$CONFIG_FILES pkgIndex.tcl" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
