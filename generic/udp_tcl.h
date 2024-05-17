@@ -1,50 +1,56 @@
 /*
  *----------------------------------------------------------------------
- * UDP Extension for Tcl 8.4
+ * udp_tcl.h --
+ *
+ *	Macro and structure definitions
  *
  * Copyright (c) 1999-2003 by Columbia University; all rights reserved
  * Copyright (c) 2003-2005 Pat Thoyts <patthoyts@users.sourceforge.net>
  *
  * Written by Xiaotao Wu
- * 
- * $Id: udp_tcl.h,v 1.13 2014/05/02 14:41:24 huubeikens Exp $
  *----------------------------------------------------------------------
  */
 
 #ifndef UDP_TCL_H
 #define UDP_TCL_H
 
-#ifdef HAVE_CONFIG_H
-#  include "../config.h"
-#endif
-
+/* Platform unique definitions */
 #ifdef _WIN32
-#  if !defined( _WIN32_WINNT ) || ( _WIN32_WINNT < 0x0501 )
-#    undef  _WIN32_WINNT
-#    define _WIN32_WINNT 0x0501
-#  endif
-#  if !defined( WINVER ) || ( WINVER < 0x0501 )
-#    undef  WINVER
-#    define WINVER 0x0501
-#  endif
-#  include <winsock2.h>
-#  include <ws2tcpip.h>
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #else
-#  if HAVE_UNISTD_H
-#    include <unistd.h>
-#  endif
-#  if HAVE_SYS_TIME_H
-#    include <sys/time.h>
-#  endif
-#  if HAVE_STDINT_H
-#    include <stdint.h>
-#  endif
-#  include <sys/socket.h>
-#  include <netinet/in.h>
-#  include <arpa/inet.h>
-#  include <netdb.h>
-#  include <net/if.h>
+#if HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+#if HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+#if HAVE_STDINT_H
+#include <stdint.h>
+#endif
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <net/if.h>
 #endif /* _WIN32 */
+
+/* Windows needs to know which symbols to export. */
+#ifdef BUILD_udp
+#undef TCL_STORAGE_CLASS
+#define TCL_STORAGE_CLASS DLLEXPORT
+#endif /* BUILD_udp */
+
+/* Handle TCL 8.6 CONST changes */
+#ifndef CONST86
+#   if TCL_MAJOR_VERSION > 8
+#	define CONST86 const
+#   else
+#	define CONST86
+#   endif
+#endif
 
 /*
  * Backwards compatibility for size type change
@@ -62,11 +68,6 @@
     #define Tcl_NewSizeIntObj     Tcl_NewIntObj
     #define Tcl_NewSizeIntFromObj Tcl_NewWideIntObj
 #endif
-
-#ifdef BUILD_udp
-#undef TCL_STORAGE_CLASS
-#define TCL_STORAGE_CLASS DLLEXPORT
-#endif /* BUILD_udp */
 
 #ifdef _WIN32
 
@@ -124,4 +125,4 @@ typedef struct UdpState {
 EXTERN int Udp_Init(Tcl_Interp *interp);
 EXTERN int Udp_SafeInit(Tcl_Interp *interp);
 
-#endif
+#endif /* _UDP_TCL_H */

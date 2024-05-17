@@ -72,16 +72,16 @@ AC_DEFUN(TEA_PROG_DTPLITE, [
 
 AC_DEFUN(TCLUDP_CHECK_CLOEXEC, [
     AC_CHECK_HEADERS(fcntl.h)
-    AC_CACHE_CHECK([for usable FD_CLOEXEC flag],tcludp_cloexec,
-      AC_TRY_COMPILE([
+    AC_CACHE_CHECK([for usable FD_CLOEXEC flag],tcludp_cv_cloexec,
+      AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 #if HAVE_UNISTD_H
 #include <unistd.h>
 #endif
 #if HAVE_FCNTL_H
 #include <fcntl.h>
 #endif
-],[fcntl(1, F_SETFD, FD_CLOEXEC);],tcludp_cloexec=yes,tcludp_cloexec=no))
-    if test "$tcludp_cloexec" = "yes" ; then
+]],[[fcntl(1, F_SETFD, FD_CLOEXEC);]])],tcludp_cv_cloexec=yes,tcludp_cv_cloexec=no))
+    if test "$tcludp_cv_cloexec" = "yes" ; then
         AC_DEFINE(HAVE_FLAG_FD_CLOEXEC, 1, [Can we use FD_CLOEXEC with fcntl?])
     fi
 ])

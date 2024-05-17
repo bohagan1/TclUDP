@@ -199,7 +199,7 @@ TEA_PROG_DTPLITE
 # substituting the AC variables in. Include these here.
 #--------------------------------------------------------------------
 
-AC_CONFIG_FILES([Makefile pkgIndex.tcl])
+AC_CONFIG_FILES([pkgIndex.tcl])
 #AC_CONFIG_FILES([udpConfig.sh])
 
 #--------------------------------------------------------------------
