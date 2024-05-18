@@ -4,8 +4,8 @@ dnl	generate the file "configure", which is run during Tcl installation
 dnl	to configure the system for the local environment.
 
 #-----------------------------------------------------------------------
-# Sample configure.ac for Tcl Extensions.  The only places you should
-# need to modify this file are marked by the string __CHANGE__
+# This is the configure.ac file for the Tcl UDP extension.  The only places
+# you should need to modify this file are marked by the string __CHANGE__.
 #-----------------------------------------------------------------------
 
 #-----------------------------------------------------------------------
@@ -24,7 +24,7 @@ AC_INIT([udp],[1.0.12])
 # as well as PKG_LIB_FILE and PKG_STUB_LIB_FILE.
 #--------------------------------------------------------------------
 
-TEA_INIT()
+TEA_INIT
 
 AC_CONFIG_AUX_DIR(tclconfig)
 
@@ -80,7 +80,7 @@ TEA_ADD_INCLUDES([])
 TEA_ADD_LIBS([])
 TEA_ADD_CFLAGS([])
 TEA_ADD_STUB_SOURCES([])
-TEA_ADD_TCL_SOURCES([license.terms])
+TEA_ADD_TCL_SOURCES([license.terms README.txt])
 
 #--------------------------------------------------------------------
 # You can add more files to clean if your extension creates any extra
@@ -92,7 +92,7 @@ TEA_ADD_TCL_SOURCES([license.terms])
 # TEA_ADD_* any platform specific compiler/build info here.
 #--------------------------------------------------------------------
 
-TEA_ADD_CLEANFILES([pkgIndex.tcl Makefile])
+TEA_ADD_CLEANFILES([pkgIndex.tcl udpUuid.h])
 
 if test "${TEA_PLATFORM}" = "windows" ; then
     AC_DEFINE(BUILD_udp)
@@ -199,7 +199,7 @@ TEA_PROG_DTPLITE
 # substituting the AC variables in. Include these here.
 #--------------------------------------------------------------------
 
-AC_CONFIG_FILES([pkgIndex.tcl])
+AC_CONFIG_FILES([Makefile pkgIndex.tcl])
 #AC_CONFIG_FILES([udpConfig.sh])
 
 #--------------------------------------------------------------------

@@ -5063,7 +5063,7 @@ $as_echo "O_NONBLOCK" >&6; }
 
 
 
-    vars="license.terms"
+    vars="license.terms README.txt"
     for i in $vars; do
 	# check for existence, be strict because it is installed
 	if test ! -f "${srcdir}/$i" ; then
@@ -5085,7 +5085,7 @@ $as_echo "O_NONBLOCK" >&6; }
 #--------------------------------------------------------------------
 
 
-    CLEANFILES="$CLEANFILES pkgIndex.tcl Makefile"
+    CLEANFILES="$CLEANFILES pkgIndex.tcl udpUuid.h"
 
 
 if test "${TEA_PLATFORM}" = "windows" ; then
@@ -8492,7 +8492,7 @@ fi
 # substituting the AC variables in. Include these here.
 #--------------------------------------------------------------------
 
-ac_config_files="$ac_config_files pkgIndex.tcl"
+ac_config_files="$ac_config_files Makefile pkgIndex.tcl"
 
 #AC_CONFIG_FILES([udpConfig.sh])
 
@@ -9207,6 +9207,7 @@ cat >>$CONFIG_STATUS <<\_ACEOF || ac_write_fail=1
 for ac_config_target in $ac_config_targets
 do
   case $ac_config_target in
+    "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "pkgIndex.tcl") CONFIG_FILES="$CONFIG_FILES pkgIndex.tcl" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
