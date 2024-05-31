@@ -101,8 +101,6 @@ FILE *dbg;
 
 #define MAXBUFFERSIZE 65535
 
-static char errBuf[256];
-
 /*
  * internal functions
  */
@@ -426,11 +424,11 @@ void UDP_CheckProc(ClientData data, int flags) {
 		    * Search backwards for the last ':'
 		    */
 		    portaddr = strrchr(remoteaddr,':') + 1;
-		    strncpy(hostaddr,remoteaddr,strlen(remoteaddr)-strlen(portaddr)-1);
+		    strncpy(hostaddr, remoteaddr, strlen(remoteaddr)-strlen(portaddr)-1);
 		    statePtr->peerport = atoi(portaddr);
 		    p->r_port = statePtr->peerport;
 		    strcpy(statePtr->peerhost,hostaddr);
-		    strcpy(p->r_host,hostaddr);
+		    strcpy(p->r_host, hostaddr);
 		}
 #else
 		if (statePtr->ss_family == AF_INET ) {
@@ -700,10 +698,12 @@ static int udpClose(ClientData instanceData, Tcl_Interp *interp) {
     }
     ckfree((char *) statePtr);
     if (errorCode != 0) {
+	static char errBuf[256];
+
 #ifndef _WIN32
-	sprintf(errBuf, "udp_close: %d, error: %d\n", sock, errorCode);
+	snprintf(errBuf, 255, "udp_close: %d, error: %d\n", sock, errorCode);
 #else
-	sprintf(errBuf, "udp_close: " SOCKET_PRINTF_FMT ", error: %d\n", sock, WSAGetLastError());
+	snprintf(errBuf, 255, "udp_close: " SOCKET_PRINTF_FMT ", error: %d\n", sock, WSAGetLastError());
 #endif
 	UDPTRACE("UDP error - close %d", sock);
     } else {
@@ -906,13 +906,18 @@ static int udpInput(ClientData instanceData, char *buf, int bufSize, int *errorC
 	*errorCode = EAGAIN;
 	return -1;
     }
+
+    if (packets->actual_size > bufSize) {
+        packets->actual_size = bufSize;
+    }
     memcpy(buf, packets->message, packets->actual_size);
     /* VERY TRICKY: add null-terminating byte, we reserved MAXBUFFERSIZE+1 */ 
     if (packets->actual_size <= bufSize) {
 	buf[packets->actual_size] = '\0';
     }
     ckfree((char *) packets->message);
-    UDPTRACE("udp_recv message\n%s\n", buf);
+    UDPTRACE("udp_recv message with %d bytes", packets->actual_size);
+
     bufSize = packets->actual_size;
     strcpy(statePtr->peerhost, packets->r_host);
     statePtr->peerport = packets->r_port;
@@ -923,6 +928,9 @@ static int udpInput(ClientData instanceData, char *buf, int bufSize, int *errorC
     socksize = sizeof(recvaddr);
     memset(&recvaddr, 0, socksize);
 
+    if (buffer_size > bufSize) {
+        buffer_size = bufSize;
+    }
     bytesRead = recvfrom(sock, buf, buffer_size, 0, (struct sockaddr *)&recvaddr, &socksize);
     if (bytesRead < 0) {
 	UDPTRACE("UDP error - recvfrom %d\n", sock);
@@ -955,6 +963,7 @@ static int udpInput(ClientData instanceData, char *buf, int bufSize, int *errorC
 	*errorCode = EAGAIN;
 	return -1;
     }
+
 #ifdef _WIN32
     if (bytesRead > -1) {
 	return bytesRead;
@@ -1001,7 +1010,6 @@ static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp,
     int r;
     Tcl_Obj *tcllist , *multicastgrp , *nw_interface;
     Tcl_Size len;
-    int result;
     int nwinterface_index =-1;
 #ifndef _WIN32
     struct ifreq ifreq;
@@ -1013,13 +1021,14 @@ static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp,
      *  Not Windows: <multicast group> or {<multicast group> <network interface name>}
      */
     tcllist = Tcl_NewStringObj(grp, -1);
-    result = Tcl_ListObjLength(interp, tcllist, &len);
-    if (result == TCL_OK) {
+    Tcl_IncrRefCount(tcllist);
+    if (Tcl_ListObjLength(interp, tcllist, &len) == TCL_OK) {
 	if (len==2) {
 	    Tcl_ListObjIndex(interp, tcllist, 0, &multicastgrp);
 	    Tcl_ListObjIndex(interp, tcllist, 1, &nw_interface);
 #ifdef _WIN32
-	    if ( Tcl_GetIntFromObj(interp,nw_interface,&nwinterface_index) == TCL_ERROR && nwinterface_index < 1) {
+	    if ( Tcl_GetIntFromObj(interp,nw_interface,&nwinterface_index) == TCL_ERROR ||
+		    nwinterface_index < 1) {
 		Tcl_SetResult(interp, "not a valid network interface index; should start with 1", TCL_STATIC);
 		Tcl_DecrRefCount(tcllist);
 		return TCL_ERROR;
@@ -1099,7 +1108,7 @@ static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp,
     } else {
 	struct ipv6_mreq mreq6;
 	struct addrinfo hints;
-	struct addrinfo *result = NULL;
+	struct addrinfo *gai_ret = NULL;
 
 	memset(&hints, 0, sizeof(hints));
 
@@ -1107,15 +1116,16 @@ static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp,
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_protocol = IPPROTO_UDP;
 
-	r = getaddrinfo(Tcl_GetString(multicastgrp), NULL, &hints, &result);
+	r = getaddrinfo(Tcl_GetString(multicastgrp), NULL, &hints, &gai_ret);
 
 	if (r != 0 ) {
 	    Tcl_SetResult(interp, "invalid group name", TCL_STATIC);
+	    freeaddrinfo(gai_ret);
 	    Tcl_DecrRefCount(tcllist);
 	    return TCL_ERROR;
 	} else {
-	    memcpy(&mreq6.ipv6mr_multiaddr, &((struct sockaddr_in6*)(result->ai_addr))->sin6_addr,sizeof(mreq6.ipv6mr_multiaddr));
-	    freeaddrinfo(result);
+	    memcpy(&mreq6.ipv6mr_multiaddr, &((struct sockaddr_in6*)(gai_ret->ai_addr))->sin6_addr,sizeof(mreq6.ipv6mr_multiaddr));
+	    freeaddrinfo(gai_ret);
 	}
 
 	if (nwinterface_index == -1) {
@@ -1259,7 +1269,7 @@ static int udpSetTtlOption(UdpState *statePtr, Tcl_Interp *interp, const char *n
  *
  * ----------------------------------------------------------------------
  */
-static int udpGetMcastloopOption(UdpState *statePtr, Tcl_Interp *interp, unsigned char *value) {
+static int udpGetMcastloopOption(UdpState *statePtr, Tcl_Interp *interp, unsigned char * value) {
     int result = TCL_ERROR;
     socklen_t optlen=sizeof(int);
     if (statePtr->ss_family == AF_INET) {
@@ -1374,6 +1384,7 @@ static int udpSetRemoteOption(UdpState *statePtr, Tcl_Interp *interp, const char
     Tcl_Size len;
 
     valPtr = Tcl_NewStringObj(newValue, -1);
+    Tcl_IncrRefCount(valPtr);
     result = Tcl_ListObjLength(interp, valPtr, &len);
     if (result == TCL_OK) {
 	if (len < 1 || len > 2) {
@@ -1383,7 +1394,8 @@ static int udpSetRemoteOption(UdpState *statePtr, Tcl_Interp *interp, const char
 	    Tcl_Obj *hostPtr, *portPtr;
 
 	    Tcl_ListObjIndex(interp, valPtr, 0, &hostPtr);
-	    strcpy(statePtr->remotehost, Tcl_GetString(hostPtr));
+	    strncpy(statePtr->remotehost, Tcl_GetString(hostPtr), sizeof(statePtr->remotehost));
+	    statePtr->remotehost[sizeof(statePtr->remotehost)-1] = '\0';
 
 	    if (len == 2) {
 		Tcl_ListObjIndex(interp, valPtr, 1, &portPtr);
@@ -1395,7 +1407,7 @@ static int udpSetRemoteOption(UdpState *statePtr, Tcl_Interp *interp, const char
     if (result==TCL_ERROR) {
 	Tcl_SetObjResult(interp, Tcl_NewStringObj("error setting -remote",-1));
     } else {
-	Tcl_SetObjResult(interp, Tcl_NewStringObj(newValue,-1));
+	Tcl_SetObjResult(interp, valPtr);
     }
     Tcl_DecrRefCount(valPtr);
     return result;
@@ -1503,9 +1515,15 @@ static Tcl_Obj * ErrorToObj(const char * prefix) {
     Tcl_AppendToObj(errObj, ": ", -1);
     Tcl_AppendUnicodeToObj(errObj, (LPWSTR)sMsg, (Tcl_Size) (len - 1));
     LocalFree(sMsg);
-#else
+#elif defined(HAVE_STRERROR)
     errObj = Tcl_NewStringObj(prefix, -1);
     Tcl_AppendStringsToObj(errObj, ": ", strerror(errno), (char *) NULL);
+#else
+    char buffer[256];
+
+    errObj = Tcl_NewStringObj(prefix, -1);
+    sprintf(buffer, "system error number %d", errno);
+    Tcl_AppendStringsToObj(errObj, ": ", buffer, NULL);
 #endif
     return errObj;
 }
@@ -1580,7 +1598,7 @@ static int udpGetOption(ClientData instanceData, Tcl_Interp *interp,
 
 	} else if (!strcmp("-mcastloop", optionName)) {
 	    unsigned char tmp = 0;
-	    r = udpGetMcastloopOption(statePtr, interp, &tmp);
+	    r = udpGetMcastloopOption(statePtr, interp,&tmp);
 	    if (r==TCL_OK) {
 		Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
 		sprintf(Tcl_DStringValue(&ds), "%d", (int)tmp);
@@ -1629,10 +1647,10 @@ static int udpSetOption(ClientData instanceData, Tcl_Interp *interp,
     int r = TCL_OK;
 
     if (!strcmp("-remote", optionName)) {
-	r = udpSetRemoteOption(statePtr,interp,(const char *)newValue);
+	r = udpSetRemoteOption(statePtr, interp,(const char *)newValue);
 #ifndef _WIN32
     } else if (!strcmp("-mcastif", optionName)) {
-	r = udpSetMulticastIFOption(statePtr,interp,(const char *)newValue);
+	r = udpSetMulticastIFOption(statePtr, interp,(const char *)newValue);
 #endif
     } else if (!strcmp("-mcastadd", optionName)) {
 	r = udpSetMulticastAddOption(statePtr, interp, (const char *)newValue);
@@ -1805,7 +1823,6 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
     Tcl_Size opt;
     address addr,sockaddr;
     socklen_t addr_len;
-    unsigned long status = 1;
     socklen_t len;
     short ss_family = AF_INET; /* Default ipv4 */
 
@@ -1838,10 +1855,7 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 
     sock = socket(ss_family, SOCK_DGRAM, 0);
     if (sock < 0) {
-	snprintf(errBuf, 255, "failed to create socket");
-	errBuf[255] = 0;
-	UDPTRACE("%s\n", errBuf);
-	Tcl_AppendResult(interp, errBuf, (char *) NULL);
+	Tcl_AppendResult(interp, "failed to create socket", (char *) NULL);
 	return TCL_ERROR;
     }
 
@@ -1858,10 +1872,6 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 	Tcl_AppendResult(interp, "failed to set close-on-exec bit", (char *) NULL);
         closesocket(sock);
 	return TCL_ERROR;
-    } else {
-        int one = 1;
-
-        ioctlsocket(sock, FIONBIO, &one);
     }
 #endif /* _WIN32 */
 
@@ -1894,8 +1904,6 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 	closesocket(sock);
 	return TCL_ERROR;
     }
-
-    ioctlsocket(sock, FIONBIO, &status);
 
     if (localport == 0) {
 	len = sizeof(sockaddr);
