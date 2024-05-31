@@ -94,6 +94,7 @@ typedef struct UdpState {
     SOCKET            sock;
 #else
     int               sock;
+    int               mask;
 #endif
     char              remotehost[256];	/* send packets to */
     uint16_t          remoteport;
@@ -120,7 +121,6 @@ typedef struct UdpState {
 #else
 # define SOCKET_PRINTF_FMT "%d"
 #endif
-
 
 EXTERN int Udp_Init(Tcl_Interp *interp);
 EXTERN int Udp_SafeInit(Tcl_Interp *interp);
