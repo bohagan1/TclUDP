@@ -67,6 +67,18 @@ struct ipv6_mreq {
 
 #endif /* _XOPEN_SOURCE_EXTENDED */
 
+/*
+ * This is needed to comply with the strict aliasing rules of GCC, but it also
+ * simplifies casting between the different sockaddr types.
+ */
+
+typedef union {
+    struct sockaddr sa;
+    struct sockaddr_in sa4;
+    struct sockaddr_in6 sa6;
+    struct sockaddr_storage sas;
+} address;
+
 /* define some Win32isms for Unix */
 #ifndef _WIN32
 #define SOCKET int
@@ -229,7 +241,7 @@ int udpPeek(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
     int actual_size;
     socklen_t socksize;
     char message[17];
-    struct sockaddr_storage recvaddr;
+    address recvaddr;
     Tcl_Channel chan;
     UdpState *statePtr;
 
@@ -270,13 +282,11 @@ int udpPeek(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
     }
 
     if (statePtr->ss_family == AF_INET6) {
-	inet_ntop(AF_INET6, &((struct sockaddr_in6*)&recvaddr)->sin6_addr, statePtr->peerhost,
-	    sizeof(statePtr->peerhost));
-	statePtr->peerport = ntohs(((struct sockaddr_in6*)&recvaddr)->sin6_port);
+	inet_ntop(AF_INET6, &recvaddr.sa6.sin6_addr, statePtr->peerhost, sizeof(statePtr->peerhost));
+	statePtr->peerport = ntohs(recvaddr.sa6.sin6_port);
     } else {
-	inet_ntop(AF_INET, &((struct sockaddr_in*)&recvaddr)->sin_addr, statePtr->peerhost,
-	    sizeof(statePtr->peerhost));
-	statePtr->peerport = ntohs(((struct sockaddr_in*)&recvaddr)->sin_port);
+	inet_ntop(AF_INET, &recvaddr.sa4.sin_addr, statePtr->peerhost, sizeof(statePtr->peerhost));
+	statePtr->peerport = ntohs(recvaddr.sa4.sin_port);
     }
 
     Tcl_AppendResult(interp, message, (char *) NULL);
@@ -361,7 +371,7 @@ void UDP_CheckProc(ClientData data, int flags) {
     socklen_t socksize;
     int buffer_size = MAXBUFFERSIZE;
     char *message;
-    struct sockaddr_storage recvaddr;
+    address recvaddr;
     PacketList *p;
 #ifdef _WIN32
     char hostaddr[256];
@@ -424,15 +434,15 @@ void UDP_CheckProc(ClientData data, int flags) {
 		}
 #else
 		if (statePtr->ss_family == AF_INET ) {
-		    inet_ntop(AF_INET, ((struct sockaddr_in*)&recvaddr)->sin_addr, statePtr->peerhost, sizeof(statePtr->peerhost) );
-		    inet_ntop(AF_INET, ((struct sockaddr_in*)&recvaddr)->sin_addr, p->r_host, sizeof(p->r_host) );
-		    p->r_port = ntohs(((struct sockaddr_in*)&recvaddr)->sin_port);
-		    statePtr->peerport = ntohs(((struct sockaddr_in*)&recvaddr)->sin_port);
+		    inet_ntop(AF_INET, &recvaddr.sa4.sin_addr, statePtr->peerhost, sizeof(statePtr->peerhost) );
+		    inet_ntop(AF_INET, &recvaddr.sa4.sin_addr, p->r_host, sizeof(p->r_host) );
+		    p->r_port = ntohs(recvaddr.sa4.sin_port);
+		    statePtr->peerport = ntohs(recvaddr.sa4.sin_port);
 		} else {
-		    inet_ntop(AF_INET6, ((struct sockaddr_in6*)&recvaddr)->sin6_addr, statePtr->peerhost, sizeof(statePtr->peerhost) );
-		    inet_ntop(AF_INET6, ((struct sockaddr_in6*)&recvaddr)->sin6_addr, p->r_host, sizeof(p->r_host) );
-		    p->r_port = ntohs(((struct sockaddr_in6*)&recvaddr)->sin6_port);
-		    statePtr->peerport = ntohs(((struct sockaddr_in6*)&recvaddr)->sin6_port);
+		    inet_ntop(AF_INET6, &recvaddr.sa6.sin6_addr, statePtr->peerhost, sizeof(statePtr->peerhost) );
+		    inet_ntop(AF_INET6, &recvaddr.sa6.sin6_addr, p->r_host, sizeof(p->r_host) );
+		    p->r_port = ntohs(recvaddr.sa6.sin6_port);
+		    statePtr->peerport = ntohs(recvaddr.sa6.sin6_port);
 		}
 #endif /*  _WIN32 */
 
@@ -555,6 +565,7 @@ static DWORD WINAPI SocketThread(LPVOID arg) {
 	    UDPTRACE("Sock read finished\n");
 	}
     }
+    return 0;
 }
 
 /*
@@ -762,8 +773,7 @@ static int udpGetHandle(ClientData instanceData, int direction, ClientData *hand
  */
 static int udpOutput(ClientData instanceData, const char *buf, int toWrite, int *errorCode) {
     UdpState *statePtr = (UdpState *) instanceData;
-    int written;
-    int socksize;
+    int written, socksize;
     struct hostent *name;
     struct sockaddr_in sendaddrv4;
     struct sockaddr_in6 sendaddrv6;
@@ -859,7 +869,7 @@ static int udpInput(ClientData instanceData, char *buf, int bufSize, int *errorC
     socklen_t socksize;
     int buffer_size = MAXBUFFERSIZE;
     int sock = statePtr->sock;
-    struct sockaddr_storage recvaddr;
+    address recvaddr;
 #endif /* ! _WIN32 */
 
     UDPTRACE("In udpInput\n");
@@ -921,11 +931,11 @@ static int udpInput(ClientData instanceData, char *buf, int bufSize, int *errorC
     }
 
     if (statePtr->ss_family == AF_INET6) {
-	inet_ntop(AF_INET6, &((struct sockaddr_in6*)&recvaddr)->sin6_addr, statePtr->peerhost, sizeof(statePtr->peerhost));
-	statePtr->peerport = ntohs(((struct sockaddr_in6*)&recvaddr)->sin6_port);
+	inet_ntop(AF_INET6, &recvaddr.sa6.sin6_addr, statePtr->peerhost, sizeof(statePtr->peerhost));
+	statePtr->peerport = ntohs(recvaddr.sa6.sin6_port);
     } else {
-	inet_ntop(AF_INET, &((struct sockaddr_in*)&recvaddr)->sin_addr, statePtr->peerhost, sizeof(statePtr->peerhost));
-	statePtr->peerport = ntohs(((struct sockaddr_in*)&recvaddr)->sin_port);
+	inet_ntop(AF_INET, &recvaddr.sa4.sin_addr, statePtr->peerhost, sizeof(statePtr->peerhost));
+	statePtr->peerport = ntohs(recvaddr.sa4.sin_port);
     }
 
     UDPTRACE("remotehost: %s:%d\n", statePtr->peerhost, statePtr->peerport);
@@ -933,7 +943,9 @@ static int udpInput(ClientData instanceData, char *buf, int bufSize, int *errorC
 
     /* we don't want to return anything next time */
     if (bytesRead > 0) {
-	buf[bytesRead] = '\0';
+        if (bytesRead < bufSize) {
+	    buf[bytesRead] = '\0';
+	}
 	statePtr->doread = 0;
     }
 
@@ -943,16 +955,16 @@ static int udpInput(ClientData instanceData, char *buf, int bufSize, int *errorC
 	*errorCode = EAGAIN;
 	return -1;
     }
-    if (bytesRead == 0) {
-	*errorCode = EAGAIN;
-	return -1;
-    }
+#ifdef _WIN32
     if (bytesRead > -1) {
 	return bytesRead;
     }
 
     *errorCode = errno;
     return -1;
+#else
+    return bytesRead;
+#endif
 }
 
 
@@ -1156,8 +1168,9 @@ static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp,
 	    }
 	}
     }
-    if (interp != NULL)
+    if (interp != NULL) {
 	Tcl_SetObjResult(interp, statePtr->groupsObj);
+    }
     return TCL_OK;
 }
 
@@ -1246,7 +1259,7 @@ static int udpSetTtlOption(UdpState *statePtr, Tcl_Interp *interp, const char *n
  *
  * ----------------------------------------------------------------------
  */
-static int udpGetMcastloopOption(UdpState *statePtr, Tcl_Interp *interp, unsigned char * value) {
+static int udpGetMcastloopOption(UdpState *statePtr, Tcl_Interp *interp, unsigned char *value) {
     int result = TCL_ERROR;
     socklen_t optlen=sizeof(int);
     if (statePtr->ss_family == AF_INET) {
@@ -1567,7 +1580,7 @@ static int udpGetOption(ClientData instanceData, Tcl_Interp *interp,
 
 	} else if (!strcmp("-mcastloop", optionName)) {
 	    unsigned char tmp = 0;
-	    r = udpGetMcastloopOption(statePtr, interp,&tmp);
+	    r = udpGetMcastloopOption(statePtr, interp, &tmp);
 	    if (r==TCL_OK) {
 		Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
 		sprintf(Tcl_DStringValue(&ds), "%d", (int)tmp);
@@ -1790,7 +1803,7 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
     uint16_t localport = 0;
     int reuse = 0;
     Tcl_Size opt;
-    struct sockaddr_storage addr,sockaddr;
+    address addr,sockaddr;
     socklen_t addr_len;
     unsigned long status = 1;
     socklen_t len;
@@ -1835,17 +1848,22 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
     /*
      * bug #1477669: avoid socket inheritance after exec
      */
+#ifndef _WIN32
 #if HAVE_FLAG_FD_CLOEXEC
     fcntl(sock, F_SETFD, FD_CLOEXEC);
+#endif
+    fcntl(sock, F_SETFL, O_NONBLOCK);
 #else
-#ifdef _WIN32
     if (SetHandleInformation((HANDLE)sock, HANDLE_FLAG_INHERIT, 0) == 0) {
 	Tcl_AppendResult(interp, "failed to set close-on-exec bit", (char *) NULL);
         closesocket(sock);
 	return TCL_ERROR;
+    } else {
+        int one = 1;
+
+        ioctlsocket(sock, FIONBIO, &one);
     }
 #endif /* _WIN32 */
-#endif /* HAVE_FLAG_FD_CLOEXEC */
 
     if (reuse) {
 	int one = 1;
@@ -1863,12 +1881,12 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 
     memset(&addr, 0, sizeof(addr));
     if (ss_family == AF_INET6) {
-	((struct sockaddr_in6 *) &addr)->sin6_family = AF_INET6;
-	((struct sockaddr_in6 *) &addr)->sin6_port = localport;
+	addr.sa6.sin6_family = AF_INET6;
+	addr.sa6.sin6_port = localport;
 	addr_len = sizeof(struct sockaddr_in6);
     } else {
-	((struct sockaddr_in *) &addr)->sin_family = AF_INET;
-	((struct sockaddr_in *) &addr)->sin_port = localport;
+	addr.sa4.sin_family = AF_INET;
+	addr.sa4.sin_port = localport;
 	addr_len = sizeof(struct sockaddr_in);
     }
     if ( bind(sock,(struct sockaddr *)&addr, addr_len) < 0) {
@@ -1883,9 +1901,9 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 	len = sizeof(sockaddr);
 	getsockname(sock, (struct sockaddr *)&sockaddr, &len);
 	if (ss_family == AF_INET6) {
-	    localport = ((struct sockaddr_in6 *) &sockaddr)->sin6_port;
+	    localport = sockaddr.sa6.sin6_port;
 	} else {
-	    localport = ((struct sockaddr_in *) &sockaddr)->sin_port;
+	    localport = sockaddr.sa4.sin_port;
 	}
     }
 
