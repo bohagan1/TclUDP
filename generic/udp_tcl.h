@@ -73,48 +73,48 @@
 
 typedef u_short uint16_t;
 
-typedef struct {
-    Tcl_Event         header;     /* Information that is standard for */
-    Tcl_Channel       chan;       /* Socket descriptor that is ready  */
-} UdpEvent;
-
 typedef struct PacketList {
-    char              *message;
-    int               actual_size;
-    char              r_host[256];
-    int               r_port;
+    char *message;
+    int actual_size;
+    char r_host[256];
+    int r_port;
     struct PacketList *next;
 } PacketList;
 
 #endif /* _WIN32 */
 
 typedef struct UdpState {
-    Tcl_Channel       channel;
+    Tcl_Channel channel;
 #ifdef _WIN32
-    SOCKET            sock;
+    SOCKET sock;
 #else
-    int               sock;
+    int sock;
     int               mask;
 #endif
-    char              remotehost[256];	/* send packets to */
-    uint16_t          remoteport;
-    char              peerhost[256];	/* receive packets from */
-    uint16_t          peerport;
-    uint16_t          localport;
-    int               doread;
+    char remotehost[256]; /* send packets to */
+    uint16_t remoteport;
+    char peerhost[256]; /* receive packets from */
+    uint16_t peerport;
+    uint16_t localport;
+    int doread;
 #ifdef _WIN32
-    HWND              hwnd;
-    PacketList        *packets;
-    PacketList        *packetsTail;
-    int               packetNum;
-    struct UdpState   *next;
-    Tcl_ThreadId      threadId;		/* for Tcl_ThreadAlert */
+    HWND hwnd;
+    PacketList *packets;
+    PacketList *packetsTail;
+    int packetNum;
+    struct UdpState *next;
+    Tcl_ThreadId threadId; /* for Tcl_ThreadAlert */
 #endif
-    short	      ss_family;	/* indicator set for ipv4 or ipv6 usage */
-    int               multicast;	/* indicator set for multicast add */
-    Tcl_Obj          *groupsObj;	/* list of the mcast groups */
+    short ss_family; /* indicator set for ipv4 or ipv6 usage */
+    int multicast; /* indicator set for multicast add */
+    Tcl_Obj *groupsObj; /* list of the mcast groups */
 } UdpState;
 
+typedef struct {
+    Tcl_Event header; /* Information that is standard for */
+    Tcl_Channel chan; /* Socket descriptor that is ready  */
+    UdpState *state; /* State pointer for socket */
+} UdpEvent;
 
 #if defined(_WIN32) && defined(_M_AMD64)
 # define SOCKET_PRINTF_FMT "%I64u"

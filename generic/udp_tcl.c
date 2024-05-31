@@ -116,7 +116,6 @@ static Tcl_Obj *ErrorToObj(const char * prefix);
 
 /* FIX ME - these should be part of a thread/package specific structure */
 static HANDLE waitForSock;
-static HANDLE waitSockRead;
 static HANDLE sockListLock;
 static UdpState *sockList;
 
@@ -212,7 +211,7 @@ int udpConf(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 	case _opt_mcastloop:
 	case _opt_remote:
 	case _opt_ttl:
-    	    if (idx+1 == objc) {
+	    if (idx+1 == objc) {
 		Tcl_AppendResult(interp, "No value for option \"", cfg_opts[opt], "\"", (char *) NULL);
 		return TCL_ERROR;
 	    }
@@ -313,11 +312,15 @@ int udpPeek(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
  */
 int UdpEventProc(Tcl_Event *evPtr, int flags) {
     UdpEvent *eventPtr = (UdpEvent *) evPtr;
-    int mask = 0;
+    UdpState *statePtr;
 
-    mask |= TCL_READABLE;
-    UDPTRACE("UdpEventProc\n");
-    Tcl_NotifyChannel(eventPtr->chan, mask);
+    if (!(flags & TCL_FILE_EVENTS)) {
+	return 0;
+    }
+
+    statePtr = eventPtr->state;
+    statePtr->doread = 1;
+    Tcl_NotifyChannel(statePtr->channel, TCL_READABLE);
     return 1;
 }
 
@@ -379,15 +382,13 @@ void UDP_CheckProc(ClientData data, int flags) {
     PacketList *p;
 #ifdef _WIN32
     char hostaddr[256];
-    char* portaddr;
+    char *portaddr;
     char remoteaddr[256];
-    int remoteaddrlen = sizeof(remoteaddr);
-    memset(hostaddr, 0 , sizeof(hostaddr));
-    memset(remoteaddr,0,sizeof(remoteaddr));
+    int remoteaddrlen; /* bytes for ANSI strings, WCHARs for Unicode */
 #endif /*  _WIN32 */
     Tcl_ThreadId currentThreadId = Tcl_GetCurrentThread();
 
-    /* UDPTRACE("checkProc\n"); */
+    UDPTRACE("checkProc\n");
 
     /* synchronized */
     WaitForSingleObject(sockListLock, INFINITE);
@@ -396,52 +397,53 @@ void UDP_CheckProc(ClientData data, int flags) {
 	if (statePtr->threadId != currentThreadId) {
 	    continue;
 	}
-	if (statePtr->packetNum > 0) {
-	    UDPTRACE("UDP_CheckProc\n");
-	    /* Read the data from socket and put it into statePtr */
-	    socksize = sizeof(recvaddr);
-	    memset(&recvaddr, 0, socksize);
 
-	    /* reserve one more byte for terminating null byte */
-	    message = (char *)ckalloc(MAXBUFFERSIZE+1);
-	    if (message == NULL) {
-		UDPTRACE("ckalloc error\n");
-		exit(1);
-	    }
-	    memset(message, 0, MAXBUFFERSIZE+1);
+	/* Read the data from socket and put it into statePtr */
+	socksize = sizeof(recvaddr);
+	memset(&recvaddr, 0, socksize);
 
-	    actual_size = recvfrom(statePtr->sock, message, buffer_size, 0,
-				   (struct sockaddr *)&recvaddr, &socksize);
-	    SetEvent(waitSockRead);
+	/* reserve one more byte for terminating null byte */
+	message = (char *)ckalloc(MAXBUFFERSIZE+1);
+	if (message == NULL) {
+	    UDPTRACE("ckalloc error\n");
+	    exit(1);
+	}
+	memset(message, 0, MAXBUFFERSIZE+1);
 
-	    if (actual_size < 0) {
-		UDPTRACE("UDP error - recvfrom %d\n", statePtr->sock);
-		ckfree(message);
-	    } else {
-		p = (PacketList *)ckalloc(sizeof(struct PacketList));
-		p->message = message;
-		p->actual_size = actual_size;
+	actual_size = recvfrom(statePtr->sock, message, buffer_size, 0,
+		(struct sockaddr *)&recvaddr, &socksize);
+
+	if (actual_size < 0) {
+	    UDPTRACE("UDP error - recvfrom %d\n", statePtr->sock);
+	    ckfree(message);
+	} else {
+	    p = (PacketList *)ckalloc(sizeof(struct PacketList));
+	    p->message = message;
+	    p->actual_size = actual_size;
 #ifdef _WIN32
+	    /*
+	     * In windows, do not use getnameinfo() since this function does
+	     * not work correctly in case of multithreaded. Also inet_ntop() is
+	     * not available in older windows versions.
+	     */
+	    memset(hostaddr, 0 , sizeof(hostaddr));
+	    memset(remoteaddr, 0, sizeof(remoteaddr));
+	    remoteaddrlen = sizeof(remoteaddr);
+	    if (WSAAddressToStringA((struct sockaddr *)&recvaddr, socksize, NULL,
+		    remoteaddr, &remoteaddrlen) == 0) {
 		/*
-		 * In windows, do not use getnameinfo() since this function does
-		 * not work correctly in case of multithreaded. Also inet_ntop() is
-		 * not available in older windows versions.
+		 * We now have an address in the format of <ip address>:<port>
+		 * Search backwards for the last ':'
 		 */
-		if (WSAAddressToStringA((struct sockaddr *)&recvaddr, socksize, NULL,
-			remoteaddr,&remoteaddrlen)==0) {
-		    /*
-		    * We now have an address in the format of <ip address>:<port>
-		    * Search backwards for the last ':'
-		    */
-		    portaddr = strrchr(remoteaddr,':') + 1;
-		    strncpy(hostaddr, remoteaddr, strlen(remoteaddr)-strlen(portaddr)-1);
-		    statePtr->peerport = atoi(portaddr);
-		    p->r_port = statePtr->peerport;
-		    strcpy(statePtr->peerhost,hostaddr);
-		    strcpy(p->r_host, hostaddr);
-		}
+		portaddr = strrchr(remoteaddr,':') + 1;
+		strncpy(hostaddr,remoteaddr,strlen(remoteaddr)-strlen(portaddr)-1);
+		statePtr->peerport = atoi(portaddr);
+		p->r_port = statePtr->peerport;
+		strcpy(statePtr->peerhost,hostaddr);
+		strcpy(p->r_host,hostaddr);
+	    }
 #else
-		if (statePtr->ss_family == AF_INET ) {
+	    if (statePtr->ss_family == AF_INET ) {
 		    inet_ntop(AF_INET, &recvaddr.sa4.sin_addr, statePtr->peerhost, sizeof(statePtr->peerhost) );
 		    inet_ntop(AF_INET, &recvaddr.sa4.sin_addr, p->r_host, sizeof(p->r_host) );
 		    p->r_port = ntohs(recvaddr.sa4.sin_port);
@@ -451,35 +453,31 @@ void UDP_CheckProc(ClientData data, int flags) {
 		    inet_ntop(AF_INET6, &recvaddr.sa6.sin6_addr, p->r_host, sizeof(p->r_host) );
 		    p->r_port = ntohs(recvaddr.sa6.sin6_port);
 		    statePtr->peerport = ntohs(recvaddr.sa6.sin6_port);
-		}
+	    }
 #endif /*  _WIN32 */
 
-		p->next = NULL;
+	    p->next = NULL;
 
-		if (statePtr->packets == NULL) {
-		    statePtr->packets = p;
-		    statePtr->packetsTail = p;
-		} else {
-		    statePtr->packetsTail->next = p;
-		    statePtr->packetsTail = p;
-		}
+	    if (statePtr->packets == NULL) {
+		statePtr->packets = p;
+		statePtr->packetsTail = p;
+	    } else {
+		statePtr->packetsTail->next = p;
+		statePtr->packetsTail = p;
+	    }
 
 		UDPTRACE("Received %d bytes from %s:%d through %d\n",
 			p->actual_size, p->r_host, p->r_port, statePtr->sock);
-		UDPTRACE("%s\n", p->message);
-	    }
+	    UDPTRACE("%s\n", p->message);
+	}
 
-	    statePtr->packetNum--;
-	    statePtr->doread = 1;
-	    UDPTRACE("packetNum is %d\n", statePtr->packetNum);
-
-	    if (actual_size >= 0) {
-		evPtr = (UdpEvent *) ckalloc(sizeof(UdpEvent));
-		evPtr->header.proc = UdpEventProc;
-		evPtr->chan = statePtr->channel;
-		Tcl_QueueEvent((Tcl_Event *) evPtr, TCL_QUEUE_TAIL);
-		UDPTRACE("socket %d has data\n", statePtr->sock);
-	    }
+	if (actual_size > 0) {
+	    evPtr = (UdpEvent *) ckalloc(sizeof(UdpEvent));
+	    evPtr->header.proc = UdpEventProc;
+	    evPtr->chan = statePtr->channel;
+	    evPtr->state = statePtr;
+	    Tcl_QueueEvent((Tcl_Event *) evPtr, TCL_QUEUE_TAIL);
+	    UDPTRACE("socket %d has data\n", statePtr->sock);
 	}
     }
 
@@ -510,36 +508,45 @@ static DWORD WINAPI SocketThread(LPVOID arg) {
     fd_set readfds; /* variable used for select */
     struct timeval timeout;
     UdpState *statePtr;
-    int found;
-    int sockset;
+    int *packetNums[FD_SETSIZE];
+    SOCKET socks[FD_SETSIZE];
+    Tcl_ThreadId tids[FD_SETSIZE];
+    int found, count, n;
 
     UDPTRACE("In socket thread\n");
 
     while (1) {
 	FD_ZERO(&readfds);
-	timeout.tv_sec  = 1;
-	timeout.tv_usec = 0;
+	timeout.tv_sec  = 0;
+	timeout.tv_usec = 50000;
+
 	/* synchronized */
 	WaitForSingleObject(sockListLock, INFINITE);
 
-	/* no socket, just wait, use event */
-	if (sockList == NULL) {
-	    SetEvent(sockListLock);
-	    UDPTRACE("Wait for adding socket\n");
-	    WaitForSingleObject(waitForSock, INFINITE);
-	    /* synchronized */
-	    WaitForSingleObject(sockListLock, INFINITE);
-	}
-
 	/* set each socket for select */
+	count = 0;
 	for (statePtr = sockList; statePtr != NULL; statePtr=statePtr->next) {
-	    FD_SET((unsigned int)statePtr->sock, &readfds);
+	    if (statePtr->packetNum > 0) {
+		continue;
+	    }
+	    FD_SET(statePtr->sock, &readfds);
+	    socks[count] = statePtr->sock;
+	    packetNums[count] = &statePtr->packetNum;
+	    tids[count] = statePtr->threadId;
+	    if (++count >= FD_SETSIZE) {
+		break;
+	    }
 	    UDPTRACE("SET sock %d\n", statePtr->sock);
 	}
 
 	SetEvent(sockListLock);
-	UDPTRACE("Wait for select\n");
+	if (count == 0) {
+	    WaitForSingleObject(waitForSock, INFINITE);
+	    continue;
+	}
+
 	/* block here */
+	UDPTRACE("Wait for select\n");
 	found = select(0, &readfds, NULL, NULL, &timeout);
 	UDPTRACE("select end\n");
 
@@ -549,26 +556,25 @@ static DWORD WINAPI SocketThread(LPVOID arg) {
 	}
 
 	UDPTRACE("Packet comes in\n");
-
 	WaitForSingleObject(sockListLock, INFINITE);
-	sockset = 0;
-	for (statePtr = sockList; statePtr != NULL; statePtr=statePtr->next) {
-	    if (FD_ISSET(statePtr->sock, &readfds)) {
-		statePtr->packetNum++;
-		sockset++;
-		UDPTRACE("sock %d is set\n", statePtr->sock);
-		break;
+
+	/* How many packets */
+	n = 0;
+	for (n = 0; n < count; n++) {
+	    if (FD_ISSET(socks[n], &readfds)) {
+		packetNums[n][0] += 1;
+	    } else {
+		tids[n] = NULL;
 	    }
 	}
 	SetEvent(sockListLock);
 
-	/* wait for the socket data was read */
-	if (sockset > 0) {
-	    UDPTRACE( "Wait sock read\n");
-	    /* alert the thread to do event checking */
-	    Tcl_ThreadAlert(statePtr->threadId);
-	    WaitForSingleObject(waitSockRead, INFINITE);
-	    UDPTRACE("Sock read finished\n");
+	/* Trigger event checking */
+	for (n = 0; n < count; n++) {
+	    if (tids[n] != NULL) {
+		/* alert the thread to do event checking */
+		Tcl_ThreadAlert(tids[n]);
+	    }
 	}
     }
     return 0;
@@ -598,10 +604,9 @@ int Udp_WinHasSockets(Tcl_Interp *interp) {
 
 	sockList = NULL;
 	waitForSock = CreateEvent(NULL, FALSE, FALSE, NULL);
-	waitSockRead = CreateEvent(NULL, FALSE, FALSE, NULL);
 	sockListLock = CreateEvent(NULL, FALSE, TRUE, NULL);
 
-	socketThread = CreateThread(NULL, 8000, SocketThread, NULL, 0, &id);
+	socketThread = CreateThread(NULL, 16384, SocketThread, NULL, 0, &id);
 	SetThreadPriority(socketThread, THREAD_PRIORITY_HIGHEST);
 
 	UDPTRACE("Initialize socket thread\n");
@@ -933,6 +938,11 @@ static int udpInput(ClientData instanceData, char *buf, int bufSize, int *errorC
     packets = statePtr->packets;
     UDPTRACE("udp_recv\n");
 
+    if (--statePtr->packetNum <= 0) {
+	statePtr->packetNum = 0;
+	SetEvent(waitForSock);
+    }
+
     if (packets == NULL) {
 	UDPTRACE("packets is NULL\n");
 	*errorCode = EAGAIN;
@@ -1059,7 +1069,7 @@ static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp,
 	    Tcl_ListObjIndex(interp, tcllist, 0, &multicastgrp);
 	    Tcl_ListObjIndex(interp, tcllist, 1, &nw_interface);
 #ifdef _WIN32
-	    if ( Tcl_GetIntFromObj(interp,nw_interface,&nwinterface_index) == TCL_ERROR ||
+	    if (Tcl_GetIntFromObj(interp,nw_interface,&nwinterface_index) == TCL_ERROR ||
 		    nwinterface_index < 1) {
 		Tcl_SetResult(interp, "not a valid network interface index; should start with 1", TCL_STATIC);
 		Tcl_DecrRefCount(tcllist);
@@ -1151,7 +1161,9 @@ static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp,
 	r = getaddrinfo(Tcl_GetString(multicastgrp), NULL, &hints, &gai_ret);
 
 	if (r != 0 ) {
-	    Tcl_SetResult(interp, "invalid group name", TCL_STATIC);
+	    if (interp != NULL) {
+		Tcl_SetResult(interp, "invalid group name", TCL_STATIC);
+	    }
             freeaddrinfo(gai_ret);
 	    Tcl_DecrRefCount(tcllist);
 	    return TCL_ERROR;
@@ -1272,7 +1284,7 @@ static int udpSetTtlOption(UdpState *statePtr, Tcl_Interp *interp, const char *n
 	    cmd = IP_TTL;
 	}
 	if (result == TCL_OK) {
-	    result = setsockopt(statePtr->sock, IPPROTO_IP, cmd,(const char *)&tmp, sizeof(unsigned int));
+	result = setsockopt(statePtr->sock,IPPROTO_IP,cmd,(const char *)&tmp,sizeof(unsigned int));
 	}
     } else {
 	if (statePtr->multicast > 0) {
@@ -1281,8 +1293,8 @@ static int udpSetTtlOption(UdpState *statePtr, Tcl_Interp *interp, const char *n
 	    cmd = IPV6_UNICAST_HOPS;
 	}
 	if (result == TCL_OK) {
-	    result = setsockopt(statePtr->sock, IPPROTO_IPV6, cmd,(const char *)&tmp, sizeof(unsigned int));
-	}
+	result = setsockopt(statePtr->sock,IPPROTO_IPV6,cmd,(const char *)&tmp,sizeof(unsigned int));
+    }
     }
 
     if (result==TCL_ERROR) {
@@ -1301,13 +1313,14 @@ static int udpSetTtlOption(UdpState *statePtr, Tcl_Interp *interp, const char *n
  *
  * ----------------------------------------------------------------------
  */
-static int udpGetMcastloopOption(UdpState *statePtr, Tcl_Interp *interp, unsigned char * value) {
+static int udpGetMcastloopOption(UdpState *statePtr, Tcl_Interp *interp, unsigned char *value) {
     int result = TCL_ERROR;
     socklen_t optlen=sizeof(int);
+
     if (statePtr->ss_family == AF_INET) {
-	result = getsockopt(statePtr->sock, IPPROTO_IP, IP_MULTICAST_LOOP,value, &optlen);
+	result = getsockopt(statePtr->sock, IPPROTO_IP, IP_MULTICAST_LOOP, value, &optlen);
     } else {
-	result = getsockopt(statePtr->sock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP,value, &optlen);
+	result = getsockopt(statePtr->sock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, value, &optlen);
     }
 
     if (result == TCL_ERROR) {
@@ -1328,13 +1341,14 @@ static int udpGetMcastloopOption(UdpState *statePtr, Tcl_Interp *interp, unsigne
 static int udpSetMcastloopOption(UdpState *statePtr, Tcl_Interp *interp, const char *newValue) {
     int result = TCL_ERROR;
     int tmp = 1;
+
     if (Tcl_GetBoolean(interp, newValue, &tmp)==TCL_OK) {
 	if (statePtr->ss_family == AF_INET) {
-	    result = setsockopt(statePtr->sock, IPPROTO_IP, IP_MULTICAST_LOOP,
-	    (const char *)&tmp, sizeof(tmp));
+	    result = setsockopt(statePtr->sock, IPPROTO_IP, IP_MULTICAST_LOOP, 
+		(const char *)&tmp, sizeof(tmp));
 	} else {
 	    result = setsockopt(statePtr->sock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP,
-	    (const char *)&tmp, sizeof(tmp));
+		(const char *)&tmp, sizeof(tmp));
 	}
     }
 
@@ -1359,6 +1373,7 @@ static int udpSetMcastloopOption(UdpState *statePtr, Tcl_Interp *interp, const c
 static int udpGetBroadcastOption(UdpState *statePtr, Tcl_Interp *interp, int* value) {
     int result = TCL_OK;
     socklen_t optlen = sizeof(int);
+
     if (statePtr->ss_family == AF_INET6 ) {
 	Tcl_SetObjResult(interp, Tcl_NewStringObj("broadcast not supported under ipv6",-1));
 	return TCL_ERROR;
@@ -1394,9 +1409,9 @@ static int udpSetBroadcastOption(UdpState *statePtr, Tcl_Interp *interp, const c
 	    (const char *)&tmp, sizeof(int))) {
 	    Tcl_SetObjResult(interp, Tcl_NewStringObj("error setting -broadcast",-1));
 	    result = TCL_ERROR;
-	} else {
+    } else {
 	    Tcl_SetObjResult(interp, Tcl_NewIntObj(tmp));
-	}
+    }
     }
 
     return result;
@@ -1419,21 +1434,21 @@ static int udpSetRemoteOption(UdpState *statePtr, Tcl_Interp *interp, const char
     Tcl_IncrRefCount(valPtr);
     result = Tcl_ListObjLength(interp, valPtr, &len);
     if (result == TCL_OK) {
-	if (len < 1 || len > 2) {
+    if (len < 1 || len > 2) {
 	    Tcl_SetResult(interp, "wrong # args", TCL_STATIC);
 	    result = TCL_ERROR;
-	} else {
-	    Tcl_Obj *hostPtr, *portPtr;
+    } else {
+	Tcl_Obj *hostPtr, *portPtr;
 
-	    Tcl_ListObjIndex(interp, valPtr, 0, &hostPtr);
-	    strncpy(statePtr->remotehost, Tcl_GetString(hostPtr), sizeof(statePtr->remotehost));
-	    statePtr->remotehost[sizeof(statePtr->remotehost)-1] = '\0';
+	Tcl_ListObjIndex(interp, valPtr, 0, &hostPtr);
+	strncpy(statePtr->remotehost, Tcl_GetString(hostPtr), sizeof(statePtr->remotehost));
+	statePtr->remotehost[sizeof(statePtr->remotehost)-1] = '\0';
 
-	    if (len == 2) {
-		Tcl_ListObjIndex(interp, valPtr, 1, &portPtr);
-		result = udpGetService(interp, Tcl_GetString(portPtr), &(statePtr->remoteport));
-	    }
+	if (len == 2) {
+	    Tcl_ListObjIndex(interp, valPtr, 1, &portPtr);
+	    result = udpGetService(interp, Tcl_GetString(portPtr), &(statePtr->remoteport));
 	}
+    }
     }
 
     if (result==TCL_ERROR) {
@@ -1455,36 +1470,40 @@ static int udpSetRemoteOption(UdpState *statePtr, Tcl_Interp *interp, const char
  * ----------------------------------------------------------------------
  */
 static int udpSetMulticastIFOption(UdpState *statePtr, Tcl_Interp *interp, const char *newValue) {
-  if (statePtr->ss_family == AF_INET) {
-    struct in_addr interface_addr;
-    if(inet_aton(newValue,&interface_addr)==0) {
-      if (interp != NULL) {
-	Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif (bad IP)"));
-      }
-      return TCL_ERROR;
+    if (statePtr->ss_family == AF_INET) {
+	struct in_addr interface_addr;
+
+	if (inet_aton(newValue, &interface_addr) == 0) {
+	    if (interp != NULL) {
+		Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif (bad IP)"));
+	    }
+	    return TCL_ERROR;
+	}
+
+	if (setsockopt(statePtr->sock, IPPROTO_IP, IP_MULTICAST_IF, (const char*)&interface_addr, sizeof(interface_addr)) < 0) {
+	    if (interp != NULL) {
+		Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif"));
+	    }
+	    return TCL_ERROR;
+	}
+    } else {
+	struct in6_addr interface_addr;
+
+	if (inet_pton(AF_INET6, newValue, &interface_addr)==0) {
+	    if (interp != NULL) {
+		Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif (bad IP)"));
+	    }
+	    return TCL_ERROR;
+	}
+	
+	if (setsockopt(statePtr->sock, IPPROTO_IP, IPV6_MULTICAST_IF, (const char*)&interface_addr, sizeof(interface_addr)) < 0) {
+	    if (interp != NULL) {
+		Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif"));
+	    }
+	    return TCL_ERROR;
+	}
     }
-    if (setsockopt(statePtr->sock, IPPROTO_IP, IP_MULTICAST_IF, (const char*)&interface_addr, sizeof(interface_addr)) < 0) {
-      if (interp != NULL) {
-	Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif"));
-      }
-      return TCL_ERROR;
-    }
-  } else {
-    struct in6_addr interface_addr;
-    if(inet_pton(AF_INET6,newValue,&interface_addr)==0) {
-      if (interp != NULL) {
-	Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif (bad IP)"));
-      }
-      return TCL_ERROR;
-    }
-    if (setsockopt(statePtr->sock, IPPROTO_IP, IPV6_MULTICAST_IF, (const char*)&interface_addr, sizeof(interface_addr)) < 0) {
-      if (interp != NULL) {
-	Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif"));
-      }
-      return TCL_ERROR;
-    }
-  }
-  return TCL_OK;
+    return TCL_OK;
 }
 #endif
 
@@ -1524,7 +1543,7 @@ static int udpSetMulticastDropOption(UdpState *statePtr, Tcl_Interp *interp, con
 	result = UdpMulticast(statePtr, interp, (const char *)newValue, IPV6_LEAVE_GROUP);
     }
 
-    if (result==TCL_ERROR) {
+    if (result == TCL_ERROR) {
 	Tcl_SetObjResult(interp, Tcl_NewStringObj("error setting -mcastdrop",-1));
     }
 
@@ -1947,8 +1966,11 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 #else
     if (SetHandleInformation((HANDLE)sock, HANDLE_FLAG_INHERIT, 0) == 0) {
 	Tcl_AppendResult(interp, "failed to set close-on-exec bit", (char *) NULL);
-        closesocket(sock);
+	closesocket(sock);
 	return TCL_ERROR;
+    } else {
+        int one = 1;
+        ioctlsocket(sock, FIONBIO, &one);
     }
 #endif /* _WIN32 */
 
@@ -1976,7 +1998,7 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 	addr.sa4.sin_port = localport;
 	addr_len = sizeof(struct sockaddr_in);
     }
-    if ( bind(sock,(struct sockaddr *)&addr, addr_len) < 0) {
+    if (bind(sock,(struct sockaddr *)&addr, addr_len) < 0) {
 	Tcl_SetObjResult(interp, ErrorToObj("failed to bind socket to port"));
 	closesocket(sock);
 	return TCL_ERROR;
@@ -2130,7 +2152,7 @@ BuildInfoCommand(Tcl_Interp* interp) {
     return TCL_OK;
 }
 /*
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------------
  *
  * udpInit --
  *
@@ -2144,7 +2166,7 @@ BuildInfoCommand(Tcl_Interp* interp) {
  * Side effects:
  *	Adds a command to the Tcl interpreter.
  *
- *-----------------------------------------------------------------------------
+ *----------------------------------------------------------------------------
  */
 
 #if TCL_MAJOR_VERSION > 8
@@ -2177,7 +2199,7 @@ int Udp_Init(Tcl_Interp *interp) {
     tsdPtr = (ThreadSpecificData *) Tcl_GetThreadData(&dataKey, sizeof(ThreadSpecificData));
     if (!tsdPtr->sourceInit) {
 	tsdPtr->sourceInit = 1;
-	Tcl_CreateEventSource(UDP_SetupProc, UDP_CheckProc, NULL);
+    Tcl_CreateEventSource(UDP_SetupProc, UDP_CheckProc, NULL);
 	/* FIX ME - thread exit handler */
     }
 #endif
