@@ -1949,14 +1949,13 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 #else
     int sock;
 #endif
-    char channelName[20];
+     char channelName[20];
     UdpState *statePtr;
     uint16_t localport = 0;
-    int reuse = 0;
+    int reuse = 0, port;
     Tcl_Size opt;
     address addr,sockaddr;
-    socklen_t addr_len;
-    socklen_t len;
+    socklen_t addr_len, len;
     short ss_family = AF_INET; /* Default ipv4 */
 
     Tcl_ResetResult(interp);
@@ -1967,20 +1966,23 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
     }
 
     /* Get opts */
-    for (int idx = 1; idx < objc; idx++) {
-	if (Tcl_GetIndexFromObj(interp, objv[idx], open_opts, "option", 0, &opt) != TCL_OK) {
-	    if (udpGetService(interp, Tcl_GetString(objv[idx]), &localport) != TCL_OK) {
+    for (int i = 1; i < objc; i++) {
+	if (Tcl_GetIndexFromObj(interp, objv[i], open_opts, "option", TCL_EXACT, &opt) != TCL_OK) {
+	    if (Tcl_GetIntFromObj(NULL, objv[i], &port) == TCL_OK) {
+		localport = (uint16_t) port;
+	    }
+	    if (udpGetService(interp, Tcl_GetString(objv[i]), &localport) != TCL_OK) {
 		return TCL_ERROR;
 	    }
-	}
-
-	switch(opt) {
-	case _open_ipv6:
-	ss_family = AF_INET6;
-	    break;
-	case _open_reuse:
-	    reuse = 1;
-	    break;
+	} else {
+	    switch(opt) {
+	    case _open_ipv6:
+		ss_family = AF_INET6;
+		break;
+	    case _open_reuse:
+		reuse = 1;
+		break;
+	    }
 	}
     }
 
