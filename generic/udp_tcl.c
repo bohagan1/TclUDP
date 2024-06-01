@@ -105,9 +105,7 @@ FILE *dbg;
  * internal functions
  */
 static int UdpMulticast(UdpState *statePtr, Tcl_Interp *, const char *, int);
-static void udpTrace(const char *format, ...);
 static int  udpGetService(Tcl_Interp *interp, const char *service, uint16_t *servicePort);
-static Tcl_Obj *ErrorToObj(const char * prefix);
 
 /*
  * Windows specific functions
@@ -145,10 +143,62 @@ enum _cfg_opts {
     _opt_mcastloop, _opt_myport, _opt_peer, _opt_remote, _opt_ttl
 };
 
+
 /*
-* ----------------------------------------------------------------------
+* -----------------------------------------------------------------------
+* ErrorToObj --
+* -----------------------------------------------------------------------
+*/
+
+static Tcl_Obj * ErrorToObj(const char * prefix) {
+    Tcl_Obj *errObj;
+#ifdef _WIN32
+    LPVOID sMsg;
+    DWORD len = 0;
+
+    len = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM
+	| FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL,
+	SUBLANG_DEFAULT), (LPWSTR)&sMsg, 0, NULL);
+    errObj = Tcl_NewStringObj(prefix, -1);
+    Tcl_AppendToObj(errObj, ": ", -1);
+    Tcl_AppendUnicodeToObj(errObj, (LPWSTR)sMsg, (Tcl_Size) (len - 1));
+    LocalFree(sMsg);
+#else
+    errObj = Tcl_NewStringObj(prefix, -1);
+    Tcl_AppendStringsToObj(errObj, ": ", strerror(errno), (char *) NULL);
+#endif
+    return errObj;
+}
+
+/*
+ * ----------------------------------------------------------------------
+ * udpTrace --
+ * ----------------------------------------------------------------------
+ */
+static void udpTrace(const char *format, ...) {
+    va_list args;
+
+#ifdef _WIN32
+
+    static char buffer[1024];
+    va_start (args, format);
+    _vsnprintf(buffer, 1023, format, args);
+    OutputDebugStringA(buffer);
+
+#else /* ! _WIN32 */
+    va_start (args, format);
+    vfprintf(dbg, format, args);
+    fflush(dbg);
+
+#endif /* ! _WIN32 */
+
+    va_end(args);
+}
+
+/*
+* -----------------------------------------------------------------------
 * udpConf --
-* ----------------------------------------------------------------------
+* -----------------------------------------------------------------------
 */
 int udpConf(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
     Tcl_Channel chan;
@@ -198,8 +248,8 @@ int udpConf(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
     }
 
     /* Set option */
-    for (int idx = 2; idx < objc; idx++) {
-	if (Tcl_GetIndexFromObj(interp, objv[idx], cfg_opts, "option", 0, &opt) != TCL_OK) {
+    for (int i = 2; i < objc; i++) {
+	if (Tcl_GetIndexFromObj(interp, objv[i], cfg_opts, "option", 0, &opt) != TCL_OK) {
 	    return TCL_ERROR;
 	}
 
@@ -211,12 +261,12 @@ int udpConf(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 	case _opt_mcastloop:
 	case _opt_remote:
 	case _opt_ttl:
-	    if (idx+1 == objc) {
+	    if (i+1 == objc) {
 		Tcl_AppendResult(interp, "No value for option \"", cfg_opts[opt], "\"", (char *) NULL);
 		return TCL_ERROR;
 	    }
 	    
-	    if (Tcl_SetChannelOption(interp, statePtr->channel, cfg_opts[opt], Tcl_GetString(objv[++idx])) != TCL_OK) {
+	    if (Tcl_SetChannelOption(interp, statePtr->channel, cfg_opts[opt], Tcl_GetString(objv[++i])) != TCL_OK) {
 		return TCL_ERROR;
 	    }
 	    break;
@@ -466,8 +516,8 @@ void UDP_CheckProc(ClientData data, int flags) {
 		statePtr->packetsTail = p;
 	    }
 
-		UDPTRACE("Received %d bytes from %s:%d through %d\n",
-			p->actual_size, p->r_host, p->r_port, statePtr->sock);
+	    UDPTRACE("Received %d bytes from %s:%d through %d\n", p->actual_size, p->r_host,
+		p->r_port, statePtr->sock);
 	    UDPTRACE("%s\n", p->message);
 	}
 
@@ -1024,6 +1074,7 @@ static int udpInput(ClientData instanceData, char *buf, int bufSize, int *errorC
  * LSearch --
  *
  * 	Find a string item in a list or return -1 if not found.
+ * ----------------------------------------------------------------------
  */
 
 static Tcl_Size LSearch(Tcl_Obj *listObj, const char *group) {
@@ -1046,6 +1097,7 @@ static Tcl_Size LSearch(Tcl_Obj *listObj, const char *group) {
  *	Action should be IP_ADD_MEMBERSHIP | IPV6_JOIN_GROUP
  *  or IP_DROP_MEMBERSHIP | IPV6_LEAVE_GROUP
  *
+ * ----------------------------------------------------------------------
  */
 
 static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp, int action) {
@@ -1232,12 +1284,12 @@ static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp,
  * ----------------------------------------------------------------------
  * udpGetTtlOption --
  *
- *  Handle ttl configuration requests.
+ *  Handle get ttl configuration requests.
  *
  * ----------------------------------------------------------------------
  */
 static int udpGetTtlOption(UdpState *statePtr, Tcl_Interp *interp, unsigned int *value) {
-    int result = TCL_ERROR;
+    int result = 0;
     int cmd;
     socklen_t optlen = sizeof(unsigned int);
 
@@ -1257,25 +1309,29 @@ static int udpGetTtlOption(UdpState *statePtr, Tcl_Interp *interp, unsigned int 
 	result = getsockopt(statePtr->sock, IPPROTO_IPV6, cmd, (char*)value, &optlen);
     }
 
-    if (result==TCL_ERROR) {
-	Tcl_SetObjResult(interp, Tcl_NewStringObj("error getting -ttl",-1));
+    if (result < 0) {
+	Tcl_SetObjResult(interp, ErrorToObj("error getting -ttl"));
+	return TCL_ERROR;
     }
-    return result;
+    return TCL_OK;
 }
 
 /*
  * ----------------------------------------------------------------------
  * udpSetTtlOption --
  *
- *  Handle ttl configuration requests.
+ *  Handle set ttl configuration requests.
  *
  * ----------------------------------------------------------------------
  */
 static int udpSetTtlOption(UdpState *statePtr, Tcl_Interp *interp, const char *newValue) {
-    int result = TCL_ERROR;
+    int result = 0;
     int tmp = 0;
     int cmd;
-    result = Tcl_GetInt(interp, newValue, &tmp);
+    
+    if (Tcl_GetInt(interp, newValue, &tmp) != TCL_OK) {
+	return TCL_ERROR;
+    }
 
     if (statePtr->ss_family==AF_INET) {
 	if (statePtr->multicast > 0) {
@@ -1283,38 +1339,36 @@ static int udpSetTtlOption(UdpState *statePtr, Tcl_Interp *interp, const char *n
 	} else {
 	    cmd = IP_TTL;
 	}
-	if (result == TCL_OK) {
 	result = setsockopt(statePtr->sock,IPPROTO_IP,cmd,(const char *)&tmp,sizeof(unsigned int));
-	}
+
     } else {
 	if (statePtr->multicast > 0) {
 	    cmd = IPV6_MULTICAST_HOPS;
 	} else {
 	    cmd = IPV6_UNICAST_HOPS;
 	}
-	if (result == TCL_OK) {
 	result = setsockopt(statePtr->sock,IPPROTO_IPV6,cmd,(const char *)&tmp,sizeof(unsigned int));
     }
-    }
 
-    if (result==TCL_ERROR) {
-	Tcl_SetObjResult(interp, Tcl_NewStringObj("error setting -ttl",-1));
-    } else {
+    if (result == 0) {
 	Tcl_SetObjResult(interp, Tcl_NewIntObj(tmp));
+    } else {
+	Tcl_SetObjResult(interp, ErrorToObj("error setting -ttl"));
+	return TCL_ERROR;
     }
-    return result;
+    return TCL_OK;
 }
 
 /*
  * ----------------------------------------------------------------------
  * udpGetMcastloopOption --
  *
- *  Handle multicast loop configuration requests.
+ *  Handle get multi-cast loop configuration requests.
  *
  * ----------------------------------------------------------------------
  */
 static int udpGetMcastloopOption(UdpState *statePtr, Tcl_Interp *interp, unsigned char *value) {
-    int result = TCL_ERROR;
+    int result = 0;
     socklen_t optlen=sizeof(int);
 
     if (statePtr->ss_family == AF_INET) {
@@ -1323,23 +1377,23 @@ static int udpGetMcastloopOption(UdpState *statePtr, Tcl_Interp *interp, unsigne
 	result = getsockopt(statePtr->sock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, value, &optlen);
     }
 
-    if (result == TCL_ERROR) {
-	Tcl_SetObjResult(interp, Tcl_NewStringObj("error getting -mcastloop",-1));
+    if (result < 0) {
+	Tcl_SetObjResult(interp, ErrorToObj("error getting -mcastloop"));
+	return TCL_ERROR;
     }
-
-    return result;
+    return TCL_OK;
 }
 
 /*
  * ----------------------------------------------------------------------
  * udpSetMcastloopOption --
  *
- *  Handle multicast loop configuration requests.
+ *  Handle set multi-cast loop configuration requests.
  *
  * ----------------------------------------------------------------------
  */
 static int udpSetMcastloopOption(UdpState *statePtr, Tcl_Interp *interp, const char *newValue) {
-    int result = TCL_ERROR;
+    int result = 0;
     int tmp = 1;
 
     if (Tcl_GetBoolean(interp, newValue, &tmp)==TCL_OK) {
@@ -1350,23 +1404,27 @@ static int udpSetMcastloopOption(UdpState *statePtr, Tcl_Interp *interp, const c
 	    result = setsockopt(statePtr->sock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP,
 		(const char *)&tmp, sizeof(tmp));
 	}
-    }
-
-    if (result == TCL_ERROR) {
-	Tcl_SetObjResult(interp, Tcl_NewStringObj("error setting -mcastloop",-1));
     } else {
-	Tcl_SetObjResult(interp, Tcl_NewIntObj(tmp));
+	const char *tmp = Tcl_GetStringResult(interp);
+	Tcl_ResetResult(interp);
+	Tcl_AppendResult(interp, "error setting -mcastloop: ", tmp, (char *) NULL);
+	return TCL_ERROR;
     }
 
-
-    return result;
+    if (result == 0) {
+	Tcl_SetObjResult(interp, Tcl_NewIntObj(tmp));
+    } else {
+	Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastloop"));
+	return TCL_ERROR;
+    }
+    return TCL_OK;
 }
 
 /*
  * ----------------------------------------------------------------------
  * udpGetBroadcastOption --
  *
- *  Handle broadcast configuration requests.
+ *  Handle get broadcast configuration requests.
  *
  * ----------------------------------------------------------------------
  */
@@ -1378,19 +1436,21 @@ static int udpGetBroadcastOption(UdpState *statePtr, Tcl_Interp *interp, int* va
 	Tcl_SetObjResult(interp, Tcl_NewStringObj("broadcast not supported under ipv6",-1));
 	return TCL_ERROR;
     }
-    if (getsockopt(statePtr->sock, SOL_SOCKET, SO_BROADCAST, (char*)value, &optlen)) {
-	Tcl_SetObjResult(interp, Tcl_NewStringObj("error getting -broadcast",-1));
-	result = TCL_ERROR;
+    
+    result = getsockopt(statePtr->sock, SOL_SOCKET, SO_BROADCAST, (char*)value, &optlen);
+    if (result < 0) {
+	Tcl_SetObjResult(interp, ErrorToObj("error getting -broadcast"));
+	return TCL_ERROR;
     }
 
-    return result;
+    return TCL_OK;
 }
 
 /*
  * ----------------------------------------------------------------------
  * udpSetBroadcastOption --
  *
- *  Handle broadcast configuration requests.
+ *  Handle set broadcast configuration requests.
  *
  * ----------------------------------------------------------------------
  */
@@ -1403,17 +1463,17 @@ static int udpSetBroadcastOption(UdpState *statePtr, Tcl_Interp *interp, const c
 	return TCL_ERROR;
     }
 
-    result = Tcl_GetInt(interp, newValue, &tmp);
-    if (result == TCL_OK ) {
-	if (setsockopt(statePtr->sock, SOL_SOCKET, SO_BROADCAST,
-	    (const char *)&tmp, sizeof(int))) {
-	    Tcl_SetObjResult(interp, Tcl_NewStringObj("error setting -broadcast",-1));
-	    result = TCL_ERROR;
+    if (Tcl_GetInt(interp, newValue, &tmp) != TCL_OK) {
+	return TCL_ERROR;
+    }
+    
+    result = setsockopt(statePtr->sock, SOL_SOCKET, SO_BROADCAST, (const char *)&tmp, sizeof(int));
+    if (result == 0) {
+	Tcl_SetObjResult(interp, Tcl_NewIntObj(tmp));
     } else {
-	    Tcl_SetObjResult(interp, Tcl_NewIntObj(tmp));
+	Tcl_SetObjResult(interp, ErrorToObj("error setting -broadcast"));
+	return TCL_ERROR;
     }
-    }
-
     return result;
 }
 
@@ -1426,17 +1486,23 @@ static int udpSetBroadcastOption(UdpState *statePtr, Tcl_Interp *interp, const c
  * ----------------------------------------------------------------------
  */
 static int udpSetRemoteOption(UdpState *statePtr, Tcl_Interp *interp, const char *newValue) {
-    int result;
+    int result = TCL_OK;
     Tcl_Obj *valPtr;
     Tcl_Size len;
 
     valPtr = Tcl_NewStringObj(newValue, -1);
     Tcl_IncrRefCount(valPtr);
-    result = Tcl_ListObjLength(interp, valPtr, &len);
-    if (result == TCL_OK) {
+    
+    if (Tcl_ListObjLength(interp, valPtr, &len) != TCL_OK) {
+	Tcl_DecrRefCount(valPtr);
+	return TCL_ERROR;
+    }
+    
     if (len < 1 || len > 2) {
-	    Tcl_SetResult(interp, "wrong # args", TCL_STATIC);
-	    result = TCL_ERROR;
+	Tcl_WrongNumArgs(interp, 0, NULL, "?hostname? ?port?");
+	Tcl_DecrRefCount(valPtr);
+	return TCL_ERROR;
+
     } else {
 	Tcl_Obj *hostPtr, *portPtr;
 
@@ -1449,12 +1515,13 @@ static int udpSetRemoteOption(UdpState *statePtr, Tcl_Interp *interp, const char
 	    result = udpGetService(interp, Tcl_GetString(portPtr), &(statePtr->remoteport));
 	}
     }
-    }
 
-    if (result==TCL_ERROR) {
-	Tcl_SetObjResult(interp, Tcl_NewStringObj("error setting -remote",-1));
-    } else {
+    if (result == TCL_OK) {
 	Tcl_SetObjResult(interp, valPtr);
+    } else {
+	const char *tmp = Tcl_GetStringResult(interp);
+	Tcl_ResetResult(interp);
+	Tcl_AppendResult(interp, "error setting -remote: ", tmp, (char *) NULL);
     }
     Tcl_DecrRefCount(valPtr);
     return result;
@@ -1474,32 +1541,24 @@ static int udpSetMulticastIFOption(UdpState *statePtr, Tcl_Interp *interp, const
 	struct in_addr interface_addr;
 
 	if (inet_aton(newValue, &interface_addr) == 0) {
-	    if (interp != NULL) {
-		Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif (bad IP)"));
-	    }
+	    Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif (bad IP)"));
 	    return TCL_ERROR;
 	}
 
 	if (setsockopt(statePtr->sock, IPPROTO_IP, IP_MULTICAST_IF, (const char*)&interface_addr, sizeof(interface_addr)) < 0) {
-	    if (interp != NULL) {
-		Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif"));
-	    }
+	    Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif"));
 	    return TCL_ERROR;
 	}
     } else {
 	struct in6_addr interface_addr;
 
 	if (inet_pton(AF_INET6, newValue, &interface_addr)==0) {
-	    if (interp != NULL) {
-		Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif (bad IP)"));
-	    }
+	    Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif (bad IP)"));
 	    return TCL_ERROR;
 	}
 	
 	if (setsockopt(statePtr->sock, IPPROTO_IP, IPV6_MULTICAST_IF, (const char*)&interface_addr, sizeof(interface_addr)) < 0) {
-	    if (interp != NULL) {
-		Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif"));
-	    }
+	    Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif"));
 	    return TCL_ERROR;
 	}
     }
@@ -1550,127 +1609,108 @@ static int udpSetMulticastDropOption(UdpState *statePtr, Tcl_Interp *interp, con
     return result;
 }
 
-static Tcl_Obj * ErrorToObj(const char * prefix) {
-    Tcl_Obj *errObj;
-#ifdef _WIN32
-    LPVOID sMsg;
-    DWORD len = 0;
-
-    len = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER
-			 | FORMAT_MESSAGE_FROM_SYSTEM
-			 | FORMAT_MESSAGE_IGNORE_INSERTS,
-			 NULL, GetLastError(),
-			 MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-			 (LPWSTR)&sMsg, 0, NULL);
-    errObj = Tcl_NewStringObj(prefix, -1);
-    Tcl_AppendToObj(errObj, ": ", -1);
-    Tcl_AppendUnicodeToObj(errObj, (LPWSTR)sMsg, (Tcl_Size) (len - 1));
-    LocalFree(sMsg);
-#elif defined(HAVE_STRERROR)
-    errObj = Tcl_NewStringObj(prefix, -1);
-    Tcl_AppendStringsToObj(errObj, ": ", strerror(errno), (char *) NULL);
-#else
-    char buffer[256];
-
-    errObj = Tcl_NewStringObj(prefix, -1);
-    sprintf(buffer, "system error number %d", errno);
-    Tcl_AppendStringsToObj(errObj, ": ", buffer, NULL);
-#endif
-    return errObj;
-}
 
 /*
 * ----------------------------------------------------------------------
 * udpGetOption --
 * ----------------------------------------------------------------------
 */
-static int udpGetOption(ClientData instanceData, Tcl_Interp *interp,
-	const char *optionName, Tcl_DString *optionValue) {
+static int udpGetOption(ClientData instanceData, Tcl_Interp *interp, const char *optionName,
+	Tcl_DString *optionValue) {
     UdpState *statePtr = (UdpState *)instanceData;
-    const char * options[] = { "myport", "remote", "peer", "mcastgroups", "mcastloop", "broadcast", "ttl", NULL};
-    int r = TCL_OK;
+    int r = TCL_OK, opt = -1;
 
     if (optionName == NULL) {
 	Tcl_DString ds;
-	const char **p;
 
-	Tcl_DStringInit(&ds);
-	for (p = options; *p != NULL; p++) {
-	    char op[16];
-	    sprintf(op, "-%s", *p);
-	    Tcl_DStringSetLength(&ds, 0);
-	    udpGetOption(instanceData, interp, op, &ds);
-	    Tcl_DStringAppend(optionValue, " ", 1);
-	    Tcl_DStringAppend(optionValue, op, -1);
-	    Tcl_DStringAppend(optionValue, " ", 1);
-	    Tcl_DStringAppendElement(optionValue, Tcl_DStringValue(&ds));
+	for (opt = _opt_broadcast; opt <= _opt_ttl; opt++) {
+	    if (cfg_opts[opt] != NULL) {
+		Tcl_DStringInit(&ds);
+		Tcl_DStringSetLength(&ds, 0);
+		if (udpGetOption(instanceData, interp, cfg_opts[opt], &ds) != TCL_ERROR) {
+		    Tcl_DStringAppend(optionValue, " ", 1);
+		    Tcl_DStringAppend(optionValue, cfg_opts[opt], -1);
+		    Tcl_DStringAppend(optionValue, " ", 1);
+		    Tcl_DStringAppendElement(optionValue, Tcl_DStringValue(&ds));
+		}
+		Tcl_DStringFree(&ds);
+	    }
 	}
 
     } else {
 	Tcl_DString ds, dsInt;
+
+	Tcl_Obj *nameObj = Tcl_NewStringObj(optionName, -1);
+	Tcl_IncrRefCount(nameObj);
+
+	if (Tcl_GetIndexFromObj(interp, nameObj, cfg_opts, "option", 0, &opt) != TCL_OK) {
+	    return TCL_ERROR;
+	}
+
 	Tcl_DStringInit(&ds);
 	Tcl_DStringInit(&dsInt);
 
-	if (!strcmp("-myport", optionName)) {
-	    Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
-	    sprintf(Tcl_DStringValue(&ds), "%u", ntohs(statePtr->localport));
-
-	} else if (!strcmp("-remote", optionName)) {
-	    if (*statePtr->remotehost) {
-		Tcl_DStringSetLength(&dsInt, TCL_INTEGER_SPACE);
-		sprintf(Tcl_DStringValue(&dsInt), "%u", ntohs(statePtr->remoteport));
-		Tcl_DStringAppendElement(&ds, statePtr->remotehost);
-		Tcl_DStringAppendElement(&ds, Tcl_DStringValue(&dsInt));
+	switch(opt) {
+	case _opt_broadcast:
+	    int tmp = 1;
+	    if ((r = udpGetBroadcastOption(statePtr,interp,&tmp)) == TCL_OK) {
+		Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
+		sprintf(Tcl_DStringValue(&ds), "%d", tmp);
 	    }
+	    break;
 
-	} else if (!strcmp("-peer", optionName)) {
-           if (*statePtr->peerhost) {
-		Tcl_DStringSetLength(&dsInt, TCL_INTEGER_SPACE);
-		sprintf(Tcl_DStringValue(&dsInt), "%u", statePtr->peerport);
-		Tcl_DStringAppendElement(&ds, statePtr->peerhost);
-		Tcl_DStringAppendElement(&ds, Tcl_DStringValue(&dsInt));
-	   }
-
-	} else if (!strcmp("-mcastgroups", optionName)) {
+	case _opt_mcastgroups:
 	    Tcl_Size objc, n;
 	    Tcl_Obj **objv;
 	    Tcl_ListObjGetElements(interp, statePtr->groupsObj, &objc, &objv);
 	    for (n = 0; n < objc; n++) {
 		Tcl_DStringAppendElement(&ds, Tcl_GetString(objv[n]));
 	    }
+	    break;
 
-	} else if (!strcmp("-broadcast", optionName)) {
-	    int tmp =1;
-	    r = udpGetBroadcastOption(statePtr,interp,&tmp);
-	    if (r==TCL_OK) {
+	case _opt_mcastloop:
+	    unsigned char str = 0;
+	    if ((r = udpGetMcastloopOption(statePtr, interp,&str)) == TCL_OK) {
 		Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
-		sprintf(Tcl_DStringValue(&ds), "%d", tmp);
+		sprintf(Tcl_DStringValue(&ds), "%d", (int)str);
 	    }
+	    break;
 
-	} else if (!strcmp("-mcastloop", optionName)) {
-	    unsigned char tmp = 0;
-	    r = udpGetMcastloopOption(statePtr, interp,&tmp);
-	    if (r==TCL_OK) {
+	case _opt_myport:
+	    Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
+	    sprintf(Tcl_DStringValue(&ds), "%u", ntohs(statePtr->localport));
+	    break;
+
+	case _opt_peer:
+	   if (*statePtr->peerhost) {
+		Tcl_DStringSetLength(&dsInt, TCL_INTEGER_SPACE);
+		sprintf(Tcl_DStringValue(&dsInt), "%u", statePtr->peerport);
+		Tcl_DStringAppendElement(&ds, statePtr->peerhost);
+		Tcl_DStringAppendElement(&ds, Tcl_DStringValue(&dsInt));
+	   }
+	    break;
+
+	case _opt_remote:
+	    if (*statePtr->remotehost) {
+		Tcl_DStringSetLength(&dsInt, TCL_INTEGER_SPACE);
+		sprintf(Tcl_DStringValue(&dsInt), "%u", ntohs(statePtr->remoteport));
+		Tcl_DStringAppendElement(&ds, statePtr->remotehost);
+		Tcl_DStringAppendElement(&ds, Tcl_DStringValue(&dsInt));
+	    }
+	    break;
+
+	case _opt_ttl:
+	    unsigned int ttl = 0;
+	    if ((r = udpGetTtlOption(statePtr, interp, &ttl)) == TCL_OK) {
 		Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
-		sprintf(Tcl_DStringValue(&ds), "%d", (int)tmp);
+		sprintf(Tcl_DStringValue(&ds), "%u", ttl);
 	    }
-
-	} else if (!strcmp("-ttl", optionName)) {
-	    unsigned int tmp = 0;
-	    r = udpGetTtlOption(statePtr,interp,&tmp);
-	    if (r==TCL_OK) {
-		Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
-		sprintf(Tcl_DStringValue(&ds), "%u", tmp);
-	    }
-
-	} else {
-	    const char **p;
-	    Tcl_DString tmp;
-	    Tcl_DStringInit(&tmp);
-	    for (p = options; *p != NULL; p++)
-		Tcl_DStringAppendElement(&tmp, *p);
-	    r = Tcl_BadChannelOption(interp, optionName, Tcl_DStringValue(&tmp));
-	    Tcl_DStringFree(&tmp);
+	    break;
+	
+	default:
+	    Tcl_ResetResult(interp);
+	    Tcl_AppendResult(interp, "set only option \"", optionName, "\"", NULL);
+	    r = TCL_ERROR;
 	}
 
 	if (r == TCL_OK) {
@@ -1679,7 +1719,6 @@ static int udpGetOption(ClientData instanceData, Tcl_Interp *interp,
 	Tcl_DStringFree(&dsInt);
 	Tcl_DStringFree(&ds);
     }
-
     return r;
 }
 
@@ -1691,33 +1730,56 @@ static int udpGetOption(ClientData instanceData, Tcl_Interp *interp,
  *
  * ----------------------------------------------------------------------
  */
-static int udpSetOption(ClientData instanceData, Tcl_Interp *interp,
-	const char *optionName, const char *newValue) {
+static int udpSetOption(ClientData instanceData, Tcl_Interp *interp, const char *optionName,
+	const char *newValue) {
     UdpState *statePtr = (UdpState *)instanceData;
-    const char * options = "remote mcastadd mcastdrop mcastloop broadcast ttl";
-    int r = TCL_OK;
+    int r = TCL_OK, opt;
 
-    if (!strcmp("-remote", optionName)) {
-	r = udpSetRemoteOption(statePtr, interp,(const char *)newValue);
-#ifndef _WIN32
-    } else if (!strcmp("-mcastif", optionName)) {
-	r = udpSetMulticastIFOption(statePtr, interp,(const char *)newValue);
-#endif
-    } else if (!strcmp("-mcastadd", optionName)) {
-	r = udpSetMulticastAddOption(statePtr, interp, (const char *)newValue);
-    } else if (!strcmp("-mcastdrop", optionName)) {
-	r = udpSetMulticastDropOption(statePtr, interp, (const char *)newValue);
-    } else if (!strcmp("-broadcast", optionName)) {
-	r = udpSetBroadcastOption(statePtr, interp, (const char*) newValue);
-    } else if (!strcmp("-mcastloop", optionName)) {
-	r = udpSetMcastloopOption(statePtr, interp, (const char*) newValue);
-    } else if (!strcmp("-ttl", optionName)) {
-	r = udpSetTtlOption(statePtr, interp, (const char*) newValue);
-    } else {
-	Tcl_BadChannelOption(interp, optionName, options);
-	r=TCL_ERROR;
+    Tcl_Obj *nameObj = Tcl_NewStringObj(optionName,-1);
+    Tcl_IncrRefCount(nameObj);
+	
+    if (Tcl_GetIndexFromObj(interp, nameObj, cfg_opts, "option", 0, &opt) != TCL_OK) {
+	Tcl_DecrRefCount(nameObj);
+	return TCL_ERROR;
     }
+    Tcl_DecrRefCount(nameObj);
 
+    switch(opt) {
+    case _opt_broadcast:
+	r = udpSetBroadcastOption(statePtr, interp, (const char*) newValue);
+	break;
+
+    case _opt_mcastadd:
+	r = udpSetMulticastAddOption(statePtr, interp, (const char *)newValue);
+	break;
+
+    case _opt_mcastdrop:
+	r = udpSetMulticastDropOption(statePtr, interp, (const char *)newValue);
+	break;
+
+#ifndef _WIN32
+    case _opt_mcastif:
+	r = udpSetMulticastIFOption(statePtr,interp,(const char *)newValue);
+	break;
+#endif
+
+    case _opt_mcastloop:
+	r = udpSetMcastloopOption(statePtr, interp, (const char*) newValue);
+	break;
+
+    case _opt_remote:
+	r = udpSetRemoteOption(statePtr,interp,(const char *)newValue);
+	break;
+
+    case _opt_ttl:
+	r = udpSetTtlOption(statePtr, interp, (const char*) newValue);
+	break;
+	
+    default:
+	Tcl_ResetResult(interp);
+	Tcl_AppendResult(interp, "get only option \"", optionName, "\"", NULL);
+	r = TCL_ERROR;
+    }
     return r;
 }
 
@@ -1788,31 +1850,6 @@ static Tcl_ChannelType Udp_ChannelType = {
     udpThreadAction,	   /* Thread action.                      NULL'able */
     NULL,		   /* Truncate.                           NULL'able */
 };
-
-/*
- * ----------------------------------------------------------------------
- * udpTrace --
- * ----------------------------------------------------------------------
- */
-static void udpTrace(const char *format, ...) {
-    va_list args;
-
-#ifdef _WIN32
-
-    static char buffer[1024];
-    va_start (args, format);
-    _vsnprintf(buffer, 1023, format, args);
-    OutputDebugStringA(buffer);
-
-#else /* ! _WIN32 */
-    va_start (args, format);
-    vfprintf(dbg, format, args);
-    fflush(dbg);
-
-#endif /* ! _WIN32 */
-
-    va_end(args);
-}
 
 /*
  *---------------------------------------------------------------------------
