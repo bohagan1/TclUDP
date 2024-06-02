@@ -539,6 +539,22 @@ void UDP_CheckProc(ClientData data, int flags) {
 
 /*
  * ----------------------------------------------------------------------
+ * UDP_ExitProc - called at thread exit
+ * ----------------------------------------------------------------------
+ */
+void UDP_ExitProc(ClientData clientData) {
+    Tcl_DeleteEventSource(UDP_SetupProc, UDP_CheckProc, NULL);
+    
+    /* Delete threads */
+    CloseHandle(waitForSock);
+    CloseHandle(sockListLock);
+    /* TBD delete thread 
+    	socketThread = CreateThread(NULL, 16384, SocketThread, NULL, 0, &id);
+    */
+}
+
+/*
+ * ----------------------------------------------------------------------
  * InitSockets
  * ----------------------------------------------------------------------
  */
@@ -546,10 +562,19 @@ static int InitSockets() {
     WSADATA wsaData;
 
     /* Load the socket DLL and initialize the function table. */
-    if (WSAStartup(0x0101, &wsaData))
+    if (WSAStartup(0x0202, &wsaData)) {
 	return 0;
-
+    }
     return 1;
+}
+
+/*
+ * ----------------------------------------------------------------------
+ * ExitSockets
+ * ----------------------------------------------------------------------
+ */
+void ExitSockets(ClientData clientData) {
+    WSACleanup();
 }
 
 /*
@@ -2414,8 +2439,11 @@ int Udp_Init(Tcl_Interp *interp) {
     if (!tsdPtr->sourceInit) {
 	tsdPtr->sourceInit = 1;
     Tcl_CreateEventSource(UDP_SetupProc, UDP_CheckProc, NULL);
-	/* FIX ME - thread exit handler */
+	Tcl_CreateThreadExitHandler(UDP_ExitProc, NULL);
     }
+
+    /* Exit handler */
+    Tcl_CreateExitHandler(ExitSockets, NULL);
 #endif
 
     /* Create namespace */
@@ -2426,7 +2454,7 @@ int Udp_Init(Tcl_Interp *interp) {
     Tcl_CreateObjCommand(interp, "udp_conf", udpConf, (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
     Tcl_CreateObjCommand(interp, "udp_peek", udpPeek, (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
     Tcl_CreateObjCommand(interp, "udp", Udp_CmdProc, (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
-    Tcl_CreateObjCommand(interp, "::udp::getaddrInfo", Udp_GetAddrInfo, (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
+    Tcl_CreateObjCommand(interp, "::udp::getaddrinfo", Udp_GetAddrInfo, (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
 
     BuildInfoCommand(interp);
 
