@@ -32,6 +32,9 @@ typedef int socklen_t;
 #if defined(HAVE_SYS_FILIO_H)
 #include <sys/filio.h>
 #endif
+#if defined(HAVE_SOCKET_H)
+#include <sys/socket.h>
+#endif
 #if defined(HAVE_SYS_IOCTL_H)
 #include <sys/ioctl.h>
 #endif
@@ -1949,7 +1952,7 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 #else
     int sock;
 #endif
-     char channelName[20];
+    char channelName[20];
     UdpState *statePtr;
     uint16_t localport = 0;
     int reuse = 0, port;
@@ -2108,6 +2111,178 @@ int Udp_CmdProc(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *co
     return TCL_ERROR;
 }
 
+static const char *info_opts[] = {
+    "-hostname", "-ipv4", "-ipv6", "-port", "-server", "-service", "-tcp", "-udp", NULL};
+
+enum _info_opts {
+    _info_host, _info_ipv4, _info_ipv6, _info_port, _info_server, _info_service, _info_tcp, _info_udp
+};
+
+/*
+ * ----------------------------------------------------------------------
+ * Udp_GetAddrInfo --
+ *  Get address info for hostname or address
+ *
+ * ----------------------------------------------------------------------
+ */
+int Udp_GetAddrInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
+    const char *hostname = NULL, *service = NULL, *str;
+    struct addrinfo hints, *result, *rp;
+    struct protoent *protocol;
+    int err, opt;
+    Tcl_Obj *resultObj, *listObj;
+
+    memset(&hints, 0 , sizeof(hints));
+    hints.ai_flags = (AI_V4MAPPED | AI_ADDRCONFIG | AI_CANONNAME);
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = 0;
+    hints.ai_protocol = 0;
+    hints.ai_addrlen = 0;
+    hints.ai_addr = NULL;
+    hints.ai_canonname = NULL;
+    hints.ai_next = NULL;
+
+    Tcl_ResetResult(interp);
+
+    /* Validate argc */
+    if (objc < 2 || objc > 8) {
+	Tcl_WrongNumArgs(interp, 1, objv, "?-hostname name? ?-port|-service id? ?-ipv4|-ipv6? ?-server? ?-tcp|-udp?");
+	return TCL_ERROR;
+    }
+
+    /* Get options */
+    for (int i = 1; i < objc; i++) {
+	if (Tcl_GetIndexFromObj(interp, objv[i], info_opts, "option", TCL_EXACT, &opt) == TCL_OK) {
+	    switch(opt) {
+	    case _info_host:
+		if (i < objc-1) {
+		    hostname = Tcl_GetString(objv[++i]);
+		} else {
+		    Tcl_AppendResult(interp, "No hostname", (char *) NULL);
+		    return TCL_ERROR;
+		}
+		break;
+	    case _info_ipv4:
+		hints.ai_family = AF_INET;
+		break;
+	    case _info_ipv6:
+		hints.ai_family = AF_INET6;
+		hints.ai_flags = hints.ai_flags | AI_V4MAPPED | AI_ALL;
+		break;
+	    case _info_port:
+	    case _info_service:
+		if (i < objc-1) {
+		    service = Tcl_GetString(objv[++i]);
+		} else {
+		    Tcl_AppendResult(interp, "No port/service", (char *) NULL);
+		    return TCL_ERROR;
+		}
+		break;
+	    case _info_server:
+		hints.ai_flags = hints.ai_flags | AI_PASSIVE;
+		break;
+	    case _info_tcp:
+		hints.ai_socktype = SOCK_STREAM;
+		break;
+	    case _info_udp:
+		hints.ai_socktype = SOCK_DGRAM;
+		break;
+	    }
+	} else {
+	    return TCL_ERROR;
+	}
+    }
+
+    /* Get address info */
+    if ((err = getaddrinfo(hostname, service, &hints, &result)) != 0) {
+	Tcl_AppendResult(interp, "Get address info returned error: ", gai_strerror(err), (char *) NULL);
+	return TCL_ERROR;
+    }
+    
+    /* Parse result */
+    resultObj = Tcl_NewListObj(0, NULL);
+    for (rp = result; rp != NULL; rp = rp->ai_next) {
+	char address[INET6_ADDRSTRLEN];
+	unsigned short int port;
+	listObj = Tcl_NewListObj(0, NULL);
+
+	/* Socket family */
+	Tcl_ListObjAppendElement(interp, listObj, Tcl_NewStringObj("family",-1));
+	switch(rp->ai_addr->sa_family) {
+	case AF_INET:
+	    str = "ipv4";
+	    break;
+	case AF_INET6:
+	    str = "ipv6";
+	    break;
+	default:
+	    str = "other";
+	}
+	Tcl_ListObjAppendElement(interp, listObj, Tcl_NewStringObj(str,-1));
+
+	/* IP address and port */
+	if (rp->ai_addr->sa_family == AF_INET) {
+	    struct sockaddr_in *p = (struct sockaddr_in *)rp->ai_addr;
+	    inet_ntop(AF_INET, &p->sin_addr, address, sizeof(address));
+	    port = ntohs(p->sin_port);
+	} else if (rp->ai_addr->sa_family == AF_INET6) {
+	    struct sockaddr_in6 *p = (struct sockaddr_in6 *)rp->ai_addr;
+	    inet_ntop(AF_INET6, &p->sin6_addr, address, sizeof(address));
+	    port = ntohs(p->sin6_port);
+	} else {
+	    address[0] = '\0';
+	    port = 0;
+	}
+	Tcl_ListObjAppendElement(interp, listObj, Tcl_NewStringObj("address",-1));
+	Tcl_ListObjAppendElement(interp, listObj, Tcl_NewStringObj(address,-1));
+	Tcl_ListObjAppendElement(interp, listObj, Tcl_NewStringObj("port",-1));
+	Tcl_ListObjAppendElement(interp, listObj, Tcl_NewIntObj((int) port));
+
+	/* Socket type */
+	Tcl_ListObjAppendElement(interp, listObj, Tcl_NewStringObj("type",-1));
+	switch(rp->ai_socktype) {
+	case 0:
+	    str = "any";
+	    break;
+	case SOCK_STREAM:
+	    str = "tcp";
+	    break;
+	case SOCK_DGRAM:
+	    str = "udp";
+	    break;
+	case SOCK_RAW:
+	    str = "raw";
+	    break;
+	default:
+	    str = "other";
+	}
+	Tcl_ListObjAppendElement(interp, listObj, Tcl_NewStringObj(str,-1));
+
+	/* Protocol: IPPROTO_UDP,  IPPROTO_TCP*/
+	Tcl_ListObjAppendElement(interp, listObj, Tcl_NewStringObj("protocol",-1));
+	protocol = getprotobynumber(rp->ai_protocol);
+	Tcl_ListObjAppendElement(interp, listObj, Tcl_NewStringObj(protocol->p_name,-1));
+	
+	Tcl_ListObjAppendElement(interp, listObj, Tcl_NewStringObj("protocol2",-1));
+	switch(rp->ai_protocol) {
+	case IPPROTO_TCP:
+	    str = "tcp";
+	    break;
+	case IPPROTO_UDP:
+	    str = "udp";
+	    break;
+	default:
+	    str = "other";
+	}
+	Tcl_ListObjAppendElement(interp, listObj, Tcl_NewStringObj(str,-1));
+	Tcl_ListObjAppendElement(interp, resultObj, listObj);
+    }
+
+    Tcl_SetObjResult(interp, resultObj);
+    freeaddrinfo(result);
+    return TCL_OK;
+}
+
 /*
  *----------------------------------------------------------------------
  *
@@ -2243,11 +2418,15 @@ int Udp_Init(Tcl_Interp *interp) {
     }
 #endif
 
+    /* Create namespace */
+    Tcl_CreateNamespace(interp, "::udp", NULL, NULL);
+
     /* Create package commands */
     Tcl_CreateObjCommand(interp, "udp_open", udpOpen, (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
     Tcl_CreateObjCommand(interp, "udp_conf", udpConf, (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
     Tcl_CreateObjCommand(interp, "udp_peek", udpPeek, (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
     Tcl_CreateObjCommand(interp, "udp", Udp_CmdProc, (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
+    Tcl_CreateObjCommand(interp, "::udp::getaddrInfo", Udp_GetAddrInfo, (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
 
     BuildInfoCommand(interp);
 

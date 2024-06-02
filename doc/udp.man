@@ -14,7 +14,7 @@
 This package provides support for using UDP through Tcl. The package provides
 a new channel type and attempts to permit the use of packet oriented UDP
 over stream oriented Tcl channels. The package defined three commands but
-[cmd udp_conf] should be considered depreciated in favour of the standard
+[cmd udp_conf] should be considered depreciated in favor of the standard
 Tcl command [cmd fconfigure].
 
 [section "COMMANDS"]
@@ -45,7 +45,7 @@ socket is opened.
 
 [call [cmd "udp_conf"] [arg "sock"] [arg "host"] [arg "port"]]
 
-[emph Deprecated] in favour of the standard Tcl [cmd fconfigure] command.
+[emph Deprecated] in favor of the standard Tcl [cmd fconfigure] or [cmd chan configure] commands.
 [para]
 [cmd udp_conf] in this configuration is used to specify the remote destination
 for packets written to this [arg "sock"]. You must call this command before
@@ -55,11 +55,11 @@ writing data to the UDP socket.
 	[arg [opt "-ttl count"]] [arg [opt "-mcastadd \"groupaddr [opt netwif]\""]] [arg [opt "-mcastdrop \"groupaddr [opt netwif]\""]]\
 	[arg [opt -mcastgroups]] [arg [opt "-mcastloop bool"]]]
 
-[emph Deprecated] in favour of the standard Tcl [cmd fconfigure] command.
+[emph Deprecated] in favor of the standard Tcl [cmd fconfigure]  or [cmd chan configure] commands.
 [para]
 In addition to being used to configure the remote host, the [cmd "udp_conf"]
 command is used to obtain information about the UDP socket. NOTE all these options
-are now available using the standard Tcl [cmd fconfigure] command.
+are now available using the standard Tcl [cmd fconfigure]  or [cmd chan configure] commands.
 
 [list_begin definitions]
 
@@ -107,6 +107,10 @@ On windows you must specify the network interface index. For other platforms the
 interface (e.g. 'eth0') name can be specified. 
 [para]
 To view the current set of multicast groups for a channel use [arg -mcastgroups]
+
+[def "[arg -mcastif\ [opt address]]"]
+
+Set which interface to use for outgoing multicast packets. UNIX only.
 
 [def "[arg -mcastloop\ [opt boolean]]"]
 
