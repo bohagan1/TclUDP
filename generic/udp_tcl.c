@@ -135,14 +135,16 @@ static Tcl_ThreadDataKey dataKey;
  * Tcl_Channel Tcl_MakeUdpClientChannel(sock);
  */
 
-
+/*
+ * Options for address configure commands
+ */
 static const char *cfg_opts[] = {
-    "-broadcast", "-mcastadd", "-mcastdrop", "-mcastgroups", "-mcastif", "-mcastloop",
-    "-myport", "-peer", "-remote", "-ttl", NULL};
+    "-broadcast", "-family", "-mcastadd", "-mcastdrop", "-mcastgroups", "-mcastif",
+    "-mcastloop", "-myport", "-peer", "-remote", "-ttl", NULL};
 
 enum _cfg_opts {
-    _opt_broadcast, _opt_mcastadd, _opt_mcastdrop, _opt_mcastgroups, _opt_mcastif,
-    _opt_mcastloop, _opt_myport, _opt_peer, _opt_remote, _opt_ttl
+    _opt_broadcast, _opt_family, _opt_mcastadd, _opt_mcastdrop, _opt_mcastgroups,
+    _opt_mcastif, _opt_mcastloop, _opt_myport, _opt_peer, _opt_remote, _opt_ttl
 };
 
 
@@ -1611,6 +1613,16 @@ static int udpGetOption(ClientData instanceData, Tcl_Interp *interp, const char 
 	    }
 	    break;
 
+	case _opt_family:
+	    if (statePtr->ss_family == AF_INET6) {
+		Tcl_DStringSetLength(&dsInt, TCL_INTEGER_SPACE);
+		Tcl_DStringAppendElement(&ds, "ipv6");
+	    } else {
+		Tcl_DStringSetLength(&dsInt, TCL_INTEGER_SPACE);
+		Tcl_DStringAppendElement(&ds, "ipv4");
+	    }
+	    break;
+
 	case _opt_mcastgroups:
 	    Tcl_Size objc, n;
 	    Tcl_Obj **objv;
@@ -1811,10 +1823,10 @@ static Tcl_ChannelType Udp_ChannelType = {
 
 
 static const char *open_opts[] = {
-    "ipv6", "reuse", NULL};
+    "ipv4", "ipv6", "reuse", NULL};
 
 enum _open_opts {
-    _open_ipv6, _open_reuse
+    _open_ipv4, _open_ipv6, _open_reuse
 };
 
 /*
@@ -1858,6 +1870,9 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 	    }
 	} else {
 	    switch(opt) {
+	    case _open_ipv4:
+		ss_family = AF_INET;
+		break;
 	    case _open_ipv6:
 		ss_family = AF_INET6;
 		break;
