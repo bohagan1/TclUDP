@@ -155,7 +155,7 @@ test udp-3.7 {-mcastloop invalid option} -setup {
     fconfigure $s -mcastloop stupid
 } -cleanup {
     close $s
-} -returnCodes error -match glob -result {error setting -mcastloop*}
+} -returnCodes error -match glob -result {expected boolean value but got "stupid"}
 
 test udp-3.8 {-mcastloop is boolean - 1/0} -setup {
     set s [udp_open]

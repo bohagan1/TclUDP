@@ -91,11 +91,11 @@ typedef struct UdpState {
     int sock;
     int               mask;
 #endif
-    char remotehost[256]; /* send packets to */
-    uint16_t remoteport;
-    char peerhost[256]; /* receive packets from */
-    uint16_t peerport;
-    uint16_t localport;
+    char remotehost[256];	/* send packets to */
+    uint16_t remoteport;	/* Network byte order */
+    char peerhost[256];		/* receive packets from */
+    uint16_t peerport;		/* Host byte order */
+    uint16_t localport;		/* Network byte order */
     int doread;
 #ifdef _WIN32
     HWND hwnd;
@@ -103,17 +103,17 @@ typedef struct UdpState {
     PacketList *packetsTail;
     int packetNum;
     struct UdpState *next;
-    Tcl_ThreadId threadId; /* for Tcl_ThreadAlert */
+    Tcl_ThreadId threadId;	/* for Tcl_ThreadAlert */
 #endif
-    short ss_family; /* indicator set for ipv4 or ipv6 usage */
-    int multicast; /* indicator set for multicast add */
-    Tcl_Obj *groupsObj; /* list of the mcast groups */
+    short ss_family;		/* indicator set for ipv4 or ipv6 usage */
+    int multicast;		/* indicator set for multicast add */
+    Tcl_Obj *groupsObj;		/* list of the mcast groups */
 } UdpState;
 
 typedef struct {
-    Tcl_Event header; /* Information that is standard for */
-    Tcl_Channel chan; /* Socket descriptor that is ready  */
-    UdpState *state; /* State pointer for socket */
+    Tcl_Event header;		/* Information that is standard for */
+    Tcl_Channel chan;		/* Socket descriptor that is ready  */
+    UdpState *state;		/* State pointer for socket */
 } UdpEvent;
 
 #if defined(_WIN32) && defined(_M_AMD64)

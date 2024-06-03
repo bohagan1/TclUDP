@@ -4,63 +4,50 @@
 # tests.  Execute it by invoking "source all.test" when running tcltest
 # in this directory.
 #
-# Copyright (c) 1998-2000 by Scriptics Corporation.
+# Copyright (c) 1998-2000 by Ajuba Solutions.
 # All rights reserved.
-# 
-# RCS: @(#) $Id: all.tcl,v 1.2 2006/06/20 11:01:23 patthoyts Exp $
+#
+# RCS: @(#) $Id: all.tcl,v 1.5 2000/08/15 18:45:01 hobbs Exp $
+
+set path [file normalize [file dirname [file join [pwd] [info script]]]]
+#set auto_path [linsert $auto_path 0 [file normalize [file join [file dirname [info script]] ..]]]
+set auto_path [linsert $auto_path 0 [file dirname $path] [file normalize [pwd]]]
 
 if {[lsearch [namespace children] ::tcltest] == -1} {
     package require tcltest
     namespace import ::tcltest::*
 }
 
+# Get common functions
+if {[file exists [file join $path common.tcl]]} {
+    source -encoding utf-8 [file join $path common.tcl]
+}
+
 set ::tcltest::testSingleFile false
 set ::tcltest::testsDirectory [file dir [info script]]
 
-# We need to ensure that the testsDirectory is absolute
-if {[catch {::tcltest::normalizePath ::tcltest::testsDirectory}]} {
-    # The version of tcltest we have here does not support
-    # 'normalizePath', so we have to do this on our own.
+# We should ensure that the testsDirectory is absolute.
+# This was introduced in Tcl 8.3+'s tcltest, so we need a catch.
+catch {::tcltest::normalizePath ::tcltest::testsDirectory}
 
-    set oldpwd [pwd]
-    catch {cd $::tcltest::testsDirectory}
-    set ::tcltest::testsDirectory [pwd]
-    cd $oldpwd
-}
-
-set chan $::tcltest::outputChannel
-
-puts $chan "Tests running in interp:       [info nameofexecutable]"
-puts $chan "Tests running with pwd:        [pwd]"
-puts $chan "Tests running in working dir:  $::tcltest::testsDirectory"
-if {[llength $::tcltest::skip] > 0} {
-    puts $chan "Skipping tests that match:            $::tcltest::skip"
-}
-if {[llength $::tcltest::match] > 0} {
-    puts $chan "Only running tests that match:        $::tcltest::match"
-}
-
-if {[llength $::tcltest::skipFiles] > 0} {
-    puts $chan "Skipping test files that match:       $::tcltest::skipFiles"
-}
-if {[llength $::tcltest::matchFiles] > 0} {
-    puts $chan "Only sourcing test files that match:  $::tcltest::matchFiles"
-}
-
-set timeCmd {clock format [clock seconds]}
-puts $chan "Tests began at [eval $timeCmd]"
-
-# source each of the specified tests
-foreach file [lsort [::tcltest::getMatchingFiles]] {
-    set tail [file tail $file]
-    puts $chan $tail
-    if {[catch {source -encoding utf-8 $file} msg]} {
-	puts $chan $msg
+#
+# Run all tests in current and any sub directories with an all.tcl file.
+#
+set ::exitCode 0
+if {[package vsatisfies [package require tcltest] 2.5-]} {
+    if {[::tcltest::runAllTests] == 1} {
+	set ::exitCode 1
     }
+
+} else {
+    # Hook to determine if any of the tests failed. Then we can exit with the
+    # proper exit code: 0=all passed, 1=one or more failed
+    proc tcltest::cleanupTestsHook {} {
+	variable numTests
+	set ::exitCode [expr {$numTests(Total) == 0 || $numTests(Failed) > 0}]
+    }
+    ::tcltest::runAllTests
 }
 
-# cleanup
-puts $chan "\nTests ended at [eval $timeCmd]"
-::tcltest::cleanupTests 1
-return
-
+#  Exit code: 0=all passed, 1=one or more failed
+exit $::exitCode

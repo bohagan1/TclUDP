@@ -1,0 +1,402 @@
+# Auto generated test cases for config.csv
+
+# Load Tcl Test package
+if {[lsearch [namespace children] ::tcltest] == -1} {
+	package require tcltest
+	namespace import ::tcltest::*
+}
+
+set auto_path [concat [list [file dirname [file dirname [info script]]]] $auto_path]
+
+package require udp
+
+# Constraints
+
+# Helper functions
+proc is_open {ch} {expr {$ch in [chan names]}}
+proc in_group {ch group} {expr {$group in [chan configure $ch -mcastgroups]}}
+
+# UDP Open Test Cases
+
+
+test Open-1.1 {No options} -body {
+	set ch [udp_open]
+	set res [is_open $ch]
+	close $ch
+	return $res
+    } -result {1}
+
+test Open-1.2 {Default port} -body {
+	set ch [udp_open 0]
+    } -cleanup {
+	close $ch
+    } -match {glob} -result {*}
+
+test Open-1.3 {Service} -body {
+	set ch [udp_open https]
+    } -cleanup {
+	close $ch
+    } -match {glob} -result {*}
+
+test Open-1.4 {Reuse} -body {
+	set ch [udp_open 54321 reuse]
+    } -cleanup {
+	close $ch
+    } -match {glob} -result {*}
+
+test Open-1.5 {IPv6} -body {
+	set ch [udp_open 54321 ipv6]
+    } -cleanup {
+	close $ch
+    } -match {glob} -result {*}
+
+test Open-1.6 {All} -body {
+	set ch [udp_open 54321 ipv6 reuse]
+    } -cleanup {
+	close $ch
+    } -match {glob} -result {*}
+
+# UDP Open Error Cases
+
+
+test Open_Errors-2.1 {Too many args} -body {
+	udp_open 1 2 3 4 5
+    } -result {wrong # args: should be "udp_open ?localport? ?ipv6? ?reuse?"} -returnCodes {1}
+
+test Open_Errors-2.2 {Invalid port} -body {
+	udp_open 66666
+    } -result {couldn't open socket: port number too high} -returnCodes {1}
+
+test Open_Errors-2.3 {Invalid port range} -body {
+	udp_open -2
+    } -result {couldn't open socket: port number too low} -returnCodes {1}
+
+test Open_Errors-2.4 {Invalid service} -body {
+	udp_open bogus
+    } -result {expected integer but got "bogus"} -returnCodes {1}
+
+test Open_Errors-2.5 {Invalid option} -body {
+	udp_open 54321 bogus
+    } -result {expected integer but got "bogus"} -returnCodes {1}
+
+# List configure options
+
+
+test Config_List-3.1 {Chan List} -body {
+	set ch [udp_open]
+	chan configure $ch
+    } -cleanup {
+	close $ch
+    } -match {glob} -result "-blocking 1 -buffering full -buffersize 65535 -encoding * -eofchar * -translation * -broadcast 0 -family ipv4 -mcastgroups {} -mcastif {} -myport * -peer {} -remote {} -ttl *"
+
+test Config_List-3.2 {Fconfigure List} -body {
+	set ch [udp_open]
+	fconfigure $ch
+    } -cleanup {
+	close $ch
+    } -match {glob} -result "-blocking 1 -buffering full -buffersize 65535 -encoding * -eofchar * -translation * -broadcast 0 -family ipv4 -mcastgroups {} -mcastif {} -myport * -peer {} -remote {} -ttl *"
+
+# Config Error Cases
+
+
+test Config_Errors-4.1 {Too many args} -body {
+	set ch [udp_open]
+	chan configure $ch -broadcast 1 2
+    } -cleanup {
+	close $ch
+    } -result {wrong # args: should be "chan configure channelId ?-option value ...?"} -returnCodes {1}
+
+test Config_Errors-4.2 {Invalid option} -body {
+	set ch [udp_open]
+	chan configure $ch -bogus
+    } -cleanup {
+	close $ch
+    } -result {bad option "-bogus": must be -broadcast, -family, -mcastadd, -mcastdrop, -mcastgroups, -mcastif, -mcastloop, -myport, -peer, -remote, or -ttl} -returnCodes {1}
+
+# Helper procedures
+proc test_get_opt {port arg opt} {set ch [udp_open $port {*}$arg];set res [chan configure $ch $opt];close $ch;return $res}
+proc test_set_opt {port arg opt val} {set ch [udp_open $port {*}$arg];chan configure $ch $opt $val;set res [chan configure $ch $opt];close $ch;return $res}
+set mc_port 55000
+
+# Broadcast
+
+
+test Broadcast-5.1 {Get broadcast IPv4} -body {
+	test_get_opt [incr ::mc_port] ipv4 -broadcast
+    } -result {0}
+
+test Broadcast-5.2 {Get broadcast IPv6} -body {
+	test_get_opt [incr ::mc_port] ipv6 -broadcast
+    } -result {0}
+
+test Broadcast-5.3 {Set broadcast IPv4} -body {
+	test_set_opt [incr ::mc_port] ipv4 -broadcast 1
+    } -result {1}
+
+test Broadcast-5.4 {Set broadcast IPv6} -body {
+	test_set_opt [incr ::mc_port] ipv6 -broadcast 1
+    } -result {1}
+
+test Broadcast-5.5 {Invalid value} -body {
+	set ch [udp_open [incr ::mc_port]]
+	chan configure $ch -broadcast bogus
+    } -cleanup {
+	close $ch
+    } -result {expected boolean value but got "bogus"} -returnCodes {1}
+
+# Family
+
+
+test Family-6.1 {Get Family IPv4} -body {
+	test_get_opt [incr ::mc_port] ipv4 -family
+    } -result {ipv4}
+
+test Family-6.2 {Get Family IPv6} -body {
+	test_get_opt [incr ::mc_port] ipv6 -family
+    } -result {ipv6}
+
+test Family-6.3 {Set Family IPv4} -body {
+	set ch [udp_open [incr ::mc_port]]
+	chan configure $ch -family ipv4
+    } -result {get only option "-family"} -returnCodes {1}
+
+test Family-6.4 {Set Family IPv6} -body {
+	set ch [udp_open [incr ::mc_port] ipv6]
+	chan configure $ch -family ipv6
+    } -result {get only option "-family"} -returnCodes {1}
+
+# My Port
+incr mc_port
+
+
+test Port-7.1 {Get My Port IPv4} -body {
+	test_get_opt $::mc_port ipv4 -myport
+    } -result $::mc_port
+incr mc_port
+
+test Port-7.2 {Get My Port IPv6} -body {
+	test_get_opt $::mc_port ipv6 -myport
+    } -result $::mc_port
+
+test Port-7.3 {Set My Port IPv4} -body {
+	set ch [udp_open [incr ::mc_port]]
+	chan configure $ch -myport 9002
+    } -result {get only option "-myport"} -returnCodes {1}
+
+test Port-7.4 {Set My Port IPv6} -body {
+	set ch [udp_open [incr ::mc_port] ipv6]
+	chan configure $ch -myport 9002
+    } -result {get only option "-myport"} -returnCodes {1}
+
+test Port-7.5 {Invalid Port IPv4} -body {
+	set ch [udp_open 80000]
+    } -result {couldn't open socket: port number too high} -returnCodes {1}
+
+test Port-7.6 {Invalid Port IPv6} -body {
+	set ch [udp_open 70000 ipv6]
+    } -result {couldn't open socket: port number too high} -returnCodes {1}
+
+test Port-7.7 {Invalid Port IPv4} -body {
+	set ch [udp_open -200]
+    } -result {couldn't open socket: port number too low} -returnCodes {1}
+
+test Port-7.8 {Invalid Port IPv6} -body {
+	set ch [udp_open -300 ipv6]
+    } -result {couldn't open socket: port number too low} -returnCodes {1}
+
+proc test_mc {arg group} {set ch [udp_open {*}$arg];chan configure $ch -mcastadd $group;set res [expr {$group in [chan configure $ch -mcastgroups]}];chan configure $ch -mcastdrop $group;incr res [expr {$group in [chan configure $ch -mcastgroups]}];close $ch;return $res}
+# A multicast address must use the following IP address range: 224.0.0.0 through 239.255.255.255. 
+set mcast_addr_ipv4 225.1.2.3
+set mcast_addr_ipv6 ff02::1
+
+# Multicast Group
+
+
+test Multicast_Group-8.1 {Get Multicast Groups IPv4} -body {
+	test_get_opt [incr ::mc_port] ipv4 -mcastgroup
+    }
+
+test Multicast_Group-8.2 {Get Multicast Groups IPv6} -body {
+	test_get_opt [incr ::mc_port] ipv6 -mcastgroup
+    }
+
+test Multicast_Group-8.3 {Add and Drop Group IPv4} -body {
+	test_mc ipv4 $mcast_addr_ipv4
+    } -result {1}
+
+test Multicast_Group-8.4 {Add and Drop Group IPv6} -body {
+	test_mc ipv6 $mcast_addr_ipv6
+    } -result {1}
+
+test Multicast_Group-8.5 {Add invalid value} -body {
+	set ch [udp_open [incr ::mc_port] ipv4]
+	chan configure $ch -mcastadd {}
+    } -cleanup {
+	close $ch
+    } -result {multicast group and/or local network interface not specified} -returnCodes {1}
+
+test Multicast_Group-8.6 {Drop invalid value} -body {
+	set ch [udp_open [incr ::mc_port] ipv4]
+	chan configure $ch -mcastdrop {}
+    } -cleanup {
+	close $ch
+    } -result {multicast group and/or local network interface not specified} -returnCodes {1}
+
+# Multicast Interface
+
+
+test Multicast_IF-9.1 {Get Multicast Interface IPv4} -body {
+	test_get_opt [incr ::mc_port] ipv4 -mcastif
+    }
+
+test Multicast_IF-9.2 {Get Multicast Interface IPv6} -body {
+	test_get_opt [incr ::mc_port] ipv6 -mcastif
+    }
+
+test Multicast_IF-9.3 {Change Multicast Interface IPv4} -body {
+	test_set_opt [incr ::mc_port] ipv4 -mcastif 2
+    } -result {2}
+
+test Multicast_IF-9.4 {Change Multicast Interface IPv6} -body {
+	test_set_opt [incr ::mc_port] ipv6 -mcastif 2
+    } -result {2}
+
+test Multicast_IF-9.5 {Imvalid value} -body {
+	set ch [udp_open [incr ::mc_port] ipv4]
+	chan configure $ch -mcastif bogus
+    } -cleanup {
+	close $ch
+    } -returnCodes {1}
+
+# Multicast Loop
+
+
+test Multicast_Loop-10.1 {Get Multicast Loop IPv4} -body {
+	test_get_opt [incr ::mc_port] ipv4 -mcastloop
+    } -result {1}
+
+test Multicast_Loop-10.2 {Get Multicast Loop IPv6} -body {
+	test_get_opt [incr ::mc_port] ipv6 -mcastloop
+    } -result {1}
+
+test Multicast_Loop-10.3 {Set Multicast Loop IPv4} -body {
+	test_set_opt [incr ::mc_port] ipv4 -mcastloop 0
+    } -result {0}
+
+test Multicast_Loop-10.4 {Set Multicast Loop IPv6} -body {
+	test_set_opt [incr ::mc_port] ipv6 -mcastloop 0
+    } -result {0}
+
+test Multicast_Loop-10.5 {Invalid value} -body {
+	set ch [udp_open [incr ::mc_port]]
+	chan configure $ch -mcastloop bogus
+    } -cleanup {
+	close $ch
+    } -result {expected boolean value but got "bogus"} -returnCodes {1}
+
+# Peer
+
+
+test Peer-11.1 {Get Peer IPv4} -body {
+	test_get_opt [incr ::mc_port] ipv4 -peer
+    }
+
+test Peer-11.2 {Get Peer IPv6} -body {
+	test_get_opt [incr ::mc_port] ipv6 -peer
+    }
+
+test Peer-11.3 {Set Peer IPv4} -body {
+	set ch [udp_open [incr ::mc_port]]
+	chan configure $ch -peer bogus
+    } -cleanup {
+	close $ch
+    } -result {get only option "-peer"} -returnCodes {1}
+
+test Peer-11.4 {Set Peer IPv6} -body {
+	set ch [udp_open [incr ::mc_port]]
+	chan configure $ch -peer bogus
+    } -cleanup {
+	close $ch
+    } -result {get only option "-peer"} -returnCodes {1}
+
+# Remote
+
+
+test Remote-12.1 {Get Remote IPv4} -body {
+	test_get_opt [incr ::mc_port] ipv4 -remote
+    }
+
+test Remote-12.2 {Get Remote IPv6} -body {
+	test_get_opt [incr ::mc_port] ipv6 -remote
+    }
+
+test Remote-12.3 {Set Remote IPv4} -body {
+	test_set_opt [incr ::mc_port] ipv4 -remote [list  google.com 80]
+    } -result {google.com 80}
+
+test Remote-12.4 {Set Remote IPv6} -body {
+	test_set_opt [incr ::mc_port] ipv6 -remote [list google.com 80]
+    } -result {google.com 80}
+
+test Remote-12.5 {Set Remote Default Port IPv4} -body {
+	test_set_opt [incr ::mc_port] ipv4 -remote [list  google.com]
+    } -match {glob} -result {google.com *}
+
+test Remote-12.6 {Set Remote Default Port IPv6} -body {
+	test_set_opt [incr ::mc_port] ipv6 -remote [list google.com]
+    } -match {glob} -result {google.com *}
+
+test Remote-12.7 {Invalid value} -body {
+	set ch [udp_open [incr ::mc_port] ipv4]
+	chan configure $ch -remote [list bogus value]
+    } -cleanup {
+	close $ch
+    } -result {expected integer but got "value"} -returnCodes {1}
+
+test Remote-12.8 {Too many values} -body {
+	set ch [udp_open [incr ::mc_port] ipv4]
+	chan configure $ch -remote [list bogus value value]
+    } -cleanup {
+	close $ch
+    } -result {wrong # args: should be "?hostname? ?port?"} -returnCodes {1}
+
+# TTL
+
+
+test TTL-13.1 {TTL IPv4} -body {
+	test_get_opt [incr ::mc_port] ipv4 -ttl
+    } -result {64}
+
+test TTL-13.2 {TTL IPv6} -body {
+	test_get_opt [incr ::mc_port] ipv6 -ttl
+    } -result {128}
+
+test TTL-13.3 {Set TTL IPv4} -body {
+	test_set_opt [incr ::mc_port] ipv4 -ttl 72
+    } -result {72}
+
+test TTL-13.4 {Set TTL IPv6} -body {
+	test_set_opt [incr ::mc_port] ipv6 -ttl 84
+    } -result {84}
+
+test TTL-13.5 {Invalid value} -body {
+	set ch [udp_open [incr ::mc_port] ipv4]
+	chan configure $ch -ttl bogus
+    } -cleanup {
+	close $ch
+    } -result {expected integer but got "bogus"} -returnCodes {1}
+
+test TTL-13.6 {Default value} -body {
+	test_set_opt [incr ::mc_port] ipv4 -ttl -1
+    } -match {glob} -result {*}
+
+test TTL-13.7 {Out of range value} -body {
+	set ch [udp_open [incr ::mc_port] ipv4]
+	chan configure $ch -ttl 257
+    } -cleanup {
+	close $ch
+    } -match {glob} -result {error setting -ttl: An invalid argument was supplied.*} -returnCodes {1}
+
+# Cleanup
+::tcltest::cleanupTests
+return
