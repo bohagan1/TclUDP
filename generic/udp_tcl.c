@@ -246,7 +246,7 @@ int UdpSockGetPort(
 
 	native = Tcl_UtfToExternalDString(NULL, service, -1, &ds);
 	sp = getservbyname(native, proto);              /* INTL: Native. */
-		Tcl_DStringFree(&ds);
+	Tcl_DStringFree(&ds);
 	if (sp != NULL) {
 	    *portPtr = ntohs((unsigned short) sp->s_port);
 		return TCL_OK;
@@ -2340,6 +2340,61 @@ int Udp_GetAddrInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj
 }
 
 /*
+ * ----------------------------------------------------------------------
+ * Udp_GetNameInfo --
+ *  Get hostname for address
+ *
+ * ----------------------------------------------------------------------
+ */
+int Udp_GetNameInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
+    char hostname[1024] = "";
+    int family = AF_INET, err;
+
+    Tcl_ResetResult(interp);
+
+    /* Validate argc */
+    if (objc < 2 || objc > 3) {
+	Tcl_WrongNumArgs(interp, 1, objv, "address ?ipv6?");
+	return TCL_ERROR;
+    } else if (objc == 3) {
+	family = AF_INET6;
+    }
+
+    /* Get input address */
+    if (family == AF_INET) {
+	struct sockaddr_in sa;
+	memset(&sa, 0, sizeof(sa));
+	sa.sin_family = family;
+
+	if (inet_pton(family, Tcl_GetString(objv[1]), &sa.sin_addr) != 1) {
+	    Tcl_AppendResult(interp, "Invalid IPv4 address ", Tcl_GetString(objv[1]), (char *) NULL);
+	    return TCL_ERROR;
+	}
+	err = getnameinfo((const struct sockaddr *)&sa, sizeof(sa), hostname, 1024, NULL, 0, 0);
+
+    } else {
+	struct sockaddr_in6 sa;
+	sa.sin6_family = family;
+	memset(&sa, 0, sizeof(sa));
+
+	if (inet_pton(family, Tcl_GetString(objv[1]), &sa.sin6_addr) != 1) {
+	    Tcl_AppendResult(interp, "Invalid IPv6 address ", Tcl_GetString(objv[1]), (char *) NULL);
+	    return TCL_ERROR;
+	}
+	err = getnameinfo((const struct sockaddr *)&sa, sizeof(sa), hostname, 1024, NULL, 0, 0);
+    }
+
+    /* Convert to host and service */
+    if (err != 0) {
+	Tcl_AppendResult(interp, "Get name info returned error: ", gai_strerror(err), (char *) NULL);
+	return TCL_ERROR;
+    }
+    
+    Tcl_SetObjResult(interp, Tcl_NewStringObj(hostname,-1));
+    return TCL_OK;
+}
+
+/*
  *----------------------------------------------------------------------
  *
  * Build Info Command --
@@ -2486,6 +2541,7 @@ int Udp_Init(Tcl_Interp *interp) {
     Tcl_CreateObjCommand(interp, "udp_peek", udpPeek, (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
     Tcl_CreateObjCommand(interp, "udp", Udp_CmdProc, (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
     Tcl_CreateObjCommand(interp, "::udp::getaddrinfo", Udp_GetAddrInfo, (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
+    Tcl_CreateObjCommand(interp, "::udp::getnameinfo", Udp_GetNameInfo, (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
 
     BuildInfoCommand(interp);
 
