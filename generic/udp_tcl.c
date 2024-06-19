@@ -153,6 +153,13 @@ enum _cfg_opts {
  * Helper Functions
  */
 
+static void AppendWinCharsToObj(Tcl_Obj *errObj, LPWSTR sMsg, Tcl_Size len) {
+    Tcl_DString ds;
+    Tcl_DStringInit(&ds);
+    Tcl_Char16ToUtfDString(sMsg, len, &ds);
+    Tcl_AppendToObj(errObj, Tcl_DStringValue(&ds), Tcl_DStringLength(&ds));
+    Tcl_DStringFree(&ds);
+}
 
 /*
 * -----------------------------------------------------------------------
@@ -171,7 +178,11 @@ static Tcl_Obj * ErrorToObj(const char * prefix) {
 	SUBLANG_DEFAULT), (LPWSTR)&sMsg, 0, NULL);
     errObj = Tcl_NewStringObj(prefix, -1);
     Tcl_AppendToObj(errObj, ": ", -1);
+#if TCL_UTF_MAX < 4
     Tcl_AppendUnicodeToObj(errObj, (LPWSTR)sMsg, (Tcl_Size) (len - 1));
+#else
+    AppendWinCharsToObj(errObj, (LPWSTR) sMsg, len-1);
+#endif
     LocalFree(sMsg);
 #else
     errObj = Tcl_NewStringObj(prefix, -1);
@@ -738,6 +749,20 @@ static int udpClose(ClientData instanceData, Tcl_Interp *interp) {
     return errorCode;
 }
 
+/*
+ * ----------------------------------------------------------------------
+ * udpClose2 --
+ *  Called from the channel driver code to cleanup and close
+ *  the socket.
+ *
+ * Results:
+ *  0 if successful, the value of errno if failed.
+ *
+ * Side effects:
+ *  The socket is closed.
+ *
+ * ----------------------------------------------------------------------
+ */
 static int udpClose2(ClientData instanceData, Tcl_Interp *interp, int flags) {
 #ifdef _WIN32
     SOCKET sock;
@@ -770,7 +795,7 @@ static int udpClose2(ClientData instanceData, Tcl_Interp *interp, int flags) {
  * udpWatch --
  * ----------------------------------------------------------------------
  */
-void udpWatch(ClientData instanceData, int mask) {
+static void udpWatch(ClientData instanceData, int mask) {
 #ifndef _WIN32
     UdpState *statePtr = (UdpState *) instanceData;
 
