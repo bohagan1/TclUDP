@@ -648,7 +648,7 @@ int Udp_WinHasSockets(Tcl_Interp *interp) {
     return TCL_ERROR;
 }
 #endif /* ! _WIN32 */
-
+
 
 /*
  * Channel handling procedures
@@ -1194,8 +1194,7 @@ static int udpSetMulticastIFOption(UdpState *statePtr, Tcl_Interp *interp, const
     return TCL_OK;
 }
 #endif
-
-
+
 /* ----------------------------------------------------------------------
  *
  * LSearch --
@@ -1228,7 +1227,6 @@ static Tcl_Size LSearch(Tcl_Obj *listObj, const char *group) {
  */
 
 static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp, int action) {
-    int r;
     Tcl_Obj *tcllist , *multicastgrp , *nw_interface;
     Tcl_Size len;
     int nwinterface_index =-1;
@@ -1330,6 +1328,7 @@ static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp,
 	struct ipv6_mreq mreq6;
 	struct addrinfo hints;
 	struct addrinfo *gai_ret = NULL;
+	int r;
 
 	memset(&hints, 0, sizeof(hints));
 
@@ -1407,7 +1406,6 @@ static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp,
     return TCL_OK;
 }
 
-
 /*
  * ----------------------------------------------------------------------
  * udpSetMulticastAddOption --
@@ -2010,7 +2008,7 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 #endif
     return TCL_OK;
 }
-
+
 /*
 * -----------------------------------------------------------------------
 * udpConf --
@@ -2024,7 +2022,7 @@ int udpConf(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
     Tcl_ResetResult(interp);
 
     if (objc < 3 || objc > 12) {
-	Tcl_WrongNumArgs(interp, 1, objv, "chanId [host port]|[-myport|-remote|-peer|-mcastadd \"groupaddr ?netwif?\"|-mcastdrop \"groupaddr ?netwif?\"|-mcastgroups|-mcastloop ?boolean?|-broadcast ?boolean?|-ttl ?count?]");
+	Tcl_WrongNumArgs(interp, 1, objv, "chanId [host port]|[-myport|-remote \"host port\"|-peer|-family|-mcastadd \"groupaddr ?netwif?\"|-mcastdrop \"groupaddr ?netwif?\"|-mcastgroups|-mcastloop ?boolean?|-broadcast ?boolean?|-ttl ?count?]");
 	return TCL_ERROR;
     }
 
@@ -2087,6 +2085,7 @@ int udpConf(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 	    }
 	    break;
 
+	case _opt_family:
 	case _opt_mcastgroups:
 	case _opt_myport:
 	case _opt_peer:
@@ -2097,7 +2096,7 @@ int udpConf(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
     }
     return TCL_OK;
 }
-
+
 /*
  * ----------------------------------------------------------------------
  * udpPeek --
@@ -2165,7 +2164,6 @@ int udpPeek(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
     return TCL_ERROR;
 #endif /* ! _WIN32 */
 }
-
 
 /*
  * ----------------------------------------------------------------------
@@ -2363,7 +2361,7 @@ int Udp_GetAddrInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj
     freeaddrinfo(result);
     return TCL_OK;
 }
-
+
 /*
  * ----------------------------------------------------------------------
  * Udp_GetNameInfo --
@@ -2418,7 +2416,7 @@ int Udp_GetNameInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj
     Tcl_SetObjResult(interp, Tcl_NewStringObj(hostname,-1));
     return TCL_OK;
 }
-
+
 /*
  *----------------------------------------------------------------------
  *
@@ -2501,6 +2499,7 @@ BuildInfoCommand(Tcl_Interp* interp) {
     }
     return TCL_OK;
 }
+
 /*
  *----------------------------------------------------------------------------
  *

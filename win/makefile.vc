@@ -44,6 +44,8 @@ PRJ_LIBS = WS2_32.Lib
 # Define the standard targets which calls rules.vc
 !include "targets.vc"
 
+.SUFFIXES: .man
+
 #---------------------------------------------------------------------
 # Project specific targets
 #---------------------------------------------------------------------
@@ -52,18 +54,8 @@ PRJ_LIBS = WS2_32.Lib
 # NOTE: this requires doctools from tcllib hence it is not intended
 # to be run during install. Rather, use it to generate a new version
 # of HTML docs to be stored in the repository.
-DOC2HTML = $(TCLSH) "$(TOOLSDIR)\mpexpand.tcl" html
-{$(DOCDIR)}.man{$(OUT_DIR)}.html:
-	$(DOC2HTML) $< $@
-        @$(TCLSH) <<
-set name $(@:\=/)
-set f [open $$name r]; set d [read $$f]; close $$f
-set d [regsub {</head>} $$d {<link rel="stylesheet" href="manpage.css" type="text/css"></head>}]
-set f [open $$name w]; puts -nonewline $$f $$d; close $$f
-<<
-
-.SUFFIXES: .man
-
+make-docs-html:
+	$(TCLSH) "$(TOOLSDIR)\mpexpand.tcl" html "$(DOCDIR)\$(PROJECT).man" "$(DOCDIR)\$(PROJECT).html" 
 
 all: setup default-target
 
@@ -97,7 +89,7 @@ $(TMP_DIR)\udpUuid.h:	$(ROOT)\manifest.uuid
 # an additional target for our documentation. Note this *adds* a target
 # since no commands are listed after it. The original targets for
 # install (from targets.vc) will remain.
-install: pkgindex default-install default-install-docs-html default-install-docs-n default-install-demos
+install: pkgindex default-install make-docs-html default-install-docs-html default-install-demos
 
 # Explicit dependency rules
 $(GENERICDIR)\udp_tcl.c: $(TMP_DIR)\udpUuid.h
