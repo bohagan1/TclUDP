@@ -521,6 +521,10 @@ static int InitSockets() {
  */
 void ExitSockets(ClientData clientData) {
     WSACleanup();
+
+#ifdef DEBUG
+    fclose(dbg);
+#endif
 }
 
 /*
@@ -647,6 +651,19 @@ int Udp_WinHasSockets(Tcl_Interp *interp) {
     }
     return TCL_ERROR;
 }
+#else
+
+/*
+ * ----------------------------------------------------------------------
+ * ExitSockets
+ * ----------------------------------------------------------------------
+ */
+void ExitSockets(ClientData clientData) {
+#ifdef DEBUG
+    fclose(dbg);
+#endif
+}
+
 #endif /* ! _WIN32 */
 
 
@@ -2532,8 +2549,6 @@ BuildInfoCommand(Tcl_Interp* interp) {
 int Udp_Init(Tcl_Interp *interp) {
 #ifdef _WIN32
     ThreadSpecificData *tsdPtr;
-#elif defined(DEBUG)
-    dbg = fopen("udp.dbg", "wt");
 #endif
 
 #ifdef USE_TCL_STUBS
@@ -2556,10 +2571,10 @@ int Udp_Init(Tcl_Interp *interp) {
     Tcl_CreateEventSource(UDP_SetupProc, UDP_CheckProc, NULL);
 	Tcl_CreateThreadExitHandler(UDP_ExitProc, NULL);
     }
+#endif
 
     /* Exit handler */
     Tcl_CreateExitHandler(ExitSockets, NULL);
-#endif
 
     /* Create namespace */
     Tcl_CreateNamespace(interp, "::udp", NULL, NULL);
@@ -2573,6 +2588,10 @@ int Udp_Init(Tcl_Interp *interp) {
     Tcl_CreateObjCommand(interp, "::udp::getnameinfo", Udp_GetNameInfo, (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
 
     BuildInfoCommand(interp);
+
+#ifdef DEBUG
+    dbg = fopen("udp.dbg", "wt");
+#endif
 
     return Tcl_PkgProvide(interp, PACKAGE_NAME, PACKAGE_VERSION);
 }
