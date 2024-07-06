@@ -1169,24 +1169,29 @@ static int udpSetMulticastIFOption(UdpState *statePtr, Tcl_Interp *interp, const
     if (statePtr->ss_family == AF_INET) {
 	struct in_addr interface_addr;
 
-	if (inet_aton(newValue, &interface_addr) == 0) {
-	    Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif (bad IP)"));
+	if (strlen(newValue) == 0) {
+	    interface_addr.s_addr = INADDR_NONE;
+	} else if (inet_aton(newValue, &interface_addr) == 0) {
+	    Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif (bad address)"));
 	    return TCL_ERROR;
 	}
 
-	if (setsockopt(statePtr->sock, IPPROTO_IP, IP_MULTICAST_IF, (const char*)&interface_addr, sizeof(interface_addr)) < 0) {
+	if (setsockopt(statePtr->sock, IPPROTO_IP, IP_MULTICAST_IF, (const char*)&interface_addr,
+		sizeof(interface_addr)) < 0) {
 	    Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif"));
 	    return TCL_ERROR;
 	}
     } else {
-	struct in6_addr interface_addr;
+	struct in6_addr interface_addr = IN6ADDR_ANY_INIT;
 
-	if (inet_pton(AF_INET6, newValue, &interface_addr)==0) {
-	    Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif (bad IP)"));
+	if (strlen(newValue) == 0) {
+	} else if (inet_pton(AF_INET6, newValue, &interface_addr)==0) {
+	    Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif (bad address)"));
 	    return TCL_ERROR;
 	}
 	
-	if (setsockopt(statePtr->sock, IPPROTO_IP, IPV6_MULTICAST_IF, (const char*)&interface_addr, sizeof(interface_addr)) < 0) {
+	if (setsockopt(statePtr->sock, IPPROTO_IP, IPV6_MULTICAST_IF, (const char*)&interface_addr,
+		sizeof(interface_addr)) < 0) {
 	    Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif"));
 	    return TCL_ERROR;
 	}
