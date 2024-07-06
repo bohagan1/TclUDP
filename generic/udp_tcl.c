@@ -157,7 +157,11 @@ enum _cfg_opts {
 static void AppendWinCharsToObj(Tcl_Obj *errObj, LPWSTR sMsg, Tcl_Size len) {
     Tcl_DString ds;
     Tcl_DStringInit(&ds);
+#if TCL_MAJOR_VERSION > 8
     Tcl_Char16ToUtfDString(sMsg, len, &ds);
+#else
+    Tcl_WinTCharToUtf((const TCHAR *) sMsg, (int) len, &ds);
+#endif
     Tcl_AppendToObj(errObj, Tcl_DStringValue(&ds), Tcl_DStringLength(&ds));
     Tcl_DStringFree(&ds);
 }
@@ -172,7 +176,7 @@ static void AppendWinCharsToObj(Tcl_Obj *errObj, LPWSTR sMsg, Tcl_Size len) {
 static Tcl_Obj * ErrorToObj(const char * prefix) {
     Tcl_Obj *errObj;
 #ifdef _WIN32
-    LPVOID sMsg;
+    LPWSTR sMsg;
     DWORD len = 0;
 
     len = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM
@@ -182,8 +186,10 @@ static Tcl_Obj * ErrorToObj(const char * prefix) {
     Tcl_AppendToObj(errObj, ": ", -1);
 #if TCL_UTF_MAX < 4
     Tcl_AppendUnicodeToObj(errObj, (LPWSTR)sMsg, (Tcl_Size) (len - 1));
+#elif TCL_MAJOR_VERSION > 8
+    AppendWinCharsToObj(errObj, (LPWSTR)sMsg, (Tcl_Size) len);
 #else
-    AppendWinCharsToObj(errObj, (LPWSTR) sMsg, len-1);
+    AppendWinCharsToObj(errObj, (LPWSTR)sMsg, (Tcl_Size) len*2);
 #endif
     LocalFree(sMsg);
 #else
