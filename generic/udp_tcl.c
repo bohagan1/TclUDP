@@ -2559,10 +2559,11 @@ int Udp_Init(Tcl_Interp *interp) {
     if (Tcl_InitStubs(interp, MIN_VERSION, 0) == NULL) {
 	return TCL_ERROR;
     }
-#endif
-    if (Tcl_PkgRequire(interp, "Tcl", MIN_VERSION, 0) == NULL) {
+#else
+    if (Tcl_PkgRequireEx(interp, "Tcl", MIN_VERSION, 0, NULL) == NULL) {
 	return TCL_ERROR;
     }
+#endif
 
 #ifdef _WIN32
     if (Udp_WinHasSockets(interp) != TCL_OK) {
