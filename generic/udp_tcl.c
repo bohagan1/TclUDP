@@ -661,6 +661,7 @@ int Udp_WinHasSockets(Tcl_Interp *interp) {
  * ----------------------------------------------------------------------
  */
 void ExitSockets(ClientData clientData) {
+    (void) clientData;
 #ifdef DEBUG
     fclose(dbg);
 #endif
@@ -688,7 +689,7 @@ void ExitSockets(ClientData clientData) {
  *
  * ----------------------------------------------------------------------
  */
-static int udpClose(ClientData instanceData, Tcl_Interp *interp) {
+static int udpClose(ClientData clientData, Tcl_Interp *interp) {
 #ifdef _WIN32
     SOCKET sock;
 #else
@@ -697,7 +698,7 @@ static int udpClose(ClientData instanceData, Tcl_Interp *interp) {
     int errorCode = 0;
     Tcl_Size objc;
     Tcl_Obj **objv;
-    UdpState *statePtr = (UdpState *) instanceData;
+    UdpState *statePtr = (UdpState *) clientData;
 #ifdef _WIN32
     UdpState *tmp, *p;
 
@@ -782,7 +783,7 @@ static int udpClose(ClientData instanceData, Tcl_Interp *interp) {
  *
  * ----------------------------------------------------------------------
  */
-static int udpClose2(ClientData instanceData, Tcl_Interp *interp, int flags) {
+static int udpClose2(ClientData clientData, Tcl_Interp *interp, int flags) {
 #ifdef _WIN32
     SOCKET sock;
     int shut_rd = SD_RECEIVE;
@@ -792,11 +793,11 @@ static int udpClose2(ClientData instanceData, Tcl_Interp *interp, int flags) {
     int shut_rd = SHUT_RD;
     int shut_wr = SHUT_WR;
 #endif
-    UdpState *statePtr = (UdpState *) instanceData;
+    UdpState *statePtr = (UdpState *) clientData;
     int readError = 0, writeError = 0;
 
     if ((flags & (TCL_CLOSE_READ|TCL_CLOSE_WRITE)) == 0) {
-	return udpClose(instanceData, interp);
+	return udpClose(clientData, interp);
     }
 
     sock = statePtr->sock;
@@ -814,9 +815,9 @@ static int udpClose2(ClientData instanceData, Tcl_Interp *interp, int flags) {
  * udpWatch --
  * ----------------------------------------------------------------------
  */
-static void udpWatch(ClientData instanceData, int mask) {
+static void udpWatch(ClientData clientData, int mask) {
 #ifndef _WIN32
-    UdpState *statePtr = (UdpState *) instanceData;
+    UdpState *statePtr = (UdpState *) clientData;
 
     statePtr->mask = mask;
     if (mask) {
@@ -842,8 +843,10 @@ static void udpWatch(ClientData instanceData, int mask) {
  *   None
  * ----------------------------------------------------------------------
  */
-static int udpGetHandle(ClientData instanceData, int direction, ClientData *handlePtr) {
-    UdpState *statePtr = (UdpState *) instanceData;
+static int udpGetHandle(ClientData clientData, int direction, ClientData *handlePtr) {
+    UdpState *statePtr = (UdpState *) clientData;
+    (void) clientData;
+    (void) direction;
 
     UDPTRACE("udpGetHandle %ld\n", (long)statePtr->sock);
 
@@ -860,12 +863,15 @@ static int udpGetHandle(ClientData instanceData, int direction, ClientData *hand
  * udpOutput--
  * ----------------------------------------------------------------------
  */
-static int udpOutput(ClientData instanceData, const char *buf, int toWrite, int *errorCode) {
-    UdpState *statePtr = (UdpState *) instanceData;
+static int udpOutput(ClientData clientData, const char *buf, int toWrite, int *errorCode) {
+    UdpState *statePtr = (UdpState *) clientData;
     int written, socksize;
     struct addrinfo hints, *result;
+    (void) clientData;
+    *errorCode = 0;
 
     if (toWrite > MAXBUFFERSIZE) {
+	*errorCode = EOVERFLOW;
 	UDPTRACE("UDP error - MAXBUFFERSIZE");
 	return -1;
     }
@@ -880,6 +886,7 @@ static int udpOutput(ClientData instanceData, const char *buf, int toWrite, int 
 	hints.ai_protocol = IPPROTO_UDP;
 
 	if (getaddrinfo(statePtr->remotehost, NULL, &hints, &result) != 0) {
+	    *errorCode = errno;
 	    UDPTRACE("UDP error - getaddrinfo failed");
 	    return -1;
 	}
@@ -902,6 +909,7 @@ static int udpOutput(ClientData instanceData, const char *buf, int toWrite, int 
 	if (sendaddrv4.sin_addr.s_addr == -1) {
 	    name = gethostbyname(statePtr->remotehost);
 	    if (name == NULL) {
+		*errorCode = errno;
 		UDPTRACE("UDP error - gethostbyname");
 		return -1;
 	    }
@@ -917,6 +925,7 @@ static int udpOutput(ClientData instanceData, const char *buf, int toWrite, int 
 	if(inet_aton(statePtr->remotehost,&remote_addr)==0) {
 	    name = gethostbyname(statePtr->remotehost);
 	    if (name == NULL) {
+		*errorCode = errno;
 		UDPTRACE("UDP error - gethostbyname");
 		return -1;
 	    }
@@ -931,6 +940,7 @@ static int udpOutput(ClientData instanceData, const char *buf, int toWrite, int 
     }
 
     if (written < 0) {
+	*errorCode = errno;
 	UDPTRACE("UDP error - sendto");
 	return -1;
     }
@@ -948,8 +958,8 @@ static int udpOutput(ClientData instanceData, const char *buf, int toWrite, int 
  *    bufSize comes from Tcl default size
  * ----------------------------------------------------------------------
  */
-static int udpInput(ClientData instanceData, char *buf, int bufSize, int *errorCode) {
-    UdpState *statePtr = (UdpState *) instanceData;
+static int udpInput(ClientData clientData, char *buf, int bufSize, int *errorCode) {
+    UdpState *statePtr = (UdpState *) clientData;
     int bytesRead;
 
 #ifdef _WIN32
@@ -1599,9 +1609,9 @@ static int udpSetTtlOption(UdpState *statePtr, Tcl_Interp *interp, const char *n
 * udpGetOption --
 * ----------------------------------------------------------------------
 */
-static int udpGetOption(ClientData instanceData, Tcl_Interp *interp, const char *optionName,
+static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *optionName,
 	Tcl_DString *optionValue) {
-    UdpState *statePtr = (UdpState *)instanceData;
+    UdpState *statePtr = (UdpState *)clientData;
     int r = TCL_OK, opt = -1;
 
     Tcl_ResetResult(interp);
@@ -1613,7 +1623,7 @@ static int udpGetOption(ClientData instanceData, Tcl_Interp *interp, const char 
 	    if (cfg_opts[opt] != NULL) {
 		Tcl_DStringInit(&ds);
 		Tcl_DStringSetLength(&ds, 0);
-		if (udpGetOption(instanceData, interp, cfg_opts[opt], &ds) != TCL_ERROR) {
+		if (udpGetOption(clientData, interp, cfg_opts[opt], &ds) != TCL_ERROR) {
 		    Tcl_DStringAppend(optionValue, " ", 1);
 		    Tcl_DStringAppend(optionValue, cfg_opts[opt], -1);
 		    Tcl_DStringAppend(optionValue, " ", 1);
@@ -1725,9 +1735,9 @@ static int udpGetOption(ClientData instanceData, Tcl_Interp *interp, const char 
  *
  * ----------------------------------------------------------------------
  */
-static int udpSetOption(ClientData instanceData, Tcl_Interp *interp, const char *optionName,
+static int udpSetOption(ClientData clientData, Tcl_Interp *interp, const char *optionName,
 	const char *newValue) {
-    UdpState *statePtr = (UdpState *)instanceData;
+    UdpState *statePtr = (UdpState *)clientData;
     int r = TCL_OK, opt;
 
     Tcl_Obj *nameObj = Tcl_NewStringObj(optionName,-1);
@@ -1796,8 +1806,8 @@ static int udpSetOption(ClientData instanceData, Tcl_Interp *interp, const char 
  */
 
 static void
-udpThreadAction(ClientData instanceData, int action) {
-    UdpState *statePtr = (UdpState *) instanceData;
+udpThreadAction(ClientData clientData, int action) {
+    UdpState *statePtr = (UdpState *) clientData;
 
     switch (action) {
       case TCL_CHANNEL_THREAD_REMOVE:
@@ -1883,6 +1893,7 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
     address addr, sockaddr;
     socklen_t addr_len, len;
     short ss_family = AF_INET; /* Default ipv4 */
+    (void) clientData;
 
     Tcl_ResetResult(interp);
 
@@ -2046,6 +2057,7 @@ int udpConf(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
     Tcl_Channel chan;
     UdpState *statePtr = NULL;
     Tcl_Size opt;
+    (void) clientData;
 
     Tcl_ResetResult(interp);
 
@@ -2140,6 +2152,7 @@ int udpPeek(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
     address recvaddr;
     Tcl_Channel chan;
     UdpState *statePtr;
+    (void) clientData;
 
     Tcl_ResetResult(interp);
 
@@ -2205,6 +2218,10 @@ int udpPeek(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
  * ----------------------------------------------------------------------
  */
 int Udp_CmdProc(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
+    (void) clientData;
+    (void) objc;
+    (void) objv;
+
     Tcl_SetResult(interp, "E_NOTIMPL", TCL_STATIC);
     return TCL_ERROR;
 }
@@ -2238,6 +2255,7 @@ int Udp_GetAddrInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj
     struct protoent *protocol;
     int err, opt;
     Tcl_Obj *resultObj, *listObj;
+    (void) clientData;
 
     memset(&hints, 0 , sizeof(hints));
     hints.ai_flags = (AI_V4MAPPED | AI_ADDRCONFIG | AI_CANONNAME);
@@ -2400,6 +2418,7 @@ int Udp_GetAddrInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj
 int Udp_GetNameInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
     char hostname[1024] = "";
     int family = AF_INET, err;
+    (void) clientData;
 
     Tcl_ResetResult(interp);
 
