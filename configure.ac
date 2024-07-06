@@ -65,6 +65,12 @@ TEA_SETUP_COMPILER
 
 TEA_BLOCKING_STYLE
 
+#--------------------------------------------------------------------
+# Additional headers or symbols needed for the tcludp projects.
+#--------------------------------------------------------------------
+
+TCLUDP_CONFIG
+
 #-----------------------------------------------------------------------
 # Specify the C source files to compile in TEA_ADD_SOURCES,
 # public headers that need to be installed in TEA_ADD_HEADERS,
@@ -180,12 +186,6 @@ TEA_PROG_TCLSH
 
 #TEA_EXPORT_CONFIG([udp])
 #AC_SUBST(SAMPLE_VAR)
-
-#--------------------------------------------------------------------
-# Additional headers or symbols needed for the tcludp projects.
-#--------------------------------------------------------------------
-
-TCLUDP_CONFIG
 
 # -------------------------------------------------------------------
 # Find a usable dtplite (from tcllib) to use in document generation.

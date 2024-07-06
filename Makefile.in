@@ -201,6 +201,7 @@ all: binaries libraries doc
 #========================================================================
 
 binaries: $(BINARIES)
+	@echo "make binaries"
 
 libraries:
 
@@ -215,13 +216,15 @@ DTPLITE=$(TCLSH) @DTPLITE@
 doc: udp.n
 
 udp.n: $(srcdir)/doc/udp.man
+	@echo "make nroff documentation"
 	@if [ -n "$(DTPLITE)" -a -x "$(DTPLITE)" ]; then \
-	    $(DTPLITE) -o $@ nroff $(srcdir)/doc/udp.man ; \
+	    $(DTPLITE) -o $(srcdir)/doc/udp.n nroff $(srcdir)/doc/udp.man ; \
 	fi
 
 udp.html: $(srcdir)/doc/udp.man
+	@echo "make HTML documentation"
 	@if [ -n "$(DTPLITE)" -a -x "$(DTPLITE)" ]; then \
-	    $(DTPLITE) -o $@ html $(srcdir)/doc/udp.man ; \
+	    $(DTPLITE) -o $(srcdir)/doc/udp.html html $(srcdir)/doc/udp.man ; \
 	fi
 
 install: all install-binaries install-libraries install-doc-n install-doc-html
@@ -248,6 +251,7 @@ install-libraries: libraries
 
 install-doc-html: udp.html
 	@$(INSTALL_DATA_DIR) "$(DESTDIR)$(pkglibdir)/html"
+	@echo "Installing HTML documentation in $(DESTDIR)$(pkglibdir)/html"
 	@list='$(srcdir)/doc/*.html'; for i in $$list; do \
 	    if test -f $$i ; then \
 		echo "Installing $$i"; \
@@ -257,11 +261,16 @@ install-doc-html: udp.html
 
 install-doc-n: udp.n
 	@$(INSTALL_DATA_DIR) "$(DESTDIR)$(mandir)/mann"
-	@echo "Installing documentation in $(DESTDIR)$(mandir)"
+	@echo "Installing nroff documentation in $(DESTDIR)$(mandir)/mann"
 	@list='$(srcdir)/doc/*.n'; for i in $$list; do \
 	    if test -f $$i ; then \
 		echo "Installing $$i"; \
-		$(INSTALL_DATA) $$i "$(DESTDIR)$(mandir)/mann" ; \
+		if test -f "$(DESTDIR)$(mandir)/mann/Tcl.n.gz" ; then \
+		    gzip -k $$i ; \
+		    $(INSTALL_DATA) $$i.gz "$(DESTDIR)$(mandir)/mann" ; \
+		else \
+		    $(INSTALL_DATA) $$i "$(DESTDIR)$(mandir)/mann" ; \
+		fi; \
 	    fi; \
 	done
 
@@ -330,6 +339,7 @@ $(PKG_STUB_LIB_FILE): $(PKG_STUB_OBJECTS)
 VPATH = $(srcdir):$(srcdir)/generic:$(srcdir)/unix:$(srcdir)/win:$(srcdir)/macosx
 
 $(srcdir)/manifest.uuid:
+	@echo "Make manifest.uuid"
 	printf "git-" >$(srcdir)/manifest.uuid
 	(cd $(srcdir); git rev-parse HEAD >>$(srcdir)/manifest.uuid || \
 	    (printf "svn-r" >$(srcdir)/manifest.uuid ; \
@@ -355,6 +365,7 @@ udp_tcl.@OBJEXT@:	udpUuid.h
 #========================================================================
 
 pkgIndex.tcl: $(srcdir)/pkgIndex.tcl.in
+	@echo "make pkgIndex.tcl"
 	cd $(top_builddir) \
 	  && CONFIG_FILES=$@ CONFIG_HEADERS= $(SHELL) ./config.status
 

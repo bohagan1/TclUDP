@@ -62,7 +62,7 @@
     #endif
 
     #ifndef Tcl_Size
-        typedef int Tcl_Size;
+	typedef int Tcl_Size;
     #endif
 
     #define TCL_SIZE_MODIFIER ""

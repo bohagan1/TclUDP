@@ -1880,7 +1880,7 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
     uint16_t localport = 0;
     int reuse = 0, port;
     Tcl_Size opt;
-    address addr,sockaddr;
+    address addr, sockaddr;
     socklen_t addr_len, len;
     short ss_family = AF_INET; /* Default ipv4 */
 
