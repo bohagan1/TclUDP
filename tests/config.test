@@ -108,7 +108,7 @@ test Config_Errors-4.1 {Too many args} -body {
 	chan configure $ch -broadcast 1 2
     } -cleanup {
 	close $ch
-    } -result {wrong # args: should be "chan configure channelId ?-option value ...?"} -returnCodes {1}
+    } -match {glob} -result {wrong # args: should be "chan configure channel* ?-option value ...?"} -returnCodes {1}
 
 test Config_Errors-4.2 {Invalid option} -body {
 	set ch [udp_open]

@@ -56,7 +56,7 @@ set script {
     fconfigure stdout -buffering line
     fconfigure stdin -buffering line
     set socket [udp_open %OPTIONS]
-    fconfigure $socket -buffering none -encoding binary -translation binary
+    fconfigure $socket -buffering none -translation binary
     fileevent $socket readable [list ReadSock $socket]
     fileevent stdin readable [list ReadControl stdin]
     Wait 100
@@ -181,7 +181,7 @@ test udp-srv-5.1 {multiple client packets (10)} -constraints {stdio} -setup {
     set r 0
     set u [udp_open]
     fconfigure $u -remote [list localhost $port] -buffering none \
-        -blocking 0 -encoding binary -translation binary
+        -blocking 0 -translation binary
     for {set n 0} {$n < 10} {incr n} {
         puts -nonewline $u "packet $n"
         gets $child line
@@ -202,7 +202,7 @@ test udp-srv-5.2 {multiple client packets (1000)} -constraints {stdio} -setup {
     set r 0
     set u [udp_open]
     fconfigure $u -remote [list localhost $port] -buffering none \
-        -blocking 0 -encoding binary -translation binary
+        -blocking 0 -translation binary
     for {set n 0} {$n < 1000} {incr n} {
     	set message "packet $n"
         puts -nonewline $u $message
@@ -224,7 +224,7 @@ test udp-srv-5.3 {multiple client packets (10000)} -constraints {stdio slow} -se
     set r 0
     set u [udp_open]
     fconfigure $u -remote [list localhost $port] -buffering none \
-        -blocking 0 -encoding binary -translation binary
+        -blocking 0 -translation binary
     for {set n 0} {$n < 10000} {incr n} {
         puts -nonewline $u "packet $n"
         gets $child line
@@ -244,7 +244,7 @@ test udp-srv-5.4 {multiple client packets (100) - check packet validity} -constr
     set r 0
     set u [udp_open]
     fconfigure $u -remote [list localhost $port] -buffering none \
-        -blocking 0 -encoding binary -translation binary
+        -blocking 0 -translation binary
 	for {set n 0} {$n < 100} {incr n} {
     	set message "packet $n"
         puts -nonewline $u $message
@@ -276,7 +276,7 @@ test udp-srv-6.1 {multiple client sockets (10)} -constraints {stdio} -setup {
     for {set n 0} {$n < 10} {incr n} {
         set u [udp_open]
         fconfigure $u -remote [list localhost $port] -buffering none \
-            -blocking 0 -encoding binary -translation binary
+            -blocking 0 -translation binary
         puts -nonewline $u "packet $n"
         gets $child line
         close $u
@@ -297,7 +297,7 @@ test udp-srv-6.2 {multiple client sockets (1000)} -constraints {stdio slow} -set
     for {set n 0} {$n < 1000} {incr n} {
         set u [udp_open]
         fconfigure $u -remote [list localhost $port] -buffering none \
-            -blocking 0 -encoding binary -translation binary
+            -blocking 0 -translation binary
         puts -nonewline $u "packet $n"
         gets $child line
         close $u
@@ -318,7 +318,7 @@ test udp-srv-6.3 {multiple client sockets (10000)} -constraints {stdio slow} -se
     for {set n 0} {$n < 10000} {incr n} {
         set u [udp_open]
         fconfigure $u -remote [list localhost $port] -buffering none \
-            -blocking 0 -encoding binary -translation binary
+            -blocking 0 -translation binary
         puts -nonewline $u "packet $n"
         gets $child line
         close $u

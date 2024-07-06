@@ -28,7 +28,7 @@ Config List,Chan List,,,set ch [udp_open];chan configure $ch,close $ch,glob,"""-
 Config List,Fconfigure List,,,set ch [udp_open];fconfigure $ch,close $ch,glob,"""-blocking 1 -buffering full -buffersize 65535 -encoding * -eofchar * -translation * -broadcast 0 -family ipv4 -mcastgroups {} -mcastloop 1 -myport * -peer {} -remote {} -ttl *""",,,
 ,,,,,,,,,,
 command,# Config Error Cases,,,,,,,,,
-Config Errors,Too many args,,,set ch [udp_open];chan configure $ch -broadcast 1 2,close $ch,,"wrong # args: should be ""chan configure channelId ?-option value ...?""",,,1
+Config Errors,Too many args,,,set ch [udp_open];chan configure $ch -broadcast 1 2,close $ch,glob,"wrong # args: should be ""chan configure channel* ?-option value ...?""",,,1
 Config Errors,Invalid option,,,set ch [udp_open];chan configure $ch -bogus,close $ch,,"bad option ""-bogus"": must be -broadcast, -family, -mcastadd, -mcastdrop, -mcastgroups, -mcastif, -mcastloop, -myport, -peer, -remote, or -ttl",,,1
 ,,,,,,,,,,
 command,# Helper procedures,,,,,,,,,

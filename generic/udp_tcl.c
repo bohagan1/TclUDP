@@ -273,8 +273,8 @@ int UdpSockGetPort(
     }
 
     if (Tcl_GetInt(interp, service, portPtr) != TCL_OK) {
-		return TCL_ERROR;
-	    }
+	return TCL_ERROR;
+    }
     if (*portPtr > 0xFFFF) {
 	Tcl_AppendResult(interp, "couldn't open socket: port number too high", (char *) NULL);
 	    return TCL_ERROR;
