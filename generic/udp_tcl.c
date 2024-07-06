@@ -1315,7 +1315,7 @@ static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp,
 	memset(&mreq, 0, sizeof(mreq));
 
 	mreq.imr_multiaddr.s_addr = inet_addr(Tcl_GetString(multicastgrp));
-	if (mreq.imr_multiaddr.s_addr == -1) {
+	if (mreq.imr_multiaddr.s_addr == INADDR_NONE) {
 	    name = gethostbyname(Tcl_GetString(multicastgrp));
 	    if (name == NULL) {
 		if (interp != NULL) {
@@ -1970,12 +1970,15 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
     if (ss_family == AF_INET6) {
 	addr.sa6.sin6_family = AF_INET6;
 	addr.sa6.sin6_port = localport;
+	addr.sa6.sin6_addr = in6addr_any;
 	addr_len = sizeof(struct sockaddr_in6);
     } else {
 	addr.sa4.sin_family = AF_INET;
 	addr.sa4.sin_port = localport;
+	addr.sa4.sin_addr.s_addr = INADDR_ANY;
 	addr_len = sizeof(struct sockaddr_in);
     }
+
     if (bind(sock,(struct sockaddr *)&addr, addr_len) < 0) {
 	Tcl_SetObjResult(interp, ErrorToObj("failed to bind socket to port"));
 	closesocket(sock);
@@ -2017,6 +2020,7 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 #else
     statePtr->mask = 0;
 #endif
+
     /* Tcl_SetChannelOption(interp, statePtr->channel, "-blocking", "0"); */
     Tcl_AppendResult(interp, channelName, (char *) NULL);
 #ifdef _WIN32
@@ -2419,8 +2423,8 @@ int Udp_GetNameInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj
 
     } else {
 	struct sockaddr_in6 sa;
-	sa.sin6_family = family;
 	memset(&sa, 0, sizeof(sa));
+	sa.sin6_family = family;
 
 	if (inet_pton(family, Tcl_GetString(objv[1]), &sa.sin6_addr) != 1) {
 	    Tcl_AppendResult(interp, "Invalid IPv6 address ", Tcl_GetString(objv[1]), (char *) NULL);
