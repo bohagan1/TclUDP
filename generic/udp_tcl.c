@@ -153,6 +153,7 @@ enum _cfg_opts {
  * Helper Functions
  */
 
+#ifdef _WIN32
 static void AppendWinCharsToObj(Tcl_Obj *errObj, LPWSTR sMsg, Tcl_Size len) {
     Tcl_DString ds;
     Tcl_DStringInit(&ds);
@@ -160,6 +161,7 @@ static void AppendWinCharsToObj(Tcl_Obj *errObj, LPWSTR sMsg, Tcl_Size len) {
     Tcl_AppendToObj(errObj, Tcl_DStringValue(&ds), Tcl_DStringLength(&ds));
     Tcl_DStringFree(&ds);
 }
+#endif
 
 /*
 * -----------------------------------------------------------------------

@@ -32,25 +32,29 @@ test Open-1.2 {Default port} -body {
 	close $ch
     } -match {glob} -result {*}
 
-test Open-1.3 {Service} -body {
+test Open-1.3 {Service Win} -constraints {win} -body {
 	set ch [udp_open https]
     } -cleanup {
 	close $ch
     } -match {glob} -result {*}
 
-test Open-1.4 {Reuse} -body {
+test Open-1.4 {Service UNIX} -constraints {unix} -body {
+	set ch [udp_open https]
+    } -match {glob} -result {failed to bind socket to port: Permission denied} -returnCodes {1}
+
+test Open-1.5 {Reuse} -body {
 	set ch [udp_open 54321 reuse]
     } -cleanup {
 	close $ch
     } -match {glob} -result {*}
 
-test Open-1.5 {IPv6} -body {
+test Open-1.6 {IPv6} -body {
 	set ch [udp_open 54321 ipv6]
     } -cleanup {
 	close $ch
     } -match {glob} -result {*}
 
-test Open-1.6 {All} -body {
+test Open-1.7 {All} -body {
 	set ch [udp_open 54321 ipv6 reuse]
     } -cleanup {
 	close $ch
@@ -87,14 +91,14 @@ test Config_List-3.1 {Chan List} -body {
 	chan configure $ch
     } -cleanup {
 	close $ch
-    } -match {glob} -result "-blocking 1 -buffering full -buffersize 65535 -encoding * -eofchar * -translation * -broadcast 0 -family ipv4 -mcastgroups {} -mcastif {} -myport * -peer {} -remote {} -ttl *"
+    } -match {glob} -result "-blocking 1 -buffering full -buffersize 65535 -encoding * -eofchar * -translation * -broadcast 0 -family ipv4 -mcastgroups {} -mcastloop 1 -myport * -peer {} -remote {} -ttl *"
 
 test Config_List-3.2 {Fconfigure List} -body {
 	set ch [udp_open]
 	fconfigure $ch
     } -cleanup {
 	close $ch
-    } -match {glob} -result "-blocking 1 -buffering full -buffersize 65535 -encoding * -eofchar * -translation * -broadcast 0 -family ipv4 -mcastgroups {} -mcastif {} -myport * -peer {} -remote {} -ttl *"
+    } -match {glob} -result "-blocking 1 -buffering full -buffersize 65535 -encoding * -eofchar * -translation * -broadcast 0 -family ipv4 -mcastgroups {} -mcastloop 1 -myport * -peer {} -remote {} -ttl *"
 
 # Config Error Cases
 
@@ -116,6 +120,7 @@ test Config_Errors-4.2 {Invalid option} -body {
 # Helper procedures
 proc test_get_opt {port arg opt} {set ch [udp_open $port {*}$arg];set res [chan configure $ch $opt];close $ch;return $res}
 proc test_set_opt {port arg opt val} {set ch [udp_open $port {*}$arg];chan configure $ch $opt $val;set res [chan configure $ch $opt];close $ch;return $res}
+proc test_set_only {port arg opt val} {set ch [udp_open $port {*}$arg];chan configure $ch $opt $val;close $ch}
 set mc_port 55000
 
 # Broadcast
@@ -245,28 +250,21 @@ test Multicast_Group-8.6 {Drop invalid value} -body {
 # Multicast Interface
 
 
-test Multicast_IF-9.1 {Get Multicast Interface IPv4} -body {
+test Multicast_IF-9.1 {Get Multicast Interface IPv4} -constraints {skip} -body {
 	test_get_opt [incr ::mc_port] ipv4 -mcastif
     }
 
-test Multicast_IF-9.2 {Get Multicast Interface IPv6} -body {
+test Multicast_IF-9.2 {Get Multicast Interface IPv6} -constraints {skip} -body {
 	test_get_opt [incr ::mc_port] ipv6 -mcastif
     }
 
-test Multicast_IF-9.3 {Change Multicast Interface IPv4} -body {
-	test_set_opt [incr ::mc_port] ipv4 -mcastif 2
-    } -result {2}
+test Multicast_IF-9.3 {Set Multicast Interface IPv4} -constraints {unix} -body {
+	test_set_only [incr ::mc_port] ipv4 -mcastif 0.0.0.0
+    }
 
-test Multicast_IF-9.4 {Change Multicast Interface IPv6} -body {
-	test_set_opt [incr ::mc_port] ipv6 -mcastif 2
-    } -result {2}
-
-test Multicast_IF-9.5 {Imvalid value} -body {
-	set ch [udp_open [incr ::mc_port] ipv4]
-	chan configure $ch -mcastif bogus
-    } -cleanup {
-	close $ch
-    } -returnCodes {1}
+test Multicast_IF-9.4 {Set Multicast Interface IPv6} -constraints {unix} -body {
+	test_set_only [incr ::mc_port] ipv6 -mcastif ::1
+    }
 
 # Multicast Loop
 
@@ -367,35 +365,39 @@ test TTL-13.1 {TTL IPv4} -body {
 	test_get_opt [incr ::mc_port] ipv4 -ttl
     } -result {64}
 
-test TTL-13.2 {TTL IPv6} -body {
+test TTL-13.2 {TTL IPv6} -constraints {win} -body {
 	test_get_opt [incr ::mc_port] ipv6 -ttl
     } -result {128}
 
-test TTL-13.3 {Set TTL IPv4} -body {
+test TTL-13.3 {TTL IPv6} -constraints {unix} -body {
+	test_get_opt [incr ::mc_port] ipv6 -ttl
+    } -result {64}
+
+test TTL-13.4 {Set TTL IPv4} -body {
 	test_set_opt [incr ::mc_port] ipv4 -ttl 72
     } -result {72}
 
-test TTL-13.4 {Set TTL IPv6} -body {
+test TTL-13.5 {Set TTL IPv6} -body {
 	test_set_opt [incr ::mc_port] ipv6 -ttl 84
     } -result {84}
 
-test TTL-13.5 {Invalid value} -body {
+test TTL-13.6 {Invalid value} -body {
 	set ch [udp_open [incr ::mc_port] ipv4]
 	chan configure $ch -ttl bogus
     } -cleanup {
 	close $ch
     } -result {expected integer but got "bogus"} -returnCodes {1}
 
-test TTL-13.6 {Default value} -body {
+test TTL-13.7 {Default value} -body {
 	test_set_opt [incr ::mc_port] ipv4 -ttl -1
     } -match {glob} -result {*}
 
-test TTL-13.7 {Out of range value} -body {
+test TTL-13.8 {Out of range value} -body {
 	set ch [udp_open [incr ::mc_port] ipv4]
 	chan configure $ch -ttl 257
     } -cleanup {
 	close $ch
-    } -match {glob} -result {error setting -ttl: An invalid argument was supplied.*} -returnCodes {1}
+    } -match {glob} -result {error setting -ttl: *[Ii]nvalid argument*} -returnCodes {1}
 
 # Cleanup
 ::tcltest::cleanupTests

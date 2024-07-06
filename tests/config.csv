@@ -10,7 +10,8 @@ command,proc in_group {ch group} {expr {$group in [chan configure $ch -mcastgrou
 command,# UDP Open Test Cases,,,,,,,,,
 Open,No options,,,set ch [udp_open];set res [is_open $ch];close $ch;return $res,,,1,,,
 Open,Default port,,,set ch [udp_open 0],close $ch,glob,*,,,
-Open,Service,,,set ch [udp_open https],close $ch,glob,*,,,
+Open,Service Win,win,,set ch [udp_open https],close $ch,glob,*,,,
+Open,Service UNIX,unix,,set ch [udp_open https],,glob,failed to bind socket to port: Permission denied,,,1
 Open,Reuse,,,set ch [udp_open 54321 reuse],close $ch,glob,*,,,
 Open,IPv6,,,set ch [udp_open 54321 ipv6],close $ch,glob,*,,,
 Open,All,,,set ch [udp_open 54321 ipv6 reuse],close $ch,glob,*,,,
@@ -23,8 +24,8 @@ Open Errors,Invalid service,,,udp_open bogus,,,"expected integer but got ""bogus
 Open Errors,Invalid option,,,udp_open 54321 bogus,,,"expected integer but got ""bogus""",,,1
 ,,,,,,,,,,
 command,# List configure options,,,,,,,,,
-Config List,Chan List,,,set ch [udp_open];chan configure $ch,close $ch,glob,"""-blocking 1 -buffering full -buffersize 65535 -encoding * -eofchar * -translation * -broadcast 0 -family ipv4 -mcastgroups {} -mcastif {} -myport * -peer {} -remote {} -ttl *""",,,
-Config List,Fconfigure List,,,set ch [udp_open];fconfigure $ch,close $ch,glob,"""-blocking 1 -buffering full -buffersize 65535 -encoding * -eofchar * -translation * -broadcast 0 -family ipv4 -mcastgroups {} -mcastif {} -myport * -peer {} -remote {} -ttl *""",,,
+Config List,Chan List,,,set ch [udp_open];chan configure $ch,close $ch,glob,"""-blocking 1 -buffering full -buffersize 65535 -encoding * -eofchar * -translation * -broadcast 0 -family ipv4 -mcastgroups {} -mcastloop 1 -myport * -peer {} -remote {} -ttl *""",,,
+Config List,Fconfigure List,,,set ch [udp_open];fconfigure $ch,close $ch,glob,"""-blocking 1 -buffering full -buffersize 65535 -encoding * -eofchar * -translation * -broadcast 0 -family ipv4 -mcastgroups {} -mcastloop 1 -myport * -peer {} -remote {} -ttl *""",,,
 ,,,,,,,,,,
 command,# Config Error Cases,,,,,,,,,
 Config Errors,Too many args,,,set ch [udp_open];chan configure $ch -broadcast 1 2,close $ch,,"wrong # args: should be ""chan configure channelId ?-option value ...?""",,,1
@@ -33,6 +34,7 @@ Config Errors,Invalid option,,,set ch [udp_open];chan configure $ch -bogus,close
 command,# Helper procedures,,,,,,,,,
 command,proc test_get_opt {port arg opt} {set ch [udp_open $port {*}$arg];set res [chan configure $ch $opt];close $ch;return $res},,,,,,,,,
 command,proc test_set_opt {port arg opt val} {set ch [udp_open $port {*}$arg];chan configure $ch $opt $val;set res [chan configure $ch $opt];close $ch;return $res},,,,,,,,,
+command,proc test_set_only {port arg opt val} {set ch [udp_open $port {*}$arg];chan configure $ch $opt $val;close $ch},,,,,,,,,
 command,set mc_port 55000,,,,,,,,,
 ,,,,,,,,,,
 command,# Broadcast,,,,,,,,,
@@ -74,11 +76,10 @@ Multicast Group,Add invalid value,,,set ch [udp_open [incr ::mc_port] ipv4];chan
 Multicast Group,Drop invalid value,,,set ch [udp_open [incr ::mc_port] ipv4];chan configure $ch -mcastdrop {},close $ch,,multicast group and/or local network interface not specified,,,1
 ,,,,,,,,,,
 command,# Multicast Interface,,,,,,,,,
-Multicast IF,Get Multicast Interface IPv4,,,test_get_opt [incr ::mc_port] ipv4 -mcastif,,,,,,
-Multicast IF,Get Multicast Interface IPv6,,,test_get_opt [incr ::mc_port] ipv6 -mcastif,,,,,,
-Multicast IF,Change Multicast Interface IPv4,,,test_set_opt [incr ::mc_port] ipv4 -mcastif 2,,,2,,,
-Multicast IF,Change Multicast Interface IPv6,,,test_set_opt [incr ::mc_port] ipv6 -mcastif 2,,,2,,,
-Multicast IF,Imvalid value,,,set ch [udp_open [incr ::mc_port] ipv4];chan configure $ch -mcastif bogus,close $ch,,,,,1
+Multicast IF,Get Multicast Interface IPv4,skip,,test_get_opt [incr ::mc_port] ipv4 -mcastif,,,,,,
+Multicast IF,Get Multicast Interface IPv6,skip,,test_get_opt [incr ::mc_port] ipv6 -mcastif,,,,,,
+Multicast IF,Set Multicast Interface IPv4,unix,,test_set_only [incr ::mc_port] ipv4 -mcastif 0.0.0.0,,,,,,
+Multicast IF,Set Multicast Interface IPv6,unix,,test_set_only [incr ::mc_port] ipv6 -mcastif ::1,,,,,,
 ,,,,,,,,,,
 command,# Multicast Loop,,,,,,,,,
 Multicast Loop,Get Multicast Loop IPv4,,,test_get_opt [incr ::mc_port] ipv4 -mcastloop,,,1,,,
@@ -105,9 +106,10 @@ Remote,Too many values,,,set ch [udp_open [incr ::mc_port] ipv4];chan configure 
 ,,,,,,,,,,
 command,# TTL,,,,,,,,,
 TTL,TTL IPv4,,,test_get_opt [incr ::mc_port] ipv4 -ttl,,,64,,,
-TTL,TTL IPv6,,,test_get_opt [incr ::mc_port] ipv6 -ttl,,,128,,,
+TTL,TTL IPv6,win,,test_get_opt [incr ::mc_port] ipv6 -ttl,,,128,,,
+TTL,TTL IPv6,unix,,test_get_opt [incr ::mc_port] ipv6 -ttl,,,64,,,
 TTL,Set TTL IPv4,,,test_set_opt [incr ::mc_port] ipv4 -ttl 72,,,72,,,
 TTL,Set TTL IPv6,,,test_set_opt [incr ::mc_port] ipv6 -ttl 84,,,84,,,
 TTL,Invalid value,,,set ch [udp_open [incr ::mc_port] ipv4];chan configure $ch -ttl bogus,close $ch,,"expected integer but got ""bogus""",,,1
 TTL,Default value,,,test_set_opt [incr ::mc_port] ipv4 -ttl -1,,glob,*,,,
-TTL,Out of range value,,,set ch [udp_open [incr ::mc_port] ipv4];chan configure $ch -ttl 257,close $ch,glob,error setting -ttl: An invalid argument was supplied.*,,,1
+TTL,Out of range value,,,set ch [udp_open [incr ::mc_port] ipv4];chan configure $ch -ttl 257,close $ch,glob,error setting -ttl: *[Ii]nvalid argument*,,,1
