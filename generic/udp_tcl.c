@@ -1618,7 +1618,11 @@ static int udpSetTtlOption(UdpState *statePtr, Tcl_Interp *interp, const char *n
 static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *optionName,
 	Tcl_DString *optionValue) {
     UdpState *statePtr = (UdpState *)clientData;
-    int r = TCL_OK, opt = -1;
+    int result = TCL_OK, opt, tmp;
+    Tcl_Size objc;
+    Tcl_Obj **objv;
+    unsigned char str = 0;
+    unsigned int ttl = 0;
 
     Tcl_ResetResult(interp);
 
@@ -1654,8 +1658,7 @@ static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *o
 
 	switch(opt) {
 	case _opt_broadcast:
-	    int tmp = 1;
-	    if ((r = udpGetBroadcastOption(statePtr,interp,&tmp)) == TCL_OK) {
+	    if ((result = udpGetBroadcastOption(statePtr,interp,&tmp)) == TCL_OK) {
 		Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
 		sprintf(Tcl_DStringValue(&ds), "%d", tmp);
 	    }
@@ -1672,17 +1675,14 @@ static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *o
 	    break;
 
 	case _opt_mcastgroups:
-	    Tcl_Size objc, n;
-	    Tcl_Obj **objv;
 	    Tcl_ListObjGetElements(interp, statePtr->groupsObj, &objc, &objv);
-	    for (n = 0; n < objc; n++) {
+	    for (Tcl_Size n = 0; n < objc; n++) {
 		Tcl_DStringAppendElement(&ds, Tcl_GetString(objv[n]));
 	    }
 	    break;
 
 	case _opt_mcastloop:
-	    unsigned char str = 0;
-	    if ((r = udpGetMcastloopOption(statePtr, interp, &str)) == TCL_OK) {
+	    if ((result = udpGetMcastloopOption(statePtr, interp, &str)) == TCL_OK) {
 		Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
 		sprintf(Tcl_DStringValue(&ds), "%d", (int)str);
 	    }
@@ -1712,8 +1712,7 @@ static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *o
 	    break;
 
 	case _opt_ttl:
-	    unsigned int ttl = 0;
-	    if ((r = udpGetTtlOption(statePtr, interp, &ttl)) == TCL_OK) {
+	    if ((result = udpGetTtlOption(statePtr, interp, &ttl)) == TCL_OK) {
 		Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
 		sprintf(Tcl_DStringValue(&ds), "%u", ttl);
 	    }
@@ -1721,10 +1720,10 @@ static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *o
 	
 	default:
 	    Tcl_AppendResult(interp, "set only option \"", optionName, "\"", NULL);
-	    r = TCL_ERROR;
+	    result = TCL_ERROR;
 	}
 
-	if (r == TCL_OK) {
+	if (result == TCL_OK) {
 	    Tcl_DStringAppend(optionValue, Tcl_DStringValue(&ds), -1);
 	}
 	Tcl_DStringFree(&dsInt);
