@@ -295,12 +295,12 @@ int UdpSockGetPort(
 
 static int udpGetService(Tcl_Interp *interp, const char *service, uint16_t *servicePort) {
     int port = 0;
-    int r = UdpSockGetPort(interp, service, "udp", &port);
+    int result = UdpSockGetPort(interp, service, "udp", &port);
 
-    if (r == TCL_OK) {
+    if (result == TCL_OK) {
 	*servicePort = htons((uint16_t)port);
     }
-    return r;
+    return result;
 }
 
 /*
@@ -1729,7 +1729,7 @@ static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *o
 	Tcl_DStringFree(&dsInt);
 	Tcl_DStringFree(&ds);
     }
-    return r;
+    return result;
 }
 
 /*
@@ -1743,7 +1743,7 @@ static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *o
 static int udpSetOption(ClientData clientData, Tcl_Interp *interp, const char *optionName,
 	const char *newValue) {
     UdpState *statePtr = (UdpState *)clientData;
-    int r = TCL_OK, opt;
+    int result = TCL_OK, opt;
 
     Tcl_Obj *nameObj = Tcl_NewStringObj(optionName,-1);
     Tcl_IncrRefCount(nameObj);
@@ -1758,40 +1758,40 @@ static int udpSetOption(ClientData clientData, Tcl_Interp *interp, const char *o
 
     switch(opt) {
     case _opt_broadcast:
-	r = udpSetBroadcastOption(statePtr, interp, (const char*) newValue);
+	result = udpSetBroadcastOption(statePtr, interp, (const char*) newValue);
 	break;
 
     case _opt_mcastadd:
-	r = udpSetMulticastAddOption(statePtr, interp, (const char *)newValue);
+	result = udpSetMulticastAddOption(statePtr, interp, (const char *)newValue);
 	break;
 
     case _opt_mcastdrop:
-	r = udpSetMulticastDropOption(statePtr, interp, (const char *)newValue);
+	result = udpSetMulticastDropOption(statePtr, interp, (const char *)newValue);
 	break;
 
 #ifndef _WIN32
     case _opt_mcastif:
-	r = udpSetMulticastIFOption(statePtr,interp,(const char *)newValue);
+	result = udpSetMulticastIFOption(statePtr,interp,(const char *)newValue);
 	break;
 #endif
 
     case _opt_mcastloop:
-	r = udpSetMcastloopOption(statePtr, interp, (const char*) newValue);
+	result = udpSetMcastloopOption(statePtr, interp, (const char*) newValue);
 	break;
 
     case _opt_remote:
-	r = udpSetRemoteOption(statePtr,interp,(const char *)newValue);
+	result = udpSetRemoteOption(statePtr,interp,(const char *)newValue);
 	break;
 
     case _opt_ttl:
-	r = udpSetTtlOption(statePtr, interp, (const char*) newValue);
+	result = udpSetTtlOption(statePtr, interp, (const char*) newValue);
 	break;
 	
     default:
 	Tcl_AppendResult(interp, "get only option \"", optionName, "\"", NULL);
-	r = TCL_ERROR;
+	result = TCL_ERROR;
     }
-    return r;
+    return result;
 }
 
 /*
