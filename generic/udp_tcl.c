@@ -754,6 +754,7 @@ static int udpClose(ClientData clientData, Tcl_Interp *interp) {
     if (closesocket(sock) < 0) {
 	errorCode = errno;
     }
+
     ckfree((char *) statePtr);
     if (errorCode != 0) {
 	static char errBuf[256];
@@ -808,10 +809,14 @@ static int udpClose2(ClientData clientData, Tcl_Interp *interp, int flags) {
 
     sock = statePtr->sock;
     if (flags & TCL_CLOSE_READ) {
-	readError = shutdown(sock, shut_rd);
+	if (shutdown(sock, shut_rd) < 0) {
+	    readError = errno;
+	}
     }
     if (flags & TCL_CLOSE_WRITE) {
-	writeError = shutdown(sock, shut_wr);
+	if (shutdown(sock, shut_wr) < 0) {
+	    writeError = errno;
+	}
     }
     return (readError != 0) ? readError : writeError;
 }
