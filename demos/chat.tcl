@@ -1,3 +1,4 @@
+#!/usr/bin/env tclsh
 # chat.tcl - Copyright (C) 2004 Pat Thoyts <patthoyts@users.sourceforge.net>
 #
 # This is a sample application from TclUDP.
@@ -7,7 +8,7 @@
 #
 # $Id: chat.tcl,v 1.2 2007/04/10 23:36:14 patthoyts Exp $
 
-package require Tk  8.4
+package require Tk  8.4-
 package require udp 1.0.6
 
 variable Address  224.5.1.21

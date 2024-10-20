@@ -1,3 +1,4 @@
+#!/usr/bin/env tclsh
 # udpsend.tcl - Copyright (C) 2004 Pat Thoyts <patthoyts@users.sf.net>
 #
 # Demo application - cat data from stdin via a UDP socket.
@@ -20,7 +21,7 @@ proc Send {host port {msg {}}} {
     fconfigure $s -blocking 0 -buffering none -translation binary \
         -remote [list $host $port]
     fileevent $s readable [list Event $s]
-    if {$msg == {}} {
+    if {$msg eq {}} {
         fcopy stdin $s
     } else {
         puts -nonewline $s $msg

@@ -99,9 +99,9 @@ proc timestamp {cmd {label ""} {t 0}} {
         return
     }
     switch -exact -- $cmd {
-        start { return [clock clicks -milliseconds] }
+        start { return [clock milliseconds] }
         display {
-            set delta [expr {[clock clicks -milliseconds] - $t}]
+            set delta [expr {[clock milliseconds] - $t}]
             puts "$label: ${delta}ms"
         }
         default {

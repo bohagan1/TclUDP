@@ -1,3 +1,4 @@
+#!/usr/bin/env tclsh
 # bug1158628.tcl - Copyright (C) 2005 Pat Thoyts <patthoyts@users.sf.net>
 #
 # "On windows XP, I have a GUI that has an exit buttons which when

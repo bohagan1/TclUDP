@@ -1623,8 +1623,8 @@ static int udpSetTtlOption(UdpState *statePtr, Tcl_Interp *interp, const char *n
 static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *optionName,
 	Tcl_DString *optionValue) {
     UdpState *statePtr = (UdpState *)clientData;
-    int result = TCL_OK, opt, tmp;
-    Tcl_Size objc;
+    int result = TCL_OK, tmp;
+    Tcl_Size objc, opt;
     Tcl_Obj **objv;
     unsigned char str = 0;
     unsigned int ttl = 0;
@@ -1724,7 +1724,7 @@ static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *o
 	    break;
 	
 	default:
-	    Tcl_AppendResult(interp, "set only option \"", optionName, "\"", NULL);
+	    Tcl_AppendResult(interp, "set only option \"", optionName, "\"", (char *) NULL);
 	    result = TCL_ERROR;
 	}
 
@@ -1748,7 +1748,8 @@ static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *o
 static int udpSetOption(ClientData clientData, Tcl_Interp *interp, const char *optionName,
 	const char *newValue) {
     UdpState *statePtr = (UdpState *)clientData;
-    int result = TCL_OK, opt;
+    int result = TCL_OK;
+    Tcl_Size opt;
 
     Tcl_Obj *nameObj = Tcl_NewStringObj(optionName,-1);
     Tcl_IncrRefCount(nameObj);
@@ -1793,7 +1794,7 @@ static int udpSetOption(ClientData clientData, Tcl_Interp *interp, const char *o
 	break;
 	
     default:
-	Tcl_AppendResult(interp, "get only option \"", optionName, "\"", NULL);
+	Tcl_AppendResult(interp, "get only option \"", optionName, "\"", (char *) NULL);
 	result = TCL_ERROR;
     }
     return result;
@@ -2263,7 +2264,8 @@ int Udp_GetAddrInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj
     const char *hostname = NULL, *service = NULL, *str;
     struct addrinfo hints, *result, *rp;
     struct protoent *protocol;
-    int err, opt;
+    int err;
+    Tcl_Size opt;
     Tcl_Obj *resultObj, *listObj;
     (void) clientData;
 
@@ -2601,7 +2603,7 @@ int Udp_Init(Tcl_Interp *interp) {
 	return TCL_ERROR;
     }
 
-    tsdPtr = (ThreadSpecificData *) Tcl_GetThreadData(&dataKey, sizeof(ThreadSpecificData));
+    tsdPtr = (ThreadSpecificData *) Tcl_GetThreadData(&dataKey, (Tcl_Size)sizeof(ThreadSpecificData));
     if (!tsdPtr->sourceInit) {
 	tsdPtr->sourceInit = 1;
     Tcl_CreateEventSource(UDP_SetupProc, UDP_CheckProc, NULL);

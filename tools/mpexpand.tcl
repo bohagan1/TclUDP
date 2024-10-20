@@ -1,6 +1,5 @@
-#!/bin/sh
-# -*- tcl -*- \
-exec tclsh "$0" ${1+"$@"}
+#!/usr/bin/env tclsh
+
 
 lappend auto_path [file dirname [file dirname [info script]]]
 
@@ -92,10 +91,10 @@ proc cmdline {} {
     }
     foreach {format in out} $argv break
 
-    if {$format == {} || $in == {}} {
+    if {$format eq {} || $in eq {}} {
 	usage
     }
-    if {$out == {}} {set out -}
+    if {$out eq {}} {set out -}
     return $format
 }
 
@@ -139,10 +138,10 @@ proc main {} {
 	cmdline
 
 	::doctools::new dt -format $format -deprecated $deprecated -file $in
-	if {$extmodule != {}} {
+	if {$extmodule ne {}} {
 	    dt configure -module $extmodule
 	}
-	if {$copyright != {}} {
+	if {$copyright ne {}} {
 	    dt configure -copyright $copyright
 	}
 

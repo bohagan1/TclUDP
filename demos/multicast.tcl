@@ -1,3 +1,4 @@
+#!/usr/bin/env tclsh
 # multicast.tcl - Copyright (C) 2004 Pat Thoyts <patthoyts@users.sf.net>
 #
 # Demonstrate the use of IPv4 multicast UDP sockets.
