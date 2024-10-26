@@ -10,7 +10,7 @@
 # For other build options (debug, static etc.),
 # See TIP 477 (https://core.tcl-lang.org/tips/doc/main/tip/477.md) for
 # detailed documentation.
-# 
+#
 # See the file "license.terms" for information on usage and redistribution
 # of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 #
@@ -44,7 +44,7 @@ PRJ_LIBS = WS2_32.Lib
 # Define the standard targets which calls rules.vc
 !include "targets.vc"
 
-.SUFFIXES: .man
+.SUFFIXES: .c .obj .res .man
 
 #---------------------------------------------------------------------
 # Project specific targets
@@ -57,42 +57,54 @@ PRJ_LIBS = WS2_32.Lib
 make-docs-html:
 	$(TCLSH) "$(TOOLSDIR)\mpexpand.tcl" html "$(DOCDIR)\$(PROJECT).man" "$(DOCDIR)\$(PROJECT).html" 
 
+make-docs-n:
+	$(TCLSH) "$(TOOLSDIR)\mpexpand.tcl" nroff "$(DOCDIR)\$(PROJECT).man" "$(DOCDIR)\$(PROJECT).n" 
+
+docs: make-docs-n make-docs-html 
+
 all: setup default-target
 
 clean: default-clean
 
 realclean: default-hose
 
+# Explicit dependency rules
+$(GENERICDIR)\udp_tcl.c: $(TMP_DIR)\udpUuid.h
+
 # We must define a pkgindex target that will create a pkgIndex.tcl
 # file in the $(OUT_DIR) directory. We can just redirect to the
 # default-pkgindex target for our sample extension.
 pkgindex: default-pkgindex-tea
 
-# Manifest which defines fossil/git commit id for build-info command
-$(ROOT)\manifest.uuid:
-    if not exist $(ROOT)\manifest.uuid (
-	copy $(WIN_DIR)\gitmanifest.in $(ROOT)\manifest.uuid
-	where git
-	if ERRORLEVEL 0 (
-	    git rev-parse HEAD >>$(ROOT)\manifest.uuid
-	) else (
-	    echo unknown >>$(ROOT)\manifest.uuid
-	)
-    )
+# Use manifest file which defines fossil/git commit id for build-info command
+$(TMP_DIR)\manifest.uuid:
+!if exist($(ROOT)\manifest.uuid)
+	@copy "$(ROOT)\manifest.uuid" "$(TMP_DIR)\manifest.uuid"
+!else
+!if exist($(ROOT)\.git)
+	@copy "$(WIN_DIR)\gitmanifest.in" "$(TMP_DIR)\manifest.uuid"
 
-$(TMP_DIR)\udpUuid.h:	$(ROOT)\manifest.uuid
-	copy $(WIN_DIR)\udpUuid.h.in+$(ROOT)\manifest.uuid $(TMP_DIR)\udpUuid.h
-	echo: >>$(TMP_DIR)\udpUuid.h
+	@for /f "delims=" %i in ('where git') do (set GIT_PATH=%i)
+	@if [%GIT_PATH%] NEQ [] (
+		@git rev-parse HEAD >>$(TMP_DIR)\manifest.uuid
+	) else (
+		@echo unknown >>$(TMP_DIR)\manifest.uuid
+	)
+!else
+	@echo unknown >$(TMP_DIR)\manifest.uuid
+!endif
+!endif
+
+$(TMP_DIR)\udpUuid.h:	$(TMP_DIR)\manifest.uuid
+	@copy $(WIN_DIR)\udpUuid.h.in+$(TMP_DIR)\manifest.uuid $(TMP_DIR)\udpUuid.h
+	@echo: >>$(TMP_DIR)\udpUuid.h
 
 
 # The default install target only installs binaries and scripts so add
 # an additional target for our documentation. Note this *adds* a target
 # since no commands are listed after it. The original targets for
 # install (from targets.vc) will remain.
-install: pkgindex default-install make-docs-html default-install-docs-html default-install-demos
-
-# Explicit dependency rules
-$(GENERICDIR)\udp_tcl.c: $(TMP_DIR)\udpUuid.h
+install: pkgindex default-install default-install-docs-html default-install-demos
 
 # Test package
 test: default-test
