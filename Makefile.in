@@ -252,7 +252,7 @@ install-libraries: libraries
 install-doc-html: udp.html
 	@$(INSTALL_DATA_DIR) "$(DESTDIR)$(pkglibdir)/html"
 	@echo "Installing HTML documentation in $(DESTDIR)$(pkglibdir)/html"
-	@list='$(srcdir)/doc/*.html'; for i in $$list; do \
+	@list='doc/*.html'; for i in $$list; do \
 	    if test -f $$i ; then \
 		echo "Installing $$i"; \
 		$(INSTALL_DATA) $$i "$(DESTDIR)$(pkglibdir)/html"; \
@@ -262,7 +262,7 @@ install-doc-html: udp.html
 install-doc-n: udp.n
 	@$(INSTALL_DATA_DIR) "$(DESTDIR)$(mandir)/mann"
 	@echo "Installing nroff documentation in $(DESTDIR)$(mandir)/mann"
-	@list='$(srcdir)/doc/*.n'; for i in $$list; do \
+	@list='doc/*.n'; for i in $$list; do \
 	    if test -f $$i ; then \
 		echo "Installing $$i"; \
 		if test -f "$(DESTDIR)$(mandir)/mann/Tcl.n.gz" ; then \
@@ -273,6 +273,10 @@ install-doc-n: udp.n
 		fi; \
 	    fi; \
 	done
+
+#========================================================================
+# Test and debug
+#========================================================================
 
 test: binaries libraries
 	$(TCLSH) `@CYGPATH@ $(srcdir)/tests/all.tcl` $(TESTFLAGS) \
@@ -322,6 +326,24 @@ $(PKG_STUB_LIB_FILE): $(PKG_STUB_OBJECTS)
 	$(RANLIB_STUB) $(PKG_STUB_LIB_FILE)
 
 #========================================================================
+# Support files needed to compile C code
+#========================================================================
+
+# Create header file with fossil, git, or svn UUID for build-info command 
+manifest.uuid:
+	@echo "Make manifest.uuid"
+	printf "git-" >manifest.uuid
+	(git rev-parse HEAD >>manifest.uuid || \
+	    (printf "svn-r" >manifest.uuid ; \
+	    svn info --show-item last-changed-revision >>manifest.uuid) || \
+	    printf "unknown" >manifest.uuid)
+
+udpUuid.h: manifest.uuid
+	echo "#define UDP_VERSION_UUID \\" >$@
+	cat manifest.uuid >>$@
+	echo "" >>$@
+
+#========================================================================
 # We need to enumerate the list of .c to .o lines here.
 #
 # In the following lines, $(srcdir) refers to the toplevel directory
@@ -338,19 +360,6 @@ $(PKG_STUB_LIB_FILE): $(PKG_STUB_OBJECTS)
 
 VPATH = $(srcdir):$(srcdir)/generic:$(srcdir)/unix:$(srcdir)/win:$(srcdir)/macosx
 
-$(srcdir)/manifest.uuid:
-	@echo "Make manifest.uuid"
-	printf "git-" >$(srcdir)/manifest.uuid
-	(cd $(srcdir); git rev-parse HEAD >>$(srcdir)/manifest.uuid || \
-	    (printf "svn-r" >$(srcdir)/manifest.uuid ; \
-	    svn info --show-item last-changed-revision >>$(srcdir)/manifest.uuid) || \
-	    printf "unknown" >$(srcdir)/manifest.uuid)
-
-udpUuid.h:	$(srcdir)/manifest.uuid
-	echo "#define UDP_VERSION_UUID \\" >$@
-	cat $(srcdir)/manifest.uuid >>$@
-	echo "" >>$@
-
 udp_tcl.@OBJEXT@:	udpUuid.h
 
 .c.@OBJEXT@:
@@ -364,7 +373,7 @@ udp_tcl.@OBJEXT@:	udpUuid.h
 # the configure script output the pkgIndex.tcl by editing configure.in.
 #========================================================================
 
-pkgIndex.tcl: $(srcdir)/pkgIndex.tcl.in
+pkgIndex.tcl: pkgIndex.tcl.in
 	@echo "make pkgIndex.tcl"
 	cd $(top_builddir) \
 	  && CONFIG_FILES=$@ CONFIG_HEADERS= $(SHELL) ./config.status
@@ -385,7 +394,7 @@ DIST_INSTALL_SCRIPT	= CPPROG='cp -p' $(INSTALL) -m 755
 dist-clean:
 	rm -rf $(DIST_DIR) $(top_builddir)/$(PKG_DIR).tar.*
 
-dist: dist-clean $(srcdir)/manifest.uuid
+dist: dist-clean manifest.uuid
 	# TEA files
 	$(INSTALL_DATA_DIR) $(DIST_DIR)
 	$(DIST_INSTALL_DATA) $(srcdir)/Makefile.in \
