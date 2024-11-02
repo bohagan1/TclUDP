@@ -1,24 +1,22 @@
 TclUDP
 ======
 
-This package provides UDP sockets for Tcl.
+This package provides UDP sockets for TCL. It supports unicast and multicast
+addresses.
 
 INSTALLATION
 ============
 
-This package uses the Tcl Extension Architecture (TEA). Please see the
-web page
+This package uses the TCL Extension Architecture (TEA). Please see the
+web page http://www.tcl.tk/doc/tea/ for more information about TEA. It
+support all of the standard TCL configure script options.
 
-    http://www.tcl.tk/doc/tea/
-
-for more information about TEA.
 
 UNIX BUILD
 ==========
 
 Building under most UNIX systems is easy, just run the configure script
-and then run make. For more information about the build process, see
-the tcl/unix/README file in the Tcl src dist. 
+and then run make. Use ./configure --help to get the supported options. 
 
 Following examples use the tclConfig.sh script. This script comes with the
 installation of Tcl and contains useful data about the installation.
@@ -46,31 +44,32 @@ is located in the folder /Library/Frameworks/Tcl.framework/
 	$ make test
 	$ make install
 
+
 WINDOWS BUILD
 =============
 
-See the tcl/win/README file included in the Tcl src dist for details
-about how to build the extension under Windows.
+See the win/README file for details on how to build the extension using 
+Visual Studio.
 
 The following minimal example will build and install the extension in the
 C:\Tcl\lib directory.
 
-	$ cd tcludp/win
+	$ cd tcludp\win
 	$ nmake -f makefile.vc realclean all 
 	$ nmake -f makefile.vc install INSTALLDIR=C:\Tcl
 
-The Visual Studio project file included in the win directory
-is *ancient* and deprecated. It is not suitable for modern versions
-of Tcl and Visual Studio.
 
 DOCUMENTATION BUILD
 ===================
 
-Use the following command to create the UNIX documentation (based on udp.man file):
+Use the following commands to create the documentation (based on udp.man
+file). Ot uses the doctools package from tcllib.
 
 	$ cd tcludp
 	$ ./tools/mpexpand.tcl nroff ./doc/udp.man ./doc/udp.n
+	$ ./tools/mpexpand.tcl html ./doc/udp.man ./doc/udp.html
 	$ nroff -man ./doc/udp.n
+
 
 FEEDBACK
 ========
