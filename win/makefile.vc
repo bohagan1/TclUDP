@@ -82,14 +82,8 @@ $(TMP_DIR)\manifest.uuid:
 	@copy "$(ROOT)\manifest.uuid" "$(TMP_DIR)\manifest.uuid"
 !else
 !if exist($(ROOT)\.git)
-	@copy "$(WIN_DIR)\gitmanifest.in" "$(TMP_DIR)\manifest.uuid"
-
-	@for /f "delims=" %i in ('where git') do (set GIT_PATH=%i)
-	@if [%GIT_PATH%] NEQ [] (
-		@git rev-parse HEAD >>$(TMP_DIR)\manifest.uuid
-	) else (
-		@echo unknown >>$(TMP_DIR)\manifest.uuid
-	)
+	copy "$(WIN_DIR)\gitmanifest.in" "$(TMP_DIR)\manifest.uuid"
+	git rev-parse HEAD >>$(TMP_DIR)\manifest.uuid || echo unknown >>$(TMP_DIR)\manifest.uuid
 !else
 	@echo unknown >$(TMP_DIR)\manifest.uuid
 !endif
