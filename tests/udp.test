@@ -42,12 +42,12 @@ test udp_1.3 {fconfigure -myport} -setup {
 } -match regexp -result {^\d+$}
 
 test udp-1.4 {udp_open on assigned port} -body {
-    set port 0xf0b0
+    set port [expr {$::tcl_platform(platform) eq "windows" ? 0xc93b : 0xf0b0}]
     set s [udp_open $port]
-    format 0x%04x [udp_conf $s -myport]
+    udp_conf $s -myport
 } -cleanup {
     close $s
-} -result {0xf0b0}
+} -result [expr {$::tcl_platform(platform) eq "windows" ? "0xc93b" : "0xf0b0"}]
 
 test udp-1.5 {udp_conf -remote before seting remote details} {
     list [catch {
