@@ -213,19 +213,31 @@ libraries:
 #========================================================================
 
 DTPLITE=$(TCLSH) @DTPLITE@
-doc: udp.n
 
-udp.n: $(srcdir)/doc/udp.man
+doc: make-docs-n make-docs-html
+
+make-docs-n: doc/udp.man
 	@echo "make nroff documentation"
 	@if [ -n "$(DTPLITE)" -a -x "$(DTPLITE)" ]; then \
-	    $(DTPLITE) -o $(srcdir)/doc/udp.n nroff $(srcdir)/doc/udp.man ; \
+	    $(DTPLITE) -o doc/udp.n nroff doc/udp.man ; \
 	fi
 
-udp.html: $(srcdir)/doc/udp.man
+make-docs-html: doc/udp.man
 	@echo "make HTML documentation"
 	@if [ -n "$(DTPLITE)" -a -x "$(DTPLITE)" ]; then \
-	    $(DTPLITE) -o $(srcdir)/doc/udp.html html $(srcdir)/doc/udp.man ; \
+	    $(DTPLITE) -o doc/udp.html html doc/udp.man ; \
 	fi
+
+make-docs: doc/udp.man
+	@echo "make documentation"
+	@if [ -n "$(DTPLITE)" -a -x "$(DTPLITE)" ]; then \
+	    $(DTPLITE) -o doc nroff doc ; \
+	    $(DTPLITE) -o doc html doc ; \
+	fi
+
+#========================================================================
+# Install targets
+#========================================================================
 
 install: all install-binaries install-libraries install-doc-n install-doc-html
 
@@ -249,7 +261,7 @@ install-libraries: libraries
 # directory.
 #========================================================================
 
-install-doc-html: udp.html
+install-doc-html: make-docs-html
 	@$(INSTALL_DATA_DIR) "$(DESTDIR)$(pkglibdir)/html"
 	@echo "Installing HTML documentation in $(DESTDIR)$(pkglibdir)/html"
 	@list='doc/*.html'; for i in $$list; do \
@@ -259,7 +271,7 @@ install-doc-html: udp.html
 	    fi; \
 	done
 
-install-doc-n: udp.n
+install-doc-n: make-docs-n
 	@$(INSTALL_DATA_DIR) "$(DESTDIR)$(mandir)/mann"
 	@echo "Installing nroff documentation in $(DESTDIR)$(mandir)/mann"
 	@list='doc/*.n'; for i in $$list; do \
@@ -409,7 +421,7 @@ dist: dist-clean manifest.uuid
 		$(srcdir)/license.terms $(srcdir)/manifest.uuid \
 		$(srcdir)/README.txt $(srcdir)/pkgIndex.tcl.in $(DIST_DIR)/
 
-	list='demos doc generic tclconfig tests tools win'; \
+	list='demos doc generic tclconfig tests win'; \
 	for p in $$list; do \
 	    if test -d $(srcdir)/$$p ; then \
 		$(INSTALL_DATA_DIR) $(DIST_DIR)/$$p; \
@@ -501,7 +513,7 @@ install-bin-binaries: binaries
 	  fi; \
 	done
 
-Makefile: $(srcdir)/Makefile.in  $(top_builddir)/config.status
+Makefile: Makefile.in  $(top_builddir)/config.status
 	cd $(top_builddir) \
 	  && CONFIG_FILES=$@ CONFIG_HEADERS= $(SHELL) ./config.status
 

@@ -63,11 +63,12 @@ DOCUMENTATION BUILD
 ===================
 
 Use the following commands to create the documentation (based on udp.man
-file). Ot uses the doctools package from tcllib.
+file). It uses the doctools package from tcllib.
 
 	$ cd tcludp
-	$ ./tools/mpexpand.tcl nroff ./doc/udp.man ./doc/udp.n
-	$ ./tools/mpexpand.tcl html ./doc/udp.man ./doc/udp.html
+	$ make docs
+	or
+	$ nmake -f win/makefile.vc docs INSTALLDIR=C:\Tcl
 	$ nroff -man ./doc/udp.n
 
 
