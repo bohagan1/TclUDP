@@ -1623,8 +1623,8 @@ static int udpSetTtlOption(UdpState *statePtr, Tcl_Interp *interp, const char *n
 static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *optionName,
 	Tcl_DString *optionValue) {
     UdpState *statePtr = (UdpState *)clientData;
-    int result = TCL_OK, tmp;
-    Tcl_Size objc, opt;
+    int result = TCL_OK, tmp, opt;
+    Tcl_Size objc;
     Tcl_Obj **objv;
     unsigned char str = 0;
     unsigned int ttl = 0;
@@ -1748,8 +1748,7 @@ static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *o
 static int udpSetOption(ClientData clientData, Tcl_Interp *interp, const char *optionName,
 	const char *newValue) {
     UdpState *statePtr = (UdpState *)clientData;
-    int result = TCL_OK;
-    Tcl_Size opt;
+    int result = TCL_OK, opt;
 
     Tcl_Obj *nameObj = Tcl_NewStringObj(optionName,-1);
     Tcl_IncrRefCount(nameObj);
@@ -1899,8 +1898,7 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
     char channelName[20];
     UdpState *statePtr;
     uint16_t localport = 0;
-    int reuse = 0, port;
-    Tcl_Size opt;
+    int reuse = 0, port, opt;
     address addr, sockaddr;
     socklen_t addr_len, len;
     short ss_family = AF_INET; /* Default ipv4 */
@@ -2067,7 +2065,7 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 int udpConf(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
     Tcl_Channel chan;
     UdpState *statePtr = NULL;
-    Tcl_Size opt;
+    int opt;
     (void) clientData;
 
     Tcl_ResetResult(interp);
@@ -2264,8 +2262,7 @@ int Udp_GetAddrInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj
     const char *hostname = NULL, *service = NULL, *str;
     struct addrinfo hints, *result, *rp;
     struct protoent *protocol;
-    int err;
-    Tcl_Size opt;
+    int err, opt;
     Tcl_Obj *resultObj, *listObj;
     (void) clientData;
 
