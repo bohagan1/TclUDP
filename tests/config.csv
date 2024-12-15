@@ -105,7 +105,8 @@ Remote,Invalid value,,,set ch [udp_open [incr ::mc_port] ipv4];chan configure $c
 Remote,Too many values,,,set ch [udp_open [incr ::mc_port] ipv4];chan configure $ch -remote [list bogus value value],close $ch,,"wrong # args: should be ""?hostname? ?port?""",,,1
 ,,,,,,,,,,
 command,# TTL,,,,,,,,,
-TTL,TTL IPv4,,,test_get_opt [incr ::mc_port] ipv4 -ttl,,,64,,,
+TTL,TTL IPv4,win,,test_get_opt [incr ::mc_port] ipv4 -ttl,,,128,,,
+TTL,TTL IPv4,unix,,test_get_opt [incr ::mc_port] ipv4 -ttl,,,64,,,
 TTL,TTL IPv6,win,,test_get_opt [incr ::mc_port] ipv6 -ttl,,,128,,,
 TTL,TTL IPv6,unix,,test_get_opt [incr ::mc_port] ipv6 -ttl,,,64,,,
 TTL,Set TTL IPv4,,,test_set_opt [incr ::mc_port] ipv4 -ttl 72,,,72,,,

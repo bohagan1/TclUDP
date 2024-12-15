@@ -160,7 +160,7 @@ PKG_CFLAGS	= @PKG_CFLAGS@
 DEFS		= @DEFS@ $(PKG_CFLAGS)
 
 # Move pkgIndex.tcl to 'BINARIES' var if it is generated in the Makefile
-CONFIG_CLEAN_FILES = Makefile
+CONFIG_CLEAN_FILES = Makefile pkgIndex.tcl udpUuid.h
 CLEANFILES	= @CLEANFILES@
 
 CPPFLAGS	= @CPPFLAGS@
@@ -213,19 +213,31 @@ libraries:
 #========================================================================
 
 DTPLITE=$(TCLSH) @DTPLITE@
-doc: udp.n
 
-udp.n: $(srcdir)/doc/udp.man
+doc: make-docs-n make-docs-html
+
+make-docs-n: doc/udp.man
 	@echo "make nroff documentation"
 	@if [ -n "$(DTPLITE)" -a -x "$(DTPLITE)" ]; then \
-	    $(DTPLITE) -o $(srcdir)/doc/udp.n nroff $(srcdir)/doc/udp.man ; \
+	    $(DTPLITE) -o doc/udp.n nroff doc/udp.man ; \
 	fi
 
-udp.html: $(srcdir)/doc/udp.man
+make-docs-html: doc/udp.man
 	@echo "make HTML documentation"
 	@if [ -n "$(DTPLITE)" -a -x "$(DTPLITE)" ]; then \
-	    $(DTPLITE) -o $(srcdir)/doc/udp.html html $(srcdir)/doc/udp.man ; \
+	    $(DTPLITE) -o doc/udp.html html doc/udp.man ; \
 	fi
+
+make-docs: doc/udp.man
+	@echo "make documentation"
+	@if [ -n "$(DTPLITE)" -a -x "$(DTPLITE)" ]; then \
+	    $(DTPLITE) -o doc nroff doc ; \
+	    $(DTPLITE) -o doc html doc ; \
+	fi
+
+#========================================================================
+# Install targets
+#========================================================================
 
 install: all install-binaries install-libraries install-doc-n install-doc-html
 
@@ -249,30 +261,37 @@ install-libraries: libraries
 # directory.
 #========================================================================
 
-install-doc-html: udp.html
+install-doc-html: make-docs-html
 	@$(INSTALL_DATA_DIR) "$(DESTDIR)$(pkglibdir)/html"
 	@echo "Installing HTML documentation in $(DESTDIR)$(pkglibdir)/html"
-	@list='$(srcdir)/doc/*.html'; for i in $$list; do \
+	@list='doc/*.html'; for i in $$list; do \
 	    if test -f $$i ; then \
 		echo "Installing $$i"; \
 		$(INSTALL_DATA) $$i "$(DESTDIR)$(pkglibdir)/html"; \
 	    fi; \
 	done
 
-install-doc-n: udp.n
+install-doc-n: make-docs-n
 	@$(INSTALL_DATA_DIR) "$(DESTDIR)$(mandir)/mann"
 	@echo "Installing nroff documentation in $(DESTDIR)$(mandir)/mann"
-	@list='$(srcdir)/doc/*.n'; for i in $$list; do \
+	@list='doc/*.n'; for i in $$list; do \
 	    if test -f $$i ; then \
-		echo "Installing $$i"; \
-		if test -f "$(DESTDIR)$(mandir)/mann/Tcl.n.gz" ; then \
+		if test -f "$(DESTDIR)$(mandir)/mann/Tcl.n.gz" -o \
+		    "$(DESTDIR)$(mandir)/mann/Tcl*.n.gz" ; then \
 		    gzip -k $$i ; \
+		    echo "Installing $$i.gz"; \
 		    $(INSTALL_DATA) $$i.gz "$(DESTDIR)$(mandir)/mann" ; \
+		    rm -f $$i.gz;\
 		else \
+		    echo "Installing $$i"; \
 		    $(INSTALL_DATA) $$i "$(DESTDIR)$(mandir)/mann" ; \
 		fi; \
 	    fi; \
 	done
+
+#========================================================================
+# Test and debug
+#========================================================================
 
 test: binaries libraries
 	$(TCLSH) `@CYGPATH@ $(srcdir)/tests/all.tcl` $(TESTFLAGS) \
@@ -322,6 +341,23 @@ $(PKG_STUB_LIB_FILE): $(PKG_STUB_OBJECTS)
 	$(RANLIB_STUB) $(PKG_STUB_LIB_FILE)
 
 #========================================================================
+# Support files needed to compile C code
+#========================================================================
+
+# Create header file with fossil, git, or svn UUID for build-info command 
+$(srcdir)/manifest.uuid:
+	printf "git-" >$(srcdir)/manifest.uuid
+	(cd $(srcdir); git rev-parse HEAD >>$(srcdir)/manifest.uuid || \
+	    (printf "svn-r" >$(srcdir)/manifest.uuid ; \
+	    svn info --show-item last-changed-revision >>$(srcdir)/manifest.uuid) || \
+	    printf "unknown" >$(srcdir)/manifest.uuid)
+
+udpUuid.h: $(srcdir)/manifest.uuid
+	echo "#define UDP_VERSION_UUID \\" >$@
+	cat $(srcdir)/manifest.uuid >>$@
+	echo "" >>$@
+
+#========================================================================
 # We need to enumerate the list of .c to .o lines here.
 #
 # In the following lines, $(srcdir) refers to the toplevel directory
@@ -338,19 +374,6 @@ $(PKG_STUB_LIB_FILE): $(PKG_STUB_OBJECTS)
 
 VPATH = $(srcdir):$(srcdir)/generic:$(srcdir)/unix:$(srcdir)/win:$(srcdir)/macosx
 
-$(srcdir)/manifest.uuid:
-	@echo "Make manifest.uuid"
-	printf "git-" >$(srcdir)/manifest.uuid
-	(cd $(srcdir); git rev-parse HEAD >>$(srcdir)/manifest.uuid || \
-	    (printf "svn-r" >$(srcdir)/manifest.uuid ; \
-	    svn info --show-item last-changed-revision >>$(srcdir)/manifest.uuid) || \
-	    printf "unknown" >$(srcdir)/manifest.uuid)
-
-udpUuid.h:	$(srcdir)/manifest.uuid
-	echo "#define UDP_VERSION_UUID \\" >$@
-	cat $(srcdir)/manifest.uuid >>$@
-	echo "" >>$@
-
 udp_tcl.@OBJEXT@:	udpUuid.h
 
 .c.@OBJEXT@:
@@ -365,7 +388,6 @@ udp_tcl.@OBJEXT@:	udpUuid.h
 #========================================================================
 
 pkgIndex.tcl: $(srcdir)/pkgIndex.tcl.in
-	@echo "make pkgIndex.tcl"
 	cd $(top_builddir) \
 	  && CONFIG_FILES=$@ CONFIG_HEADERS= $(SHELL) ./config.status
 
@@ -385,7 +407,7 @@ DIST_INSTALL_SCRIPT	= CPPROG='cp -p' $(INSTALL) -m 755
 dist-clean:
 	rm -rf $(DIST_DIR) $(top_builddir)/$(PKG_DIR).tar.*
 
-dist: dist-clean $(srcdir)/manifest.uuid
+dist: dist-clean manifest.uuid
 	# TEA files
 	$(INSTALL_DATA_DIR) $(DIST_DIR)
 	$(DIST_INSTALL_DATA) $(srcdir)/Makefile.in \
@@ -397,7 +419,7 @@ dist: dist-clean $(srcdir)/manifest.uuid
 		$(srcdir)/license.terms $(srcdir)/manifest.uuid \
 		$(srcdir)/README.txt $(srcdir)/pkgIndex.tcl.in $(DIST_DIR)/
 
-	list='demos doc generic tclconfig tests tools win'; \
+	list='demos doc generic tclconfig tests win'; \
 	for p in $$list; do \
 	    if test -d $(srcdir)/$$p ; then \
 		$(INSTALL_DATA_DIR) $(DIST_DIR)/$$p; \
@@ -465,7 +487,7 @@ install-lib-binaries: binaries
 	done
 	@if test "x$(SHARED_BUILD)" = "x1"; then \
 	    echo " Install pkgIndex.tcl $(DESTDIR)$(pkglibdir)"; \
-	    $(INSTALL_DATA) pkgIndex.tcl "$(DESTDIR)$(pkglibdir)"; \
+	    $(INSTALL_DATA) $(srcdir)/pkgIndex.tcl "$(DESTDIR)$(pkglibdir)"; \
 	fi
 	@if test -f "$(srcdir)/udpConfig.sh"; then \
 	    $(INSTALL_DATA) $(srcdir)/udpConfig.sh $(DESTDIR)$(libdir); \
@@ -489,7 +511,7 @@ install-bin-binaries: binaries
 	  fi; \
 	done
 
-Makefile: $(srcdir)/Makefile.in  $(top_builddir)/config.status
+Makefile: Makefile.in  $(top_builddir)/config.status
 	cd $(top_builddir) \
 	  && CONFIG_FILES=$@ CONFIG_HEADERS= $(SHELL) ./config.status
 

@@ -2,7 +2,7 @@
 '\" Generated from file 'udp\&.man' by tcllib/doctools with format 'nroff'
 '\" Copyright (c) 1999-2000 Columbia University; all rights reserved
 '\"
-.TH "udp" n 1\&.0\&.12  "Tcl UDP extension"
+.TH "udp" n 1\&.0\&.12 udp "Tcl UDP extension"
 .\" The -*- nroff -*- definitions below are for supplemental macros used
 .\" in Tcl/Tk manual entries.
 .\"
@@ -519,7 +519,7 @@ Support for IPv6 and allowing a multicast join on a specific network interface i
 .SH "SEE ALSO"
 socket(n)
 .SH KEYWORDS
-networking, socket, udp
+I/O, IP Address, TclUDP, UDP, asynchronous I/O, bind, channel, connection, domain, host, name, network, network address, networking, socket, udp
 .SH COPYRIGHT
 .nf
 Copyright (c) 1999-2000 Columbia University; all rights reserved

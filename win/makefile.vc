@@ -54,11 +54,24 @@ PRJ_LIBS = WS2_32.Lib
 # NOTE: this requires doctools from tcllib hence it is not intended
 # to be run during install. Rather, use it to generate a new version
 # of HTML docs to be stored in the repository.
+TCLSH = "$(_INSTALLDIR)\..\bin\tclsh.exe"
+DTPLITE = "$(_INSTALLDIR)\..\bin\dtplite.tcl"
+
 make-docs-html:
-	$(TCLSH) "$(TOOLSDIR)\mpexpand.tcl" html "$(DOCDIR)\$(PROJECT).man" "$(DOCDIR)\$(PROJECT).html" 
+!IF EXIST($(DTPLITE))
+	"$(TCLSH)" "$(DTPLITE)" -o "$(ROOT)\doc\$(PROJECT).html" html "$(ROOT)\doc\$(PROJECT).man"
+!ENDIF
 
 make-docs-n:
-	$(TCLSH) "$(TOOLSDIR)\mpexpand.tcl" nroff "$(DOCDIR)\$(PROJECT).man" "$(DOCDIR)\$(PROJECT).n" 
+!IF EXIST($(DTPLITE))
+	"$(TCLSH)" "$(DTPLITE)" -o "$(ROOT)\doc\$(PROJECT).n" nroff "$(ROOT)\doc\$(PROJECT).man"
+!ENDIF
+
+make-docs:
+!IF EXIST($(DTPLITE))
+	"$(TCLSH)" "$(DTPLITE)" -o "$DOCDIR" html "$(ROOT)\doc"
+	"$(TCLSH)" "$(DTPLITE)" -o "$DOCDIR" nroff "$(ROOT)\doc"
+!ENDIF
 
 docs: make-docs-n make-docs-html 
 
@@ -78,16 +91,16 @@ pkgindex: default-pkgindex-tea
 
 # Use manifest file which defines fossil/git commit id for build-info command
 $(TMP_DIR)\manifest.uuid:
-!if exist($(ROOT)\manifest.uuid)
+!IF exist($(ROOT)\manifest.uuid)
 	@copy "$(ROOT)\manifest.uuid" "$(TMP_DIR)\manifest.uuid"
-!else
-!if exist($(ROOT)\.git)
-	copy "$(WIN_DIR)\gitmanifest.in" "$(TMP_DIR)\manifest.uuid"
-	git rev-parse HEAD >>$(TMP_DIR)\manifest.uuid || echo unknown >>$(TMP_DIR)\manifest.uuid
-!else
+!ELSE
+!IF exist($(ROOT)\.git)
+	@copy "$(WIN_DIR)\gitmanifest.in" "$(TMP_DIR)\manifest.uuid"
+	@git rev-parse HEAD >>$(TMP_DIR)\manifest.uuid || echo unknown >>$(TMP_DIR)\manifest.uuid
+!ELSE
 	@echo unknown >$(TMP_DIR)\manifest.uuid
-!endif
-!endif
+!ENDIF
+!ENDIF
 
 $(TMP_DIR)\udpUuid.h:	$(TMP_DIR)\manifest.uuid
 	@copy $(WIN_DIR)\udpUuid.h.in+$(TMP_DIR)\manifest.uuid $(TMP_DIR)\udpUuid.h
