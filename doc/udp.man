@@ -1,13 +1,15 @@
 [comment {-*- tcl -*- doctools manpage}]
-[comment {To convert this to another documentation format use the mpexpand
+[comment {To convert this to another documentation format use the dtplite
           script from tcllib: dtplite -o udp.n nroff udp.man
                               dtplite -o udp.html html udp.man
 }]
 [manpage_begin udp n 1.0.12]
 [copyright {1999-2000 Columbia University; all rights reserved}]
+[keywords udp socket networking channel network I/O "asynchronous I/O" bind connection domain name host "network address" UDP "IP Address" TclUDP]
 [moddesc {Tcl UDP extension}]
+[see_also socket]
 [titledesc {Create UDP sockets in Tcl}]
-[require Tcl 8.5]
+[require Tcl 8.5-]
 [require udp 1.0.12]
 [description]
 
@@ -251,6 +253,4 @@ Extension Architecture by Pat Thoyts.
 [para]
 Support for IPv6 and allowing a multicast join on a specific network interface is added by Huub Eikens.
 
-[see_also socket(n)]
-[keywords udp socket networking]
 [manpage_end]
