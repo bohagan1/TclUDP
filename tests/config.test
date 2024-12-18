@@ -11,6 +11,8 @@ set auto_path [concat [list [file dirname [file dirname [info script]]]] $auto_p
 package require udp
 
 # Constraints
+::tcltest::testConstraint  win7 [expr {$::tcl_platform(platform) eq "windows" && $::tcl_platform(osVersion) == 6.1}]
+::tcltest::testConstraint  win10 [expr {$::tcl_platform(platform) eq "windows" && $::tcl_platform(osVersion) > 6.1}]
 
 # Helper functions
 proc is_open {ch} {expr {$ch in [chan names]}}
@@ -361,42 +363,46 @@ test Remote-12.8 {Too many values} -body {
 # TTL
 
 
-test TTL-13.1 {TTL IPv4} -constraints {win} -body {
-	test_get_opt [incr ::mc_port] ipv4 -ttl
-    } -result {128}
-
-test TTL-13.2 {TTL IPv4} -constraints {unix} -body {
+test TTL-13.1 {TTL IPv4} -constraints {win7} -body {
 	test_get_opt [incr ::mc_port] ipv4 -ttl
     } -result {64}
 
-test TTL-13.3 {TTL IPv6} -constraints {win} -body {
+test TTL-13.2 {TTL IPv4} -constraints {win10} -body {
+	test_get_opt [incr ::mc_port] ipv4 -ttl
+    } -result {128}
+
+test TTL-13.3 {TTL IPv4} -constraints {unix} -body {
+	test_get_opt [incr ::mc_port] ipv4 -ttl
+    } -result {64}
+
+test TTL-13.4 {TTL IPv6} -constraints {win} -body {
 	test_get_opt [incr ::mc_port] ipv6 -ttl
     } -result {128}
 
-test TTL-13.4 {TTL IPv6} -constraints {unix} -body {
+test TTL-13.5 {TTL IPv6} -constraints {unix} -body {
 	test_get_opt [incr ::mc_port] ipv6 -ttl
     } -result {64}
 
-test TTL-13.5 {Set TTL IPv4} -body {
+test TTL-13.6 {Set TTL IPv4} -body {
 	test_set_opt [incr ::mc_port] ipv4 -ttl 72
     } -result {72}
 
-test TTL-13.6 {Set TTL IPv6} -body {
+test TTL-13.7 {Set TTL IPv6} -body {
 	test_set_opt [incr ::mc_port] ipv6 -ttl 84
     } -result {84}
 
-test TTL-13.7 {Invalid value} -body {
+test TTL-13.8 {Invalid value} -body {
 	set ch [udp_open [incr ::mc_port] ipv4]
 	chan configure $ch -ttl bogus
     } -cleanup {
 	close $ch
     } -result {expected integer but got "bogus"} -returnCodes {1}
 
-test TTL-13.8 {Default value} -body {
+test TTL-13.9 {Default value} -body {
 	test_set_opt [incr ::mc_port] ipv4 -ttl -1
     } -match {glob} -result {*}
 
-test TTL-13.9 {Out of range value} -body {
+test TTL-13.10 {Out of range value} -body {
 	set ch [udp_open [incr ::mc_port] ipv4]
 	chan configure $ch -ttl 257
     } -cleanup {
