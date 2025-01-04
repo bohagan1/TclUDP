@@ -1665,7 +1665,7 @@ static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *o
 	case _opt_broadcast:
 	    if ((result = udpGetBroadcastOption(statePtr,interp,&tmp)) == TCL_OK) {
 		Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
-		sprintf(Tcl_DStringValue(&ds), "%d", tmp);
+		snprintf(Tcl_DStringValue(&ds), TCL_INTEGER_SPACE, "%d", tmp);
 	    }
 	    break;
 
@@ -1689,19 +1689,19 @@ static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *o
 	case _opt_mcastloop:
 	    if ((result = udpGetMcastloopOption(statePtr, interp, &str)) == TCL_OK) {
 		Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
-		sprintf(Tcl_DStringValue(&ds), "%d", (int)str);
+		snprintf(Tcl_DStringValue(&ds), TCL_INTEGER_SPACE, "%d", (int)str);
 	    }
 	    break;
 
 	case _opt_myport:
 	    Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
-	    sprintf(Tcl_DStringValue(&ds), "%u", ntohs(statePtr->localport));
+	    snprintf(Tcl_DStringValue(&ds), TCL_INTEGER_SPACE, "%u", ntohs(statePtr->localport));
 	    break;
 
 	case _opt_peer:
 	   if (*statePtr->peerhost) {
 		Tcl_DStringSetLength(&dsInt, TCL_INTEGER_SPACE);
-		sprintf(Tcl_DStringValue(&dsInt), "%u", statePtr->peerport);
+		snprintf(Tcl_DStringValue(&dsInt), TCL_INTEGER_SPACE, "%u", statePtr->peerport);
 		Tcl_DStringAppendElement(&ds, statePtr->peerhost);
 		Tcl_DStringAppendElement(&ds, Tcl_DStringValue(&dsInt));
 	   }
@@ -1710,7 +1710,7 @@ static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *o
 	case _opt_remote:
 	    if (*statePtr->remotehost) {
 		Tcl_DStringSetLength(&dsInt, TCL_INTEGER_SPACE);
-		sprintf(Tcl_DStringValue(&dsInt), "%u", ntohs(statePtr->remoteport));
+		snprintf(Tcl_DStringValue(&dsInt), TCL_INTEGER_SPACE, "%u", ntohs(statePtr->remoteport));
 		Tcl_DStringAppendElement(&ds, statePtr->remotehost);
 		Tcl_DStringAppendElement(&ds, Tcl_DStringValue(&dsInt));
 	    }
@@ -1719,7 +1719,7 @@ static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *o
 	case _opt_ttl:
 	    if ((result = udpGetTtlOption(statePtr, interp, &ttl)) == TCL_OK) {
 		Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
-		sprintf(Tcl_DStringValue(&ds), "%u", ttl);
+		snprintf(Tcl_DStringValue(&ds), TCL_INTEGER_SPACE, "%u", ttl);
 	    }
 	    break;
 
@@ -2022,7 +2022,7 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
     statePtr = (UdpState *) ckalloc((unsigned) sizeof(UdpState));
     memset(statePtr, 0, sizeof(UdpState));
     statePtr->sock = sock;
-    sprintf(channelName, "sock" SOCKET_PRINTF_FMT, statePtr->sock);
+    snprintf(channelName, sizeof(channelName), "sock" SOCKET_PRINTF_FMT, statePtr->sock);
     statePtr->channel = Tcl_CreateChannel(&Udp_ChannelType, channelName,
 	(ClientData) statePtr, (TCL_READABLE | TCL_WRITABLE | TCL_MODE_NONBLOCKING));
     Tcl_SetChannelBufferSize(statePtr->channel, MAXBUFFERSIZE);
@@ -2105,7 +2105,8 @@ int udpConf(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 	/* Special case: udp_conf sock host port */
 	if (Tcl_GetIndexFromObj(interp, objv[2], cfg_opts, "option", 0, &opt) == TCL_ERROR) {
 	    char remoteOptions[255];
-	    sprintf(remoteOptions, "%s %s", Tcl_GetString(objv[2]), Tcl_GetString(objv[3]));
+	    snprintf(remoteOptions, sizeof(remoteOptions), "%s %s", Tcl_GetString(objv[2]),
+		Tcl_GetString(objv[3]));
 	    return Tcl_SetChannelOption(interp, statePtr->channel, "-remote", remoteOptions);
 	}
     }
