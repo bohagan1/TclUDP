@@ -247,7 +247,7 @@ static void udpTrace(const char *format, ...) {
 */
 
 int UdpSockGetPort(
-     Tcl_Interp *interp, 
+     Tcl_Interp *interp,
      const char *service,	/* Integer or service name */
      const char *proto,		/* "tcp" or "udp", typically */
      int *portPtr)		/* Return port number */
@@ -391,7 +391,7 @@ void UDP_CheckProc(ClientData data, int flags) {
     char hostaddr[256];
     char *portaddr;
     char remoteaddr[256];
-    int remoteaddrlen; /* bytes for ANSI strings, WCHARs for Unicode */
+    DWORD remoteaddrlen; /* bytes for ANSI strings, WCHARs for Unicode */
 #endif /*  _WIN32 */
     Tcl_ThreadId currentThreadId = Tcl_GetCurrentThread();
 
@@ -435,7 +435,7 @@ void UDP_CheckProc(ClientData data, int flags) {
 	     */
 	    memset(hostaddr, 0 , sizeof(hostaddr));
 	    memset(remoteaddr, 0, sizeof(remoteaddr));
-	    remoteaddrlen = sizeof(remoteaddr);
+	    remoteaddrlen = (DWORD) sizeof(remoteaddr);
 	    if (WSAAddressToStringA((struct sockaddr *)&recvaddr, socksize, NULL,
 		    remoteaddr, &remoteaddrlen) == 0) {
 		/*
@@ -498,12 +498,12 @@ void UDP_CheckProc(ClientData data, int flags) {
  */
 void UDP_ExitProc(ClientData clientData) {
     Tcl_DeleteEventSource(UDP_SetupProc, UDP_CheckProc, NULL);
-    
+
     /* Delete threads */
     CloseHandle(waitForSock);
     CloseHandle(sockListLock);
-    /* TBD delete thread 
-    	socketThread = CreateThread(NULL, 16384, SocketThread, NULL, 0, &id);
+    /* TBD delete thread
+	socketThread = CreateThread(NULL, 16384, SocketThread, NULL, 0, &id);
     */
 }
 
@@ -1023,10 +1023,10 @@ static int udpInput(ClientData clientData, char *buf, int bufSize, int *errorCod
     }
 
     if (packets->actual_size > bufSize) {
-        packets->actual_size = bufSize;
+	packets->actual_size = bufSize;
     }
     memcpy(buf, packets->message, packets->actual_size);
-    /* VERY TRICKY: add null-terminating byte, we reserved MAXBUFFERSIZE+1 */ 
+    /* VERY TRICKY: add null-terminating byte, we reserved MAXBUFFERSIZE+1 */
     if (packets->actual_size <= bufSize) {
 	buf[packets->actual_size] = '\0';
     }
@@ -1044,7 +1044,7 @@ static int udpInput(ClientData clientData, char *buf, int bufSize, int *errorCod
     memset(&recvaddr, 0, socksize);
 
     if (buffer_size > bufSize) {
-        buffer_size = bufSize;
+	buffer_size = bufSize;
     }
     bytesRead = recvfrom(sock, buf, buffer_size, 0, (struct sockaddr *)&recvaddr, &socksize);
     if (bytesRead < 0) {
@@ -1066,7 +1066,7 @@ static int udpInput(ClientData clientData, char *buf, int bufSize, int *errorCod
 
     /* we don't want to return anything next time */
     if (bytesRead > 0) {
-        if (bytesRead < bufSize) {
+	if (bytesRead < bufSize) {
 	    buf[bytesRead] = '\0';
 	}
 	statePtr->doread = 0;
@@ -1177,10 +1177,10 @@ static int udpSetMcastloopOption(UdpState *statePtr, Tcl_Interp *interp, const c
 
     if (Tcl_GetBoolean(interp, newValue, &tmp) == TCL_OK) {
 	if (statePtr->ss_family == AF_INET) {
-	    result = setsockopt(statePtr->sock, IPPROTO_IP, IP_MULTICAST_LOOP, 
+	    result = setsockopt(statePtr->sock, IPPROTO_IP, IP_MULTICAST_LOOP,
 		(const char *)&tmp, sizeof(tmp));
 	} else {
-	    result = setsockopt(statePtr->sock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, 
+	    result = setsockopt(statePtr->sock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP,
 		(const char *)&tmp, sizeof(tmp));
 	}
     } else {
@@ -1229,7 +1229,7 @@ static int udpSetMulticastIFOption(UdpState *statePtr, Tcl_Interp *interp, const
 	    Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif (bad address)"));
 	    return TCL_ERROR;
 	}
-	
+
 	if (setsockopt(statePtr->sock, IPPROTO_IP, IPV6_MULTICAST_IF, (const char*)&interface_addr,
 		sizeof(interface_addr)) < 0) {
 	    Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif"));
@@ -1387,7 +1387,7 @@ static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp,
 	    if (interp != NULL) {
 		Tcl_SetResult(interp, "invalid group name", TCL_STATIC);
 	    }
-            freeaddrinfo(gai_ret);
+	    freeaddrinfo(gai_ret);
 	    Tcl_DecrRefCount(tcllist);
 	    return TCL_ERROR;
 	} else {
@@ -1583,7 +1583,7 @@ static int udpSetTtlOption(UdpState *statePtr, Tcl_Interp *interp, const char *n
     int result = 0;
     int tmp = 0;
     int cmd;
-    
+
     /* range: 0 to 255, use default = -1 */
     if (Tcl_GetInt(interp, newValue, &tmp) != TCL_OK) {
 	return TCL_ERROR;
@@ -1722,7 +1722,7 @@ static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *o
 		sprintf(Tcl_DStringValue(&ds), "%u", ttl);
 	    }
 	    break;
-	
+
 	default:
 	    Tcl_AppendResult(interp, "set only option \"", optionName, "\"", (char *) NULL);
 	    result = TCL_ERROR;
@@ -1752,7 +1752,7 @@ static int udpSetOption(ClientData clientData, Tcl_Interp *interp, const char *o
 
     Tcl_Obj *nameObj = Tcl_NewStringObj(optionName,-1);
     Tcl_IncrRefCount(nameObj);
-	
+
     Tcl_ResetResult(interp);
 
     if (Tcl_GetIndexFromObj(interp, nameObj, cfg_opts, "option", 0, &opt) != TCL_OK) {
@@ -1791,7 +1791,7 @@ static int udpSetOption(ClientData clientData, Tcl_Interp *interp, const char *o
     case _opt_ttl:
 	result = udpSetTtlOption(statePtr, interp, (const char*) newValue);
 	break;
-	
+
     default:
 	Tcl_AppendResult(interp, "get only option \"", optionName, "\"", (char *) NULL);
 	result = TCL_ERROR;
@@ -1969,8 +1969,8 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 	closesocket(sock);
 	return TCL_ERROR;
     } else {
-        int one = 1;
-        ioctlsocket(sock, FIONBIO, &one);
+	unsigned long one = 1;
+	ioctlsocket(sock, FIONBIO, &one);
     }
 #endif /* _WIN32 */
 
@@ -2191,7 +2191,7 @@ int udpPeek(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
     }
 
     memset(message, 0 , sizeof(message));
-    actual_size = recvfrom(statePtr->sock, message, buffer_size, MSG_PEEK, 
+    actual_size = recvfrom(statePtr->sock, message, buffer_size, MSG_PEEK,
 	(struct sockaddr *)&recvaddr, &socksize);
 
     if (actual_size < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
@@ -2332,7 +2332,7 @@ int Udp_GetAddrInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj
 	Tcl_AppendResult(interp, "Get address info returned error: ", gai_strerror(err), (char *) NULL);
 	return TCL_ERROR;
     }
-    
+
     /* Parse result */
     resultObj = Tcl_NewListObj(0, NULL);
     for (rp = result; rp != NULL; rp = rp->ai_next) {
@@ -2396,7 +2396,7 @@ int Udp_GetAddrInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj
 	Tcl_ListObjAppendElement(interp, listObj, Tcl_NewStringObj("protocol",-1));
 	protocol = getprotobynumber(rp->ai_protocol);
 	Tcl_ListObjAppendElement(interp, listObj, Tcl_NewStringObj(protocol->p_name,-1));
-	
+
 	Tcl_ListObjAppendElement(interp, listObj, Tcl_NewStringObj("protocol2",-1));
 	switch(rp->ai_protocol) {
 	case IPPROTO_TCP:
@@ -2468,7 +2468,7 @@ int Udp_GetNameInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj
 	Tcl_AppendResult(interp, "Get name info returned error: ", gai_strerror(err), (char *) NULL);
 	return TCL_ERROR;
     }
-    
+
     Tcl_SetObjResult(interp, Tcl_NewStringObj(hostname,-1));
     return TCL_OK;
 }
@@ -2488,12 +2488,12 @@ int Udp_GetNameInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj
  *
  *----------------------------------------------------------------------
  */
- 
+
 #ifndef STRINGIFY
 #  define STRINGIFY(x) STRINGIFY1(x)
 #  define STRINGIFY1(x) #x
 #endif
- 
+
 int
 BuildInfoCommand(Tcl_Interp* interp) {
     Tcl_CmdInfo info;
