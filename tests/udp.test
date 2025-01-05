@@ -49,7 +49,7 @@ test udp-1.4 {udp_open on assigned port} -body {
     close $s
 } -result [expr {$::tcl_platform(platform) eq "windows" ? "0xc93b" : "0xf0b0"}]
 
-test udp-1.5 {udp_conf -remote before seting remote details} {
+test udp-1.5 {udp_conf -remote before setting remote details} {
     list [catch {
         set s [udp_open]
         set r [udp_conf $s -remote]
