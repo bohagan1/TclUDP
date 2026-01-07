@@ -391,7 +391,7 @@ void UDP_CheckProc(ClientData data, int flags) {
     char hostaddr[256];
     char *portaddr;
     char remoteaddr[256];
-    int remoteaddrlen; /* bytes for ANSI strings, WCHARs for Unicode */
+    DWORD remoteaddrlen; /* bytes for ANSI strings, WCHARs for Unicode */
 #endif /*  _WIN32 */
     Tcl_ThreadId currentThreadId = Tcl_GetCurrentThread();
 
@@ -1969,7 +1969,7 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 	closesocket(sock);
 	return TCL_ERROR;
     } else {
-        int one = 1;
+        u_long one = 1;
         ioctlsocket(sock, FIONBIO, &one);
     }
 #endif /* _WIN32 */
