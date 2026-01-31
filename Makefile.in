@@ -222,7 +222,7 @@ make-docs-n: doc/udp.man
 	    $(TCLSH) $(DTPLITE) -o doc/$(PACKAGE_NAME).n nroff doc/$(PACKAGE_NAME).man; \
 	else \
 	    echo "Can't find dtplite. Please install Tcllib."; \
- 	fi
+	fi
 
 make-docs-html: doc/udp.man
 	@echo "make HTML documentation"
@@ -230,7 +230,7 @@ make-docs-html: doc/udp.man
 	    $(TCLSH) $(DTPLITE) -o doc/$(PACKAGE_NAME).html html doc/$(PACKAGE_NAME).man; \
 	else \
 	    echo "Can't find dtplite. Please install Tcllib."; \
- 	fi
+	fi
 
 make-docs: doc/udp.man
 	@echo "make documentation"
@@ -239,7 +239,7 @@ make-docs: doc/udp.man
 	    $(TCLSH) $(DTPLITE) -o doc html doc; \
 	else \
 	    echo "Can't find dtplite. Please install Tcllib."; \
- 	fi
+	fi
 
 #========================================================================
 # Install targets
@@ -350,7 +350,7 @@ $(PKG_STUB_LIB_FILE): $(PKG_STUB_OBJECTS)
 # Support files needed to compile C code
 #========================================================================
 
-# Create header file with fossil, git, or svn UUID for build-info command 
+# Create header file with fossil, git, or svn UUID for build-info command
 $(srcdir)/manifest.uuid:
 	printf "git-" >$(srcdir)/manifest.uuid
 	(cd '$(srcdir)'; git rev-parse HEAD >>$(srcdir)/manifest.uuid || \
@@ -408,7 +408,7 @@ COMPRESS	= tar zcvf $(PKG_DIR).tar.gz $(TEMP_DIR)
 
 DIST_INSTALL_DATA	= CPPROG='cp -p' $(INSTALL) -m 644
 DIST_INSTALL_SCRIPT	= CPPROG='cp -p' $(INSTALL) -m 755
- 
+
 ${TEMP_DIR}:
 	mkdir -p ${TEMP_DIR}
 
