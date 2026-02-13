@@ -410,9 +410,9 @@ void UDP_CheckProc(ClientData data, int flags) {
 	memset(&recvaddr, 0, socksize);
 
 	/* reserve one more byte for terminating null byte */
-	message = (char *)ckalloc(MAXBUFFERSIZE+1);
+	message = (char *)Tcl_Alloc(MAXBUFFERSIZE+1);
 	if (message == NULL) {
-	    UDPTRACE("ckalloc error\n");
+	    UDPTRACE("Tcl_Alloc error\n");
 	    exit(1);
 	}
 	memset(message, 0, MAXBUFFERSIZE+1);
@@ -422,12 +422,12 @@ void UDP_CheckProc(ClientData data, int flags) {
 
 	if (actual_size < 0) {
 	    UDPTRACE("UDP error - recvfrom %d\n", statePtr->sock);
-	    ckfree(message);
+	    Tcl_Free(message);
 	} else {
-	    p = (PacketList *)ckalloc(sizeof(struct PacketList));
+	    p = (PacketList *)Tcl_Alloc(sizeof(struct PacketList));
 	    if (p == NULL) {
-		UDPTRACE("ckalloc error\n");
-		ckfree(message);
+		UDPTRACE("Tcl_Alloc error\n");
+		Tcl_Free(message);
 		exit(1);
 	    }
 	    p->message = message;
@@ -484,9 +484,9 @@ void UDP_CheckProc(ClientData data, int flags) {
 	}
 
 	if (actual_size > 0) {
-	    evPtr = (UdpEvent *) ckalloc(sizeof(UdpEvent));
+	    evPtr = (UdpEvent *) Tcl_Alloc(sizeof(UdpEvent));
 	    if (evPtr == NULL) {
-		UDPTRACE("ckalloc error\n");
+		UDPTRACE("Tcl_Alloc error\n");
 		exit(1);
 	    }
 	    evPtr->header.proc = UdpEventProc;
@@ -762,7 +762,7 @@ static int udpClose(ClientData clientData, Tcl_Interp *interp) {
 	errorCode = errno;
     }
 
-    ckfree((char *) statePtr);
+    Tcl_Free((char *) statePtr);
     if (errorCode != 0) {
 	static char errBuf[256];
 
@@ -1037,14 +1037,14 @@ static int udpInput(ClientData clientData, char *buf, int bufSize, int *errorCod
     if (packets->actual_size <= bufSize) {
 	buf[packets->actual_size] = '\0';
     }
-    ckfree((char *) packets->message);
+    Tcl_Free((char *) packets->message);
     UDPTRACE("udp_recv message with %d bytes", packets->actual_size);
 
     bufSize = packets->actual_size;
     strncpy(statePtr->peerhost, packets->r_host, NI_MAXHOST);
     statePtr->peerport = packets->r_port;
     statePtr->packets = packets->next;
-    ckfree((char *) packets);
+    Tcl_Free((char *) packets);
     bytesRead = bufSize;
 #else /* ! _WIN32 */
     socksize = sizeof(recvaddr);
@@ -2036,9 +2036,9 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 
     UDPTRACE("Open socket %d. Bind socket to port %d\n", sock, ntohs(localport));
 
-    statePtr = (UdpState *) ckalloc((unsigned) sizeof(UdpState));
+    statePtr = (UdpState *) Tcl_Alloc((unsigned) sizeof(UdpState));
     if (statePtr == NULL) {
-	UDPTRACE("ckalloc error\n");
+	UDPTRACE("Tcl_Alloc error\n");
 	return TCL_ERROR;
     }
     memset(statePtr, 0, sizeof(UdpState));
