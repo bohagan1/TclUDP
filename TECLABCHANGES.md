@@ -70,6 +70,45 @@ int udp_SafeInit(Tcl_Interp *interp) { return Udp_SafeInit(interp); }
 
 ---
 
+## IPv6 Multicast Interface Fix (2026-02-14)
+
+### 6. Fixed `setsockopt` for IPv6 `IPV6_MULTICAST_IF`
+
+**File**: `generic/udp_tcl.c`
+
+**Issue**: Setting `-mcastif` on an IPv6 socket failed with "Operation not permitted". The IPv6 branch of `udpSetMulticastIFOption` had two bugs:
+1. Used `IPPROTO_IP` (IPv4 protocol level) instead of `IPPROTO_IPV6`
+2. Passed a `struct in6_addr` where `IPV6_MULTICAST_IF` expects an `unsigned int` interface index
+
+**Change**: Rewrote the IPv6 branch to convert the IPv6 address to an interface index via `getifaddrs()`, and use `IPPROTO_IPV6` with the correct value type:
+```c
+unsigned int ifindex = 0;
+if (strlen(newValue) > 0) {
+    struct in6_addr target;
+    struct ifaddrs *ifap, *ifa;
+    inet_pton(AF_INET6, newValue, &target);
+    if (getifaddrs(&ifap) == 0) {
+        for (ifa = ifap; ifa; ifa = ifa->ifa_next) {
+            if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET6) {
+                struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *)ifa->ifa_addr;
+                if (memcmp(&sa6->sin6_addr, &target, sizeof(target)) == 0) {
+                    ifindex = if_nametoindex(ifa->ifa_name);
+                    break;
+                }
+            }
+        }
+        freeifaddrs(ifap);
+    }
+}
+setsockopt(statePtr->sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, &ifindex, sizeof(ifindex));
+```
+
+Also added `#include <ifaddrs.h>` for `getifaddrs()`.
+
+**Test**: `Multicast_IF-9.4` now passes (was the only failing test).
+
+---
+
 ## Windows Compiler Fixes (2026-01-07)
 
 ### 1. Fixed ioctlsocket() Type Compatibility (Line 1972)

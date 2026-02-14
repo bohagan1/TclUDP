@@ -30,6 +30,7 @@
 typedef int socklen_t;
 #else /* ! _WIN32 */
 #include <net/if.h>
+#include <ifaddrs.h>
 #if defined(HAVE_SYS_FILIO_H)
 #include <sys/filio.h>
 #endif
@@ -1222,16 +1223,38 @@ static int udpSetMulticastIFOption(UdpState *statePtr, Tcl_Interp *interp, const
 	    return TCL_ERROR;
 	}
     } else {
-	struct in6_addr interface_addr = IN6ADDR_ANY_INIT;
+	unsigned int ifindex = 0;
 
-	if (strlen(newValue) == 0) {
-	} else if (inet_pton(AF_INET6, newValue, &interface_addr)==0) {
-	    Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif (bad address)"));
-	    return TCL_ERROR;
+	if (strlen(newValue) > 0) {
+	    struct in6_addr target;
+	    struct ifaddrs *ifap, *ifa;
+
+	    if (inet_pton(AF_INET6, newValue, &target) != 1) {
+		Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif (bad address)"));
+		return TCL_ERROR;
+	    }
+
+	    if (getifaddrs(&ifap) == 0) {
+		for (ifa = ifap; ifa; ifa = ifa->ifa_next) {
+		    if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET6) {
+			struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *)ifa->ifa_addr;
+			if (memcmp(&sa6->sin6_addr, &target, sizeof(target)) == 0) {
+			    ifindex = if_nametoindex(ifa->ifa_name);
+			    break;
+			}
+		    }
+		}
+		freeifaddrs(ifap);
+	    }
+
+	    if (ifindex == 0) {
+		Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif (interface not found)"));
+		return TCL_ERROR;
+	    }
 	}
-	
-	if (setsockopt(statePtr->sock, IPPROTO_IP, IPV6_MULTICAST_IF, (const char*)&interface_addr,
-		sizeof(interface_addr)) < 0) {
+
+	if (setsockopt(statePtr->sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, (const char*)&ifindex,
+		sizeof(ifindex)) < 0) {
 	    Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif"));
 	    return TCL_ERROR;
 	}
