@@ -1,14 +1,76 @@
 # TECLAB Changes to tcludp
 
-This file documents modifications made to the tcludp source code for compilation with modern MinGW64/gcc compilers.
+This file documents modifications made to the tcludp source code.
 
 ## Build Environment
 - **Compiler**: gcc (Rev8, Built by MSYS2 project) 15.2.0
 - **Platform**: Windows (MSYS2 MinGW64)
-- **Target**: Tcl 8.6
-- **Date**: 2026-01-07
+- **Target**: Tcl 9.0 (with Tcl 8.6 backward compatibility)
+- **Date**: 2026-02-14
 
-## Changes Made
+---
+
+## Tcl 9 Migration (2026-02-14)
+
+### 3. Added lowercase init aliases for Tcl 9 `load` command
+
+**File**: `generic/udp_tcl.c`
+
+**Issue**: Tcl 9 no longer auto-capitalizes the package name when looking up init functions. Without lowercase aliases, `load` would fail to find the entry point.
+
+**Change**: Added after `Udp_SafeInit`:
+```c
+int udp_Init(Tcl_Interp *interp) { return Udp_Init(interp); }
+int udp_SafeInit(Tcl_Interp *interp) { return Udp_SafeInit(interp); }
+```
+
+### 4. Fixed channel type `closeProc` field for Tcl 9
+
+**File**: `generic/udp_tcl.c`
+
+**Issue**: In Tcl 9, the `closeProc` field (field 3) of `Tcl_ChannelType` changed from `Tcl_DriverCloseProc *` to `void *` (deprecated/unused). Assigning a function pointer to `void *` produces a compiler warning.
+
+**Change**: Conditional NULL for Tcl 9 in `Udp_ChannelType`:
+```c
+#if TCL_MAJOR_VERSION > 8
+    NULL,                  /* closeProc - not used in Tcl 9 */
+#else
+    udpClose,              /* Close channel, clean instance data */
+#endif
+```
+
+**Note**: `udpClose2` (the `close2Proc`) already calls `udpClose(clientData, interp)` when `flags == 0`, so close behavior is preserved.
+
+### 5. Replaced deprecated `Tcl_DStringResult`
+
+**File**: `generic/udp_tcl.c`
+
+**Issue**: `Tcl_DStringResult` is deprecated in Tcl 9.
+
+**Change**:
+```diff
+- Tcl_DStringResult(interp, &ds);
++ Tcl_SetObjResult(interp, Tcl_NewStringObj(Tcl_DStringValue(&ds), Tcl_DStringLength(&ds)));
+```
+
+### Build Results
+
+- **Status**: Compilation successful
+- **Output**: `tcl9udp1012.dll`
+- **Installation**: `release/lib/udp1.0.12/`
+- **Exported symbols**: `Udp_Init`, `udp_Init`, `Udp_SafeInit`, `udp_SafeInit`
+- **Remaining Warnings**: Format string warnings (non-critical, pre-existing)
+
+### Test Results
+
+- **Total**: 116 tests
+- **Passed**: 99 tests
+- **Skipped**: 17 tests (platform-specific constraints)
+- **Failed**: 0 tests
+
+---
+
+## Windows Compiler Fixes (2026-01-07)
 
 ### 1. Fixed ioctlsocket() Type Compatibility (Line 1972)
 
@@ -23,11 +85,6 @@ This file documents modifications made to the tcludp source code for compilation
   ioctlsocket(sock, FIONBIO, &one);
 ```
 
-**Reason**: Ensures type compatibility with Windows Sockets API `ioctlsocket()` function signature:
-```c
-int WSAAPI ioctlsocket(SOCKET s, __LONG32 cmd, u_long *argp);
-```
-
 ### 2. Fixed WSAAddressToStringA() Type Compatibility (Line 394)
 
 **File**: `generic/udp_tcl.c`
@@ -40,34 +97,6 @@ int WSAAPI ioctlsocket(SOCKET s, __LONG32 cmd, u_long *argp);
 + DWORD remoteaddrlen; /* bytes for ANSI strings, WCHARs for Unicode */
 ```
 
-**Reason**: Ensures type compatibility with Windows Sockets API `WSAAddressToStringA()` function signature:
-```c
-INT WSAAPI WSAAddressToStringA(
-    LPSOCKADDR lpsaAddress,
-    DWORD dwAddressLength,
-    LPWSAPROTOCOL_INFOA lpProtocolInfo,
-    LPSTR lpszAddressString,
-    LPDWORD lpdwAddressStringLength  // <- requires DWORD*
-);
-```
-
-## Build Results
-
-- **Status**: ✅ Compilation successful
-- **Output**: `udp1012.dll`
-- **Installation**: `release/lib/udp1.0.12/`
-- **Remaining Warnings**: Format string warnings (non-critical, do not affect functionality)
-
-## Test Results
-
-All tests passed successfully:
-- **Total**: 116 tests
-- **Passed**: 99 tests
-- **Skipped**: 17 tests (platform-specific constraints)
-- **Failed**: 0 tests
-
 ## Notes
 
-These changes only affect Windows builds and maintain backward compatibility. The modifications address strict type checking requirements in modern gcc compilers while preserving the original functionality of the code.
-
-No functional changes were made to the UDP socket implementation.
+All changes maintain backward compatibility with Tcl 8.6. The Tcl 9 migration leverages the existing `Tcl_Size` compatibility shim in `udp_tcl.h` and the conditional `TCL_MAJOR_VERSION` branches already present in the code. No functional changes were made to the UDP socket implementation.

@@ -1850,7 +1850,11 @@ udpThreadAction(ClientData clientData, int action) {
 static Tcl_ChannelType Udp_ChannelType = {
     "udp",                 /* Type name.                                    */
     TCL_CHANNEL_VERSION_5, /* v5 channel */
+#if TCL_MAJOR_VERSION > 8
+    NULL,                  /* closeProc - not used in Tcl 9                 */
+#else
     udpClose,              /* Close channel, clean instance data            */
+#endif
     udpInput,              /* Handle read request                           */
     udpOutput,             /* Handle write request                          */
     NULL,                  /* Seek proc.                          NULL'able */
@@ -2091,7 +2095,7 @@ int udpConf(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 	    Tcl_DString ds;
 	    Tcl_DStringInit(&ds);
 	    if (Tcl_GetChannelOption(interp, statePtr->channel, cfg_opts[opt], &ds) == TCL_OK) {
-		Tcl_DStringResult(interp, &ds);
+		Tcl_SetObjResult(interp, Tcl_NewStringObj(Tcl_DStringValue(&ds), Tcl_DStringLength(&ds)));
 		Tcl_DStringFree(&ds);
 		return TCL_OK;
 	    } else {
@@ -2635,6 +2639,10 @@ int Udp_SafeInit(Tcl_Interp *interp) {
     Tcl_SetResult(interp, "permission denied", TCL_STATIC);
     return TCL_ERROR;
 }
+
+/* Tcl 9 lowercase init aliases */
+int udp_Init(Tcl_Interp *interp) { return Udp_Init(interp); }
+int udp_SafeInit(Tcl_Interp *interp) { return Udp_SafeInit(interp); }
 
 
 /*
