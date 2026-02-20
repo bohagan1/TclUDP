@@ -1237,7 +1237,7 @@ static int udpSetMulticastIFOption(UdpState *statePtr, Tcl_Interp *interp, const
 	    return TCL_ERROR;
 	}
 
-	if (setsockopt(statePtr->sock, IPPROTO_IP, IPV6_MULTICAST_IF, (const char*)&interface_addr,
+	if (setsockopt(statePtr->sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, (const char*)&interface_addr,
 		sizeof(interface_addr)) < 0) {
 	    Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif"));
 	    return TCL_ERROR;
