@@ -236,7 +236,7 @@ static void udpTrace(const char *format, ...) {
  *      NOTE: this is a copy of TclSockGetPort.
  *
  * Results:
- *      A standard Tcl result.  On success, the port number is returned
+ *      A standard Tcl result. On success, the port number is returned
  *      in portPtr. On failure, an error message is left in the interp's
  *      result.
  *
@@ -335,8 +335,8 @@ int UdpEventProc(Tcl_Event *evPtr, int flags) {
  * ----------------------------------------------------------------------
  * UdpDeleteEvent --
  *
- *  Remove any queued UDP events from the event queue.  Called from
- *  Tcl_DeleteEvents when the channel is closed.  Tests each passed
+ *  Remove any queued UDP events from the event queue. Called from
+ *  Tcl_DeleteEvents when the channel is closed. Tests each passed
  *  event, and returns 1 if the event should be deleted, 0 otherwise.
  *
  * ----------------------------------------------------------------------
@@ -349,12 +349,13 @@ static int UdpDeleteEvent(Tcl_Event *evPtr, ClientData channel) {
 
 /*
  * ----------------------------------------------------------------------
- * UDP_SetupProc - called in Tcl_SetEventSource to do the setup step
+ * UdpSetupProc - called in Tcl_SetEventSource to do the setup step
  * ----------------------------------------------------------------------
  */
-static void UDP_SetupProc(ClientData data, int flags) {
+static void UdpSetupProc(ClientData data, int flags) {
     UdpState *statePtr;
     Tcl_Time blockTime = { 0, 0 };
+    Tcl_ThreadId currentThreadId = Tcl_GetCurrentThread();
 
     /* UDPTRACE("setupProc\n"); */
 
@@ -363,9 +364,9 @@ static void UDP_SetupProc(ClientData data, int flags) {
     }
 
     WaitForSingleObject(sockListLock, INFINITE);
-    for (statePtr = sockList; statePtr != NULL; statePtr=statePtr->next) {
-	if (statePtr->packetNum > 0 && statePtr->threadId == Tcl_GetCurrentThread()) {
-	    UDPTRACE("UDP_SetupProc\n");
+    for (statePtr = sockList; statePtr != NULL; statePtr = statePtr->next) {
+	if (statePtr->packetNum > 0 && statePtr->threadId == currentThreadId) {
+	    UDPTRACE("UdpSetupProc\n");
 	    Tcl_SetMaxBlockTime(&blockTime);
 	    break;
 	}
@@ -400,7 +401,7 @@ void UDP_CheckProc(ClientData data, int flags) {
     /* synchronized */
     WaitForSingleObject(sockListLock, INFINITE);
 
-    for (statePtr = sockList; statePtr != NULL; statePtr=statePtr->next) {
+    for (statePtr = sockList; statePtr != NULL; statePtr = statePtr->next) {
 	if (statePtr->threadId != currentThreadId) {
 	    continue;
 	}
@@ -410,12 +411,12 @@ void UDP_CheckProc(ClientData data, int flags) {
 	memset(&recvaddr, 0, socksize);
 
 	/* reserve one more byte for terminating null byte */
-	message = (char *)Tcl_Alloc(MAXBUFFERSIZE+1);
+	message = (char *)Tcl_Alloc(buffer_size+1);
 	if (message == NULL) {
 	    UDPTRACE("Tcl_Alloc error\n");
 	    exit(1);
 	}
-	memset(message, 0, MAXBUFFERSIZE+1);
+	memset(message, 0, buffer_size+1);
 
 	actual_size = recvfrom(statePtr->sock, message, buffer_size, 0,
 		(struct sockaddr *)&recvaddr, &socksize);
@@ -501,19 +502,20 @@ void UDP_CheckProc(ClientData data, int flags) {
 }
 
 /*
- * ----------------------------------------------------------------------
- * UDP_ExitProc - called at thread exit
- * ----------------------------------------------------------------------
+ *---------------------------------------------------------------------------
+ * UdpThreadExitProc --
+ *---------------------------------------------------------------------------
  */
-void UDP_ExitProc(ClientData clientData) {
-    Tcl_DeleteEventSource(UDP_SetupProc, UDP_CheckProc, NULL);
 
-    /* Delete threads */
-    CloseHandle(waitForSock);
-    CloseHandle(sockListLock);
-    /* TBD delete thread
-	socketThread = CreateThread(NULL, 16384, SocketThread, NULL, 0, &id);
-    */
+static void
+UdpThreadExitProc(ClientData clientData)
+{
+    ThreadSpecificData *tsdPtr = (ThreadSpecificData *) clientData;
+
+    if (tsdPtr && tsdPtr->sourceInit) {
+	tsdPtr->sourceInit = 0;
+	Tcl_DeleteEventSource(UdpSetupProc, UDP_CheckProc, NULL);
+    }
 }
 
 /*
@@ -521,7 +523,7 @@ void UDP_ExitProc(ClientData clientData) {
  * InitSockets
  * ----------------------------------------------------------------------
  */
-static int InitSockets() {
+static int InitSockets(void) {
     WSADATA wsaData;
 
     /* Load the socket DLL and initialize the function table. */
@@ -537,6 +539,14 @@ static int InitSockets() {
  * ----------------------------------------------------------------------
  */
 void ExitSockets(ClientData clientData) {
+    /* Delete events */
+    if (waitForSock) {
+	CloseHandle(waitForSock);
+    }
+    if (sockListLock) {
+	CloseHandle(sockListLock);
+    }
+
     WSACleanup();
 
 #ifdef DEBUG
@@ -554,6 +564,7 @@ static DWORD WINAPI SocketThread(LPVOID arg) {
     struct timeval timeout;
     UdpState *statePtr;
     int *packetNums[FD_SETSIZE];
+    int *inwaits[FD_SETSIZE];
     SOCKET socks[FD_SETSIZE];
     Tcl_ThreadId tids[FD_SETSIZE];
     int found, count, n;
@@ -570,14 +581,16 @@ static DWORD WINAPI SocketThread(LPVOID arg) {
 
 	/* set each socket for select */
 	count = 0;
-	for (statePtr = sockList; statePtr != NULL; statePtr=statePtr->next) {
-	    if (statePtr->packetNum > 0) {
+	for (statePtr = sockList; statePtr != NULL; statePtr = statePtr->next) {
+	    if ((statePtr->packetNum > 0) || (statePtr->threadId == NULL)) {
 		continue;
 	    }
+	    statePtr->inwait = 1;
 	    FD_SET(statePtr->sock, &readfds);
 	    socks[count] = statePtr->sock;
 	    packetNums[count] = &statePtr->packetNum;
 	    tids[count] = statePtr->threadId;
+	    inwaits[count] = &statePtr->inwait;
 	    if (++count >= FD_SETSIZE) {
 		break;
 	    }
@@ -612,7 +625,6 @@ static DWORD WINAPI SocketThread(LPVOID arg) {
 		tids[n] = NULL;
 	    }
 	}
-	SetEvent(sockListLock);
 
 	/* Trigger event checking */
 	for (n = 0; n < count; n++) {
@@ -620,50 +632,59 @@ static DWORD WINAPI SocketThread(LPVOID arg) {
 		/* alert the thread to do event checking */
 		Tcl_ThreadAlert(tids[n]);
 	    }
+	    inwaits[n][0] = 0;
 	}
+	SetEvent(sockListLock);
     }
     return 0;
 }
 
 /*
  * ----------------------------------------------------------------------
- * Udp_WinHasSockets --
+ * udpWinHasSockets --
  * ----------------------------------------------------------------------
  */
-int Udp_WinHasSockets(Tcl_Interp *interp) {
+int udpWinHasSockets(Tcl_Interp *interp) {
     static int initialized = 0; /* 1 if the socket sys has been initialized. */
     static int hasSockets = 0;  /* 1 if the system supports sockets. */
-    HANDLE socketThread;
+    HANDLE socketThread = NULL;
     DWORD id;
 
     if (!initialized) {
-	initialized = 1;
-
 	/* Load the library and initialize the stub table. */
 	hasSockets = InitSockets();
 
 	/*
-	 * Start the socketThread window and set the thread priority of the
+	 * Start the SocketThread window and set the thread priority of the
 	 * socketThread as highest
 	 */
 
-	sockList = NULL;
-	waitForSock = CreateEvent(NULL, FALSE, FALSE, NULL);
-	sockListLock = CreateEvent(NULL, FALSE, TRUE, NULL);
+	if (hasSockets) {
+	    sockList = NULL;
+	    waitForSock = CreateEvent(NULL, FALSE, FALSE, NULL);
+	    sockListLock = CreateEvent(NULL, FALSE, TRUE, NULL);
+	    /* Will call _beginthread if available */
+	    socketThread = CreateThread(NULL, 16384, SocketThread, NULL, 0, &id);
+	    SetThreadPriority(socketThread, THREAD_PRIORITY_HIGHEST);
+	} else {
+	    sockList = NULL;
+	    waitForSock = NULL;
+	    sockListLock = NULL;
+	}
 
-	socketThread = CreateThread(NULL, 16384, SocketThread, NULL, 0, &id);
-	SetThreadPriority(socketThread, THREAD_PRIORITY_HIGHEST);
-
-	UDPTRACE("Initialize socket thread\n");
-
-	if (socketThread == NULL) {
+	if (socketThread) {
+	    UDPTRACE("Initialize socket thread\n");
+	} else {
 	    UDPTRACE("Failed to create thread\n");
 	}
+	initialized = 1;
     }
     if (hasSockets) {
 	return TCL_OK;
     }
-    Tcl_SetResult(interp, "sockets are not available on this system", TCL_STATIC);
+    if (interp != NULL) {
+	Tcl_SetResult(interp, "sockets are not available on this system", TCL_STATIC);
+    }
     return TCL_ERROR;
 }
 #else
@@ -714,20 +735,18 @@ static int udpClose(ClientData clientData, Tcl_Interp *interp) {
     UdpState *statePtr = (UdpState *) clientData;
 #ifdef _WIN32
     UdpState *tmp, *p;
-
-    WaitForSingleObject(sockListLock, INFINITE);
+    int wait = 0;
 #endif /* ! _WIN32 */
 
     sock = statePtr->sock;
 
 #ifdef _WIN32
-    /* Delete any queued events for this channel. */
-    Tcl_DeleteEvents(UdpDeleteEvent, (ClientData)statePtr->channel);
-
     /* remove the statePtr from the list */
+    WaitForSingleObject(sockListLock, INFINITE);
     for (tmp = p = sockList; p != NULL; tmp = p, p = p->next) {
 	if (p->sock == sock) {
 	    UDPTRACE("Remove %d from the list\n", p->sock);
+	    wait = statePtr->inwait;
 	    if (p == sockList) {
 		sockList = sockList->next;
 	    } else {
@@ -735,6 +754,13 @@ static int udpClose(ClientData clientData, Tcl_Interp *interp) {
 	    }
 	}
     }
+    SetEvent(sockListLock);
+
+    /* Delete any queued events for this channel. */
+    if (wait) {
+	Sleep(80);
+    }
+    Tcl_DeleteEvents(UdpDeleteEvent, (ClientData)statePtr->channel);
 #endif /* ! _WIN32 */
 
     /*
@@ -764,22 +790,10 @@ static int udpClose(ClientData clientData, Tcl_Interp *interp) {
 
     Tcl_Free((char *) statePtr);
     if (errorCode != 0) {
-	static char errBuf[256];
-
-#ifndef _WIN32
-	snprintf(errBuf, 255, "udp_close: %d, error: %d\n", sock, errorCode);
-#else
-	snprintf(errBuf, 255, "udp_close: " SOCKET_PRINTF_FMT ", error: %d\n", sock, GetLastError());
-#endif
 	UDPTRACE("UDP error - close %d", sock);
     } else {
 	UDPTRACE("Close socket %d\n", sock);
     }
-
-#ifdef _WIN32
-    SetEvent(sockListLock);
-#endif
-
     return errorCode;
 }
 
@@ -994,9 +1008,9 @@ static int udpInput(ClientData clientData, char *buf, int bufSize, int *errorCod
     /*
      * The caller of this function is looking for a stream oriented
      * system, so it keeps calling the function until no bytes are
-     * returned, and then appends all the characters together.  This
+     * returned, and then appends all the characters together. This
      * is not what we want from UDP, so we fake it by returning a
-     * blank every other call.  whenever the doread variable is 1 do
+     * blank every other call. Whenever the doread variable is 1 do
      * a normal read, otherwise just return -1 to indicate that we want
      * to receive data again.
      */
@@ -1831,11 +1845,23 @@ static int udpSetOption(ClientData clientData, Tcl_Interp *interp, const char *o
 static void
 udpThreadAction(ClientData clientData, int action) {
     UdpState *statePtr = (UdpState *) clientData;
+#ifdef _WIN32
+    int wait;
+#endif
 
     switch (action) {
-      case TCL_CHANNEL_THREAD_REMOVE:
+    case TCL_CHANNEL_THREAD_REMOVE:
 #ifdef _WIN32
+	/* delete any queued events for this channel */
+	WaitForSingleObject(sockListLock, INFINITE);
 	statePtr->threadId = NULL;
+	wait = statePtr->inwait;
+	SetEvent(sockListLock);
+
+	if (wait) {
+	    Sleep(80);
+	}
+	Tcl_DeleteEvents(UdpDeleteEvent, (ClientData) statePtr->channel);
 #else
 	if (statePtr->mask > 0) {
 	    UDPTRACE("Tcl_DeleteFileHandler\n");
@@ -1843,7 +1869,7 @@ udpThreadAction(ClientData clientData, int action) {
 	}
 #endif
 	break;
-      case TCL_CHANNEL_THREAD_INSERT:
+    case TCL_CHANNEL_THREAD_INSERT:
 #ifdef _WIN32
 	statePtr->threadId = Tcl_GetCurrentThread();
 #else
@@ -1873,7 +1899,7 @@ static Tcl_ChannelType Udp_ChannelType = {
     udpGetHandle,          /* Get OS handle from the channel.               */
     udpClose2,		   /* close2proc                          NULL'able */
     NULL,     		   /* Set blocking/nonblocking mode.      NULL'able */
-    NULL,		   /* Flush proc.                         NULL'able */
+    NULL,		   /* Flush proc                          NULL'able */
     NULL,		   /* Handling of events bubbling up.     NULL'able */
     NULL,		   /* Wide seek proc.                     NULL'able */
     udpThreadAction,	   /* Thread action.                      NULL'able */
@@ -2056,6 +2082,7 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
     Tcl_RegisterChannel(interp, statePtr->channel);
 #ifdef _WIN32
     statePtr->threadId = Tcl_GetCurrentThread();
+    statePtr->inwait = 0;
     statePtr->packetNum = 0;
     statePtr->next = NULL;
     statePtr->packets = NULL;
@@ -2217,7 +2244,7 @@ int udpPeek(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 	(struct sockaddr *)&recvaddr, &socksize);
 
     if (actual_size < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
-	Tcl_SetObjResult(interp, ErrorToObj("udppeek error"));
+	Tcl_SetObjResult(interp, ErrorToObj("udp_peek error"));
 	return TCL_ERROR;
     }
 
@@ -2607,6 +2634,10 @@ int Udp_Init(Tcl_Interp *interp) {
     ThreadSpecificData *tsdPtr;
 #endif
 
+#ifdef DEBUG
+    dbg = fopen("udp.dbg", "wt");
+#endif
+
 #ifdef USE_TCL_STUBS
     if (Tcl_InitStubs(interp, MIN_VERSION, 0) == NULL) {
 	return TCL_ERROR;
@@ -2618,15 +2649,17 @@ int Udp_Init(Tcl_Interp *interp) {
 #endif
 
 #ifdef _WIN32
-    if (Udp_WinHasSockets(interp) != TCL_OK) {
+    if (udpWinHasSockets(interp) != TCL_OK) {
 	return TCL_ERROR;
     }
 
-    tsdPtr = (ThreadSpecificData *) Tcl_GetThreadData(&dataKey, (Tcl_Size)sizeof(ThreadSpecificData));
+    /* Create event source and thread handler */
+    tsdPtr = (ThreadSpecificData *) Tcl_GetThreadData(&dataKey,
+	(Tcl_Size)sizeof(ThreadSpecificData));
     if (!tsdPtr->sourceInit) {
 	tsdPtr->sourceInit = 1;
-    Tcl_CreateEventSource(UDP_SetupProc, UDP_CheckProc, NULL);
-	Tcl_CreateThreadExitHandler(UDP_ExitProc, NULL);
+	Tcl_CreateEventSource(UdpSetupProc, UDP_CheckProc, NULL);
+	Tcl_CreateThreadExitHandler(UdpThreadExitProc, NULL);
     }
 #endif
 
@@ -2637,18 +2670,20 @@ int Udp_Init(Tcl_Interp *interp) {
     Tcl_CreateNamespace(interp, "::udp", NULL, NULL);
 
     /* Create package commands */
-    Tcl_CreateObjCommand(interp, "udp_open", udpOpen, (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
-    Tcl_CreateObjCommand(interp, "udp_conf", udpConf, (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
-    Tcl_CreateObjCommand(interp, "udp_peek", udpPeek, (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
-    Tcl_CreateObjCommand(interp, "udp", Udp_CmdProc, (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
-    Tcl_CreateObjCommand(interp, "::udp::getaddrinfo", Udp_GetAddrInfo, (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
-    Tcl_CreateObjCommand(interp, "::udp::getnameinfo", Udp_GetNameInfo, (ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
+    Tcl_CreateObjCommand(interp, "udp_open", udpOpen, (ClientData) NULL,
+	(Tcl_CmdDeleteProc *) NULL);
+    Tcl_CreateObjCommand(interp, "udp_conf", udpConf, (ClientData) NULL,
+	(Tcl_CmdDeleteProc *) NULL);
+    Tcl_CreateObjCommand(interp, "udp_peek", udpPeek, (ClientData) NULL,
+	(Tcl_CmdDeleteProc *) NULL);
+    Tcl_CreateObjCommand(interp, "udp", Udp_CmdProc, (ClientData) NULL,
+	(Tcl_CmdDeleteProc *) NULL);
+    Tcl_CreateObjCommand(interp, "::udp::getaddrinfo", Udp_GetAddrInfo,
+	(ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
+    Tcl_CreateObjCommand(interp, "::udp::getnameinfo", Udp_GetNameInfo,
+	(ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
 
     BuildInfoCommand(interp);
-
-#ifdef DEBUG
-    dbg = fopen("udp.dbg", "wt");
-#endif
 
     return Tcl_PkgProvide(interp, PACKAGE_NAME, PACKAGE_VERSION);
 }
@@ -2664,6 +2699,5 @@ int Udp_SafeInit(Tcl_Interp *interp) {
  *
  * Local variables:
  * mode: c
- * indent-tabs-mode: nil
  * End:
  */

@@ -106,6 +106,7 @@ typedef struct UdpState {
     int packetNum;
     struct UdpState *next;
     Tcl_ThreadId threadId;	/* for Tcl_ThreadAlert */
+    int inwait;
 #endif
     short ss_family;		/* indicator set for ipv4 or ipv6 usage */
     int multicast;		/* indicator set for multicast add */
