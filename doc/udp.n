@@ -274,7 +274,7 @@ Database Class:	\\fB\\$3\\fR
 .SH NAME
 udp \- Create UDP sockets in Tcl
 .SH SYNOPSIS
-package require \fBTcl 8\&.5\fR
+package require \fBTcl 8\&.5-\fR
 .sp
 package require \fBudp 1\&.0\&.12\fR
 .sp
@@ -517,7 +517,7 @@ Extension Architecture by Pat Thoyts\&.
 .PP
 Support for IPv6 and allowing a multicast join on a specific network interface is added by Huub Eikens\&.
 .SH "SEE ALSO"
-socket(n)
+socket
 .SH KEYWORDS
 I/O, IP Address, TclUDP, UDP, asynchronous I/O, bind, channel, connection, domain, host, name, network, network address, networking, socket, udp
 .SH COPYRIGHT
