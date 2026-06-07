@@ -81,7 +81,7 @@ mandir		= @mandir@
 
 DESTDIR		=
 
-PKG_DIR		= $(PACKAGE_NAME)$(PACKAGE_VERSION)
+PKG_DIR		= tcl$(PACKAGE_NAME)$(PACKAGE_VERSION)
 pkgdatadir	= $(datadir)/$(PKG_DIR)
 pkglibdir	= $(libdir)/$(PKG_DIR)
 pkgincludedir	= $(includedir)/$(PKG_DIR)
@@ -201,7 +201,6 @@ all: binaries libraries doc
 #========================================================================
 
 binaries: $(BINARIES)
-	@echo "make binaries"
 
 libraries:
 
@@ -212,27 +211,33 @@ libraries:
 # end user machine when building from source.
 #========================================================================
 
-DTPLITE=$(TCLSH) @DTPLITE@
+DTPLITE=`@CYGPATH@ @DTPLITE@`
 
 doc: make-docs-n make-docs-html
 
-make-docs-n: doc/udp.man
+make-docs-n: doc/$(PACKAGE_NAME).man
 	@echo "make nroff documentation"
-	@if [ -n "$(DTPLITE)" -a -x "$(DTPLITE)" ]; then \
-	    $(DTPLITE) -o doc/udp.n nroff doc/udp.man ; \
+	@if [ -n "$(DTPLITE)" -a -e "$(DTPLITE)" ]; then \
+	    $(TCLSH) $(DTPLITE) -o doc/$(PACKAGE_NAME).n nroff doc/$(PACKAGE_NAME).man; \
+	else \
+	    echo "Can't find dtplite. Please install Tcllib."; \
 	fi
 
-make-docs-html: doc/udp.man
+make-docs-html: doc/$(PACKAGE_NAME).man
 	@echo "make HTML documentation"
-	@if [ -n "$(DTPLITE)" -a -x "$(DTPLITE)" ]; then \
-	    $(DTPLITE) -o doc/udp.html html doc/udp.man ; \
+	@if [ -n "$(DTPLITE)" -a -e "$(DTPLITE)" ]; then \
+	    $(TCLSH) $(DTPLITE) -o doc/$(PACKAGE_NAME).html html doc/$(PACKAGE_NAME).man; \
+	else \
+	    echo "Can't find dtplite. Please install Tcllib."; \
 	fi
 
-make-docs: doc/udp.man
+make-docs: doc/$(PACKAGE_NAME).man
 	@echo "make documentation"
-	@if [ -n "$(DTPLITE)" -a -x "$(DTPLITE)" ]; then \
-	    $(DTPLITE) -o doc nroff doc ; \
-	    $(DTPLITE) -o doc html doc ; \
+	@if [ -n "$(DTPLITE)" -a -e "$(DTPLITE)" ]; then \
+	    $(TCLSH) $(DTPLITE) -o doc nroff doc; \
+	    $(TCLSH) $(DTPLITE) -o doc html doc; \
+	else \
+	    echo "Can't find dtplite. Please install Tcllib."; \
 	fi
 
 #========================================================================
@@ -252,8 +257,8 @@ install-libraries: libraries
 	@$(INSTALL_DATA_DIR) "$(DESTDIR)$(includedir)"
 	@echo "Installing header files in $(DESTDIR)$(includedir)"
 	@list='$(PKG_HEADERS)'; for i in $$list; do \
-	    echo "Installing $(srcdir)/$$i" ; \
-	    $(INSTALL_DATA) $(srcdir)/$$i "$(DESTDIR)$(includedir)" ; \
+	    echo "Installing $(srcdir)/$$i"; \
+	    $(INSTALL_DATA) "$(srcdir)/$$i" "$(DESTDIR)$(includedir)"; \
 	done
 
 #========================================================================
@@ -265,9 +270,9 @@ install-doc-html: make-docs-html
 	@$(INSTALL_DATA_DIR) "$(DESTDIR)$(pkglibdir)/html"
 	@echo "Installing HTML documentation in $(DESTDIR)$(pkglibdir)/html"
 	@list='$(srcdir)/doc/*.html'; for i in $$list; do \
-	    if test -f $$i ; then \
+	    if test -f "$$i"; then \
 		echo "Installing $$i"; \
-		$(INSTALL_DATA) $$i "$(DESTDIR)$(pkglibdir)/html"; \
+		$(INSTALL_DATA) "$$i" "$(DESTDIR)$(pkglibdir)/html"; \
 	    fi; \
 	done
 
@@ -275,16 +280,16 @@ install-doc-n: make-docs-n
 	@$(INSTALL_DATA_DIR) "$(DESTDIR)$(mandir)/mann"
 	@echo "Installing nroff documentation in $(DESTDIR)$(mandir)/mann"
 	@list='$(srcdir)/doc/*.n'; for i in $$list; do \
-	    if test -f $$i ; then \
+	    if test -f "$$i"; then \
 		if test -f "$(DESTDIR)$(mandir)/mann/Tcl.n.gz" -o \
-		    "$(DESTDIR)$(mandir)/mann/Tcl*.n.gz" ; then \
-		    gzip -k $$i ; \
+		    "$(DESTDIR)$(mandir)/mann/Tcl*.n.gz"; then \
+		    gzip -k "$$i"; \
 		    echo "Installing $$i.gz"; \
-		    $(INSTALL_DATA) $$i.gz "$(DESTDIR)$(mandir)/mann" ; \
-		    rm -f $$i.gz;\
+		    $(INSTALL_DATA) "$$i.gz" "$(DESTDIR)$(mandir)/mann"; \
+		    rm -f "$$i.gz";\
 		else \
 		    echo "Installing $$i"; \
-		    $(INSTALL_DATA) $$i "$(DESTDIR)$(mandir)/mann" ; \
+		    $(INSTALL_DATA) "$$i" "$(DESTDIR)$(mandir)/mann"; \
 		fi; \
 	    fi; \
 	done
@@ -344,11 +349,11 @@ $(PKG_STUB_LIB_FILE): $(PKG_STUB_OBJECTS)
 # Support files needed to compile C code
 #========================================================================
 
-# Create header file with fossil, git, or svn UUID for build-info command 
+# Create header file with fossil, git, or svn UUID for build-info command
 $(srcdir)/manifest.uuid:
 	printf "git-" >$(srcdir)/manifest.uuid
-	(cd $(srcdir); git rev-parse HEAD >>$(srcdir)/manifest.uuid || \
-	    (printf "svn-r" >$(srcdir)/manifest.uuid ; \
+	(cd '$(srcdir)'; git rev-parse HEAD >>$(srcdir)/manifest.uuid || \
+	    (printf "svn-r" >$(srcdir)/manifest.uuid; \
 	    svn info --show-item last-changed-revision >>$(srcdir)/manifest.uuid) || \
 	    printf "unknown" >$(srcdir)/manifest.uuid)
 
@@ -388,7 +393,7 @@ udp_tcl.@OBJEXT@:	udpUuid.h
 #========================================================================
 
 pkgIndex.tcl: $(srcdir)/pkgIndex.tcl.in
-	cd $(top_builddir) \
+	cd '$(top_builddir)' \
 	  && CONFIG_FILES=$@ CONFIG_HEADERS= $(SHELL) ./config.status
 
 #========================================================================
@@ -396,40 +401,44 @@ pkgIndex.tcl: $(srcdir)/pkgIndex.tcl.in
 # You may need to tweak this target to make it work correctly.
 #========================================================================
 
+TEMP_DIR	= $(srcdir)/$(PKG_DIR)/
 #COMPRESS	= tar cvf $(PKG_DIR).tar $(PKG_DIR); compress $(PKG_DIR).tar
-COMPRESS	= tar zcvf $(PKG_DIR).tar.gz $(PKG_DIR)
-DIST_ROOT	= /tmp/dist
-DIST_DIR	= $(DIST_ROOT)/$(PKG_DIR)
+COMPRESS	= tar zcvf $(PKG_DIR).tar.gz $(TEMP_DIR)
 
 DIST_INSTALL_DATA	= CPPROG='cp -p' $(INSTALL) -m 644
 DIST_INSTALL_SCRIPT	= CPPROG='cp -p' $(INSTALL) -m 755
 
-dist-clean:
-	rm -rf $(DIST_DIR) $(top_builddir)/$(PKG_DIR).tar.*
+${TEMP_DIR}:
+	mkdir -p ${TEMP_DIR}
 
-dist: dist-clean manifest.uuid
+
+dist-clean:
+	rm -rf "$(srcdir)/$(PKG_DIR).tar.*"
+
+dist: ${TEMP_DIR} dist-clean manifest.uuid
 	# TEA files
-	$(INSTALL_DATA_DIR) $(DIST_DIR)
+	$(INSTALL_DATA_DIR) $(TEMP_DIR)
 	$(DIST_INSTALL_DATA) $(srcdir)/Makefile.in \
-		$(srcdir)/aclocal.m4 $(srcdir)/configure.ac $(DIST_DIR)/
-	$(DIST_INSTALL_SCRIPT) $(srcdir)/configure $(DIST_DIR)/
+		$(srcdir)/aclocal.m4 $(srcdir)/configure.ac $(TEMP_DIR)/
+	$(DIST_INSTALL_SCRIPT) $(srcdir)/configure $(TEMP_DIR)/
 
 	# Extension files
 	$(DIST_INSTALL_DATA) $(srcdir)/ChangeLog \
 		$(srcdir)/license.terms $(srcdir)/manifest.uuid \
-		$(srcdir)/README.txt $(srcdir)/pkgIndex.tcl.in $(DIST_DIR)/
+		$(srcdir)/README.txt $(srcdir)/pkgIndex.tcl.in $(TEMP_DIR)/
 
-	list='demos doc generic library tclconfig macosx tests unix win'; \
+	list='demos doc generic library tclconfig tests win'; \
 	for p in $$list; do \
-	    if test -d $(srcdir)/$$p ; then \
-		$(INSTALL_DATA_DIR) $(DIST_DIR)/$$p; \
-		$(DIST_INSTALL_DATA) $(srcdir)/$$p/* $(DIST_DIR)/$$p/; \
+	    if test -d "$(srcdir)/$$p"; then \
+		$(INSTALL_DATA_DIR) "$(TEMP_DIR)/$$p"; \
+		for i in "$(srcdir)/$$p/*"; do \
+		    $(INSTALL_DATA) $$i "$(TEMP_DIR)/$$p/"; \
+		done; \
 	    fi; \
 	done
 
-	(cd $(DIST_ROOT); $(COMPRESS);)
-	mv $(DIST_ROOT)/$(PKG_DIR).tar.gz $(top_builddir)
-	cd $(top_builddir)
+	$(COMPRESS)
+	rm -fR $(TEMP_DIR)
 
 #========================================================================
 # End of user-definable section
@@ -465,24 +474,24 @@ distclean: clean
 install-lib-binaries: binaries
 	@$(INSTALL_DATA_DIR) "$(DESTDIR)$(pkglibdir)"
 	@list='$(lib_BINARIES)'; for p in $$list; do \
-	  if test -f $$p; then \
+	  if test -f "$$p"; then \
 	    echo " $(INSTALL_LIBRARY) $$p $(DESTDIR)$(pkglibdir)/$$p"; \
-	    $(INSTALL_LIBRARY) $$p "$(DESTDIR)$(pkglibdir)/$$p"; \
+	    $(INSTALL_LIBRARY) "$$p" "$(DESTDIR)$(pkglibdir)/$$p"; \
 	    ext=`echo $$p|sed -e "s/.*\.//"`; \
 	    if test "x$$ext" = "xdll"; then \
 		lib=`basename $$p|sed -e 's/.[^.]*$$//'`.lib; \
-		if test -f $$lib; then \
+		if test -f "$$lib"; then \
 		    echo " $(INSTALL_DATA) $$lib $(DESTDIR)$(pkglibdir)/$$lib"; \
-	            $(INSTALL_DATA) $$lib "$(DESTDIR)$(pkglibdir)/$$lib"; \
+	            $(INSTALL_DATA) "$$lib" "$(DESTDIR)$(pkglibdir)/$$lib"; \
 		fi; \
 	    fi; \
 	  fi; \
 	done
 	@list='$(PKG_TCL_SOURCES)'; for p in $$list; do \
-	  if test -f $(srcdir)/$$p; then \
+	  if test -f "$(srcdir)/$$p"; then \
 	    destp=`basename $$p`; \
 	    echo " Install $$destp $(DESTDIR)$(pkglibdir)/$$destp"; \
-	    $(INSTALL_DATA) $(srcdir)/$$p "$(DESTDIR)$(pkglibdir)/$$destp"; \
+	    $(INSTALL_DATA) "$(srcdir)/$$p" "$(DESTDIR)$(pkglibdir)/$$destp"; \
 	  fi; \
 	done
 	@if test "x$(SHARED_BUILD)" = "x1"; then \
@@ -505,14 +514,14 @@ install-lib-binaries: binaries
 install-bin-binaries: binaries
 	@$(INSTALL_DATA_DIR) "$(DESTDIR)$(bindir)"
 	@list='$(bin_BINARIES)'; for p in $$list; do \
-	  if test -f $$p; then \
+	  if test -f "$$p"; then \
 	    echo " $(INSTALL_PROGRAM) $$p $(DESTDIR)$(bindir)/$$p"; \
-	    $(INSTALL_PROGRAM) $$p "$(DESTDIR)$(bindir)/$$p"; \
+	    $(INSTALL_PROGRAM) "$$p" "$(DESTDIR)$(bindir)/$$p"; \
 	  fi; \
 	done
 
 Makefile: $(srcdir)/Makefile.in  $(top_builddir)/config.status
-	cd $(top_builddir) \
+	cd '$(top_builddir)' \
 	  && CONFIG_FILES=$@ CONFIG_HEADERS= $(SHELL) ./config.status
 
 uninstall-binaries:

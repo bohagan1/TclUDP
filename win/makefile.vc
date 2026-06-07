@@ -39,7 +39,7 @@ PRJ_INCLUDES = -I"$(TMP_DIR)"
 PRJ_DEFINES = -D_CRT_SECURE_NO_WARNINGS -D_WINSOCK_DEPRECATED_NO_WARNINGS -D_WIN32
 
 # Define any additional project needed libraries
-PRJ_LIBS = WS2_32.Lib
+PRJ_LIBS = WS2_32.Lib Iphlpapi.Lib
 
 # Define the standard targets which calls rules.vc
 !include "targets.vc"
@@ -54,26 +54,25 @@ PRJ_LIBS = WS2_32.Lib
 # NOTE: this requires doctools from tcllib hence it is not intended
 # to be run during install. Rather, use it to generate a new version
 # of HTML docs to be stored in the repository.
-TCLSH = "$(_INSTALLDIR)\..\bin\tclsh.exe"
 DTPLITE = "$(_INSTALLDIR)\..\bin\dtplite.tcl"
 
 make-docs-html:
 !IF EXIST($(DTPLITE))
-	"$(TCLSH)" "$(DTPLITE)" -o "$(ROOT)\doc\$(PROJECT).html" html "$(ROOT)\doc\$(PROJECT).man"
+	"$(TCLSH_NATIVE)" "$(DTPLITE)" -o "$(ROOT)\doc\$(PROJECT).html" html "$(ROOT)\doc\$(PROJECT).man"
 !ENDIF
 
 make-docs-n:
 !IF EXIST($(DTPLITE))
-	"$(TCLSH)" "$(DTPLITE)" -o "$(ROOT)\doc\$(PROJECT).n" nroff "$(ROOT)\doc\$(PROJECT).man"
+	"$(TCLSH_NATIVE)" "$(DTPLITE)" -o "$(ROOT)\doc\$(PROJECT).n" nroff "$(ROOT)\doc\$(PROJECT).man"
 !ENDIF
 
 make-docs:
 !IF EXIST($(DTPLITE))
-	"$(TCLSH)" "$(DTPLITE)" -o "$DOCDIR" html "$(ROOT)\doc"
-	"$(TCLSH)" "$(DTPLITE)" -o "$DOCDIR" nroff "$(ROOT)\doc"
+	"$(TCLSH_NATIVE)" "$(DTPLITE)" -o "$DOCDIR" html "$(ROOT)\doc"
+	"$(TCLSH_NATIVE)" "$(DTPLITE)" -o "$DOCDIR" nroff "$(ROOT)\doc"
 !ENDIF
 
-docs: make-docs-n make-docs-html 
+docs: make-docs-n make-docs-html
 
 all: setup default-target
 
@@ -91,10 +90,10 @@ pkgindex: default-pkgindex-tea
 
 # Use manifest file which defines fossil/git commit id for build-info command
 $(TMP_DIR)\manifest.uuid:
-!IF exist($(ROOT)\manifest.uuid)
+!IF EXIST($(ROOT)\manifest.uuid)
 	@copy "$(ROOT)\manifest.uuid" "$(TMP_DIR)\manifest.uuid"
 !ELSE
-!IF exist($(ROOT)\.git)
+!IF EXIST($(ROOT)\.git)
 	@copy "$(WIN_DIR)\gitmanifest.in" "$(TMP_DIR)\manifest.uuid"
 	@git rev-parse HEAD >>$(TMP_DIR)\manifest.uuid || echo unknown >>$(TMP_DIR)\manifest.uuid
 !ELSE
