@@ -288,7 +288,7 @@ package require \fBudp 1\&.0\&.13\fR
 .sp
 \fB::udp::build-info\fR
 .sp
-\fB::udp::getaddrinfo\fR \fI\fB-hostname\fR name\fR \fI?optionName value \&.\&.\&.?\fR
+\fB::udp::getaddrinfo\fR \fB-hostname\fR \fIname\fR \fI?optionName value \&.\&.\&.?\fR
 .sp
 \fB::udp::getnameinfo\fR \fIaddress\fR \fB?ipv6?\fR
 .sp
@@ -404,7 +404,7 @@ This function is not available on windows\&.
 \fB::udp::build-info\fR
 Return information on the build environment\&.
 .TP
-\fB::udp::getaddrinfo\fR \fI\fB-hostname\fR name\fR \fI?optionName value \&.\&.\&.?\fR
+\fB::udp::getaddrinfo\fR \fB-hostname\fR \fIname\fR \fI?optionName value \&.\&.\&.?\fR
 Returns a list with info on the IP address matching the specified parameters\&.
 Valid options are:
 .RS
