@@ -136,7 +136,7 @@ This function is not available on windows.
 
 Return information on the build environment.
 
-[call [cmd "::udp::getaddrinfo"] [arg "[option -hostname] name"] [arg [opt "optionName value ..."]]]
+[call [cmd "::udp::getaddrinfo"] [option -hostname] [arg name] [arg [opt "optionName value ..."]]]
 
 Returns a list with info on the IP address matching the specified parameters.
 Valid options are:

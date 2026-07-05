@@ -129,7 +129,7 @@
 <li><a href="#3"><b class="cmd">udp_conf</b> <i class="arg">channel</i> <i class="arg"><span class="opt">?optionName?</span></i> <i class="arg"><span class="opt">?value?</span></i> <i class="arg"><span class="opt">?optionName value ...?</span></i></a></li>
 <li><a href="#4"><b class="cmd">udp_peek</b> <i class="arg">channel</i> <span class="opt">?<i class="arg">buffersize</i>?</span></a></li>
 <li><a href="#5"><b class="cmd">::udp::build-info</b></a></li>
-<li><a href="#6"><b class="cmd">::udp::getaddrinfo</b> <i class="arg"><b class="option">-hostname</b> name</i> <i class="arg"><span class="opt">?optionName value ...?</span></i></a></li>
+<li><a href="#6"><b class="cmd">::udp::getaddrinfo</b> <b class="option">-hostname</b> <i class="arg">name</i> <i class="arg"><span class="opt">?optionName value ...?</span></i></a></li>
 <li><a href="#7"><b class="cmd">::udp::getnameinfo</b> <i class="arg">address</i> <b class="option"><span class="opt">?ipv6?</span></b></a></li>
 </ul>
 </div>
@@ -224,7 +224,7 @@ maximum buffer size. Value must be between 0 and 16.</p>
 <p>This function is not available on windows.</p></dd>
 <dt><a name="5"><b class="cmd">::udp::build-info</b></a></dt>
 <dd><p>Return information on the build environment.</p></dd>
-<dt><a name="6"><b class="cmd">::udp::getaddrinfo</b> <i class="arg"><b class="option">-hostname</b> name</i> <i class="arg"><span class="opt">?optionName value ...?</span></i></a></dt>
+<dt><a name="6"><b class="cmd">::udp::getaddrinfo</b> <b class="option">-hostname</b> <i class="arg">name</i> <i class="arg"><span class="opt">?optionName value ...?</span></i></a></dt>
 <dd><p>Returns a list with info on the IP address matching the specified parameters.
 Valid options are:</p>
 <dl class="doctools_definitions">
