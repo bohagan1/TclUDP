@@ -129,7 +129,7 @@ typedef struct {
     UdpState *state;		/* State pointer for socket */
 } UdpEvent;
 
-#if defined(_WIN32) && defined(_M_AMD64)
+#if defined(_WIN32) && defined(_WIN64)
 # define SOCKET_PRINTF_FMT "%I64u"
 #else
 # define SOCKET_PRINTF_FMT "%d"
