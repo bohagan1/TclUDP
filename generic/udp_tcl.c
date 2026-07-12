@@ -543,6 +543,7 @@ static int InitSockets(void) {
  * ----------------------------------------------------------------------
  */
 void ExitSockets(ClientData clientData) {
+
     /* Delete events */
     if (waitForSock) {
 	CloseHandle(waitForSock);
@@ -700,6 +701,7 @@ int udpWinHasSockets(Tcl_Interp *interp) {
  */
 void ExitSockets(ClientData clientData) {
     (void) clientData;
+
 #ifdef DEBUG
     fclose(dbg);
 #endif
@@ -1442,7 +1444,9 @@ static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp,
 	}
 
 	if (setsockopt(statePtr->sock, IPPROTO_IPV6, action, (const char*)&mreq6, sizeof(mreq6)) < 0) {
-	    Tcl_SetObjResult(interp, ErrorToObj("error changing multicast group"));
+	    if (interp != NULL) {
+		Tcl_SetObjResult(interp, ErrorToObj("error changing multicast group"));
+	    }
 	    Tcl_DecrRefCount(tcllist);
 	    return TCL_ERROR;
 	}
@@ -1481,7 +1485,9 @@ static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp,
 	    }
 	}
     }
-    Tcl_SetObjResult(interp, statePtr->groupsObj);
+    if (interp != NULL) {
+	Tcl_SetObjResult(interp, statePtr->groupsObj);
+    }
     return TCL_OK;
 }
 
