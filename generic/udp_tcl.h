@@ -88,8 +88,8 @@ typedef u_short uint16_t;
 typedef struct PacketList {
     char *message;
     int actual_size;
-    char r_host[256];
     int r_port;
+    char r_host[NI_MAXHOST];
     struct PacketList *next;
 } PacketList;
 
@@ -103,9 +103,9 @@ typedef struct UdpState {
     int sock;
     int               mask;
 #endif
-    char remotehost[256];	/* send packets to */
+    char remotehost[NI_MAXHOST]; /* send packets to */
     uint16_t remoteport;	/* Network byte order */
-    char peerhost[256];		/* receive packets from */
+    char peerhost[NI_MAXHOST];	/* receive packets from */
     uint16_t peerport;		/* Host byte order */
     uint16_t localport;		/* Network byte order */
     int doread;

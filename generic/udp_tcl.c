@@ -389,9 +389,9 @@ void UDP_CheckProc(ClientData data, int flags) {
     address recvaddr;
     PacketList *p;
 #ifdef _WIN32
-    char hostaddr[256];
+    char hostaddr[NI_MAXHOST];
     char *portaddr;
-    char remoteaddr[256];
+    char remoteaddr[NI_MAXHOST];
     DWORD remoteaddrlen; /* bytes for ANSI strings, WCHARs for Unicode */
 #endif /*  _WIN32 */
     Tcl_ThreadId currentThreadId = Tcl_GetCurrentThread();
@@ -457,15 +457,17 @@ void UDP_CheckProc(ClientData data, int flags) {
 	    }
 #else
 	    if (statePtr->ss_family == AF_INET ) {
-		    inet_ntop(AF_INET, &recvaddr.sa4.sin_addr, statePtr->peerhost, sizeof(statePtr->peerhost) );
-		    inet_ntop(AF_INET, &recvaddr.sa4.sin_addr, p->r_host, sizeof(p->r_host) );
-		    p->r_port = ntohs(recvaddr.sa4.sin_port);
-		    statePtr->peerport = ntohs(recvaddr.sa4.sin_port);
-		} else {
-		    inet_ntop(AF_INET6, &recvaddr.sa6.sin6_addr, statePtr->peerhost, sizeof(statePtr->peerhost) );
-		    inet_ntop(AF_INET6, &recvaddr.sa6.sin6_addr, p->r_host, sizeof(p->r_host) );
-		    p->r_port = ntohs(recvaddr.sa6.sin6_port);
-		    statePtr->peerport = ntohs(recvaddr.sa6.sin6_port);
+		inet_ntop(AF_INET, &recvaddr.sa4.sin_addr, statePtr->peerhost,
+		    sizeof(statePtr->peerhost));
+		inet_ntop(AF_INET, &recvaddr.sa4.sin_addr, p->r_host, sizeof(p->r_host));
+		p->r_port = ntohs(recvaddr.sa4.sin_port);
+		statePtr->peerport = ntohs(recvaddr.sa4.sin_port);
+	    } else {
+		inet_ntop(AF_INET6, &recvaddr.sa6.sin6_addr, statePtr->peerhost,
+		    sizeof(statePtr->peerhost));
+		inet_ntop(AF_INET6, &recvaddr.sa6.sin6_addr, p->r_host, sizeof(p->r_host));
+		p->r_port = ntohs(recvaddr.sa6.sin6_port);
+		statePtr->peerport = ntohs(recvaddr.sa6.sin6_port);
 	    }
 #endif /*  _WIN32 */
 
@@ -1055,7 +1057,8 @@ static int udpInput(ClientData clientData, char *buf, int bufSize, int *errorCod
     UDPTRACE("udp_recv message with %d bytes", packets->actual_size);
 
     bufSize = packets->actual_size;
-    strncpy(statePtr->peerhost, packets->r_host, NI_MAXHOST);
+    strncpy(statePtr->peerhost, packets->r_host, sizeof(statePtr->peerhost) - 1);
+    statePtr->peerhost[sizeof(statePtr->peerhost) - 1] = '\0';
     statePtr->peerport = packets->r_port;
     statePtr->packets = packets->next;
     Tcl_Free((char *) packets);
@@ -1075,10 +1078,12 @@ static int udpInput(ClientData clientData, char *buf, int bufSize, int *errorCod
     }
 
     if (statePtr->ss_family == AF_INET6) {
-	inet_ntop(AF_INET6, &recvaddr.sa6.sin6_addr, statePtr->peerhost, sizeof(statePtr->peerhost));
+	inet_ntop(AF_INET6, &recvaddr.sa6.sin6_addr, statePtr->peerhost,
+	    sizeof(statePtr->peerhost));
 	statePtr->peerport = ntohs(recvaddr.sa6.sin6_port);
     } else {
-	inet_ntop(AF_INET, &recvaddr.sa4.sin_addr, statePtr->peerhost, sizeof(statePtr->peerhost));
+	inet_ntop(AF_INET, &recvaddr.sa4.sin_addr, statePtr->peerhost,
+	    sizeof(statePtr->peerhost));
 	statePtr->peerport = ntohs(recvaddr.sa4.sin_port);
     }
 
@@ -2249,10 +2254,12 @@ int udpPeek(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
     }
 
     if (statePtr->ss_family == AF_INET6) {
-	inet_ntop(AF_INET6, &recvaddr.sa6.sin6_addr, statePtr->peerhost, sizeof(statePtr->peerhost));
+	inet_ntop(AF_INET6, &recvaddr.sa6.sin6_addr, statePtr->peerhost,
+	    sizeof(statePtr->peerhost));
 	statePtr->peerport = ntohs(recvaddr.sa6.sin6_port);
     } else {
-	inet_ntop(AF_INET, &recvaddr.sa4.sin_addr, statePtr->peerhost, sizeof(statePtr->peerhost));
+	inet_ntop(AF_INET, &recvaddr.sa4.sin_addr, statePtr->peerhost,
+	    sizeof(statePtr->peerhost));
 	statePtr->peerport = ntohs(recvaddr.sa4.sin_port);
     }
 
@@ -2469,14 +2476,15 @@ int Udp_GetAddrInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj
 /*
  * ----------------------------------------------------------------------
  * Udp_GetNameInfo --
- *  Get hostname for address
+ *  Get hostname for IP address
  *
  * ----------------------------------------------------------------------
  */
 int Udp_GetNameInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
-    char hostname[1024] = "";
+    char hostname[NI_MAXHOST];
     int family = AF_INET, err;
     (void) clientData;
+    hostname[0] = '\0';
 
     Tcl_ResetResult(interp);
 
@@ -2498,7 +2506,7 @@ int Udp_GetNameInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj
 	    Tcl_AppendResult(interp, "Invalid IPv4 address ", Tcl_GetString(objv[1]), (char *) NULL);
 	    return TCL_ERROR;
 	}
-	err = getnameinfo((const struct sockaddr *)&sa, sizeof(sa), hostname, 1024, NULL, 0, 0);
+	err = getnameinfo((const struct sockaddr *)&sa, sizeof(sa), hostname, NI_MAXHOST, NULL, 0, 0);
 
     } else {
 	struct sockaddr_in6 sa;
@@ -2509,7 +2517,7 @@ int Udp_GetNameInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj
 	    Tcl_AppendResult(interp, "Invalid IPv6 address ", Tcl_GetString(objv[1]), (char *) NULL);
 	    return TCL_ERROR;
 	}
-	err = getnameinfo((const struct sockaddr *)&sa, sizeof(sa), hostname, 1024, NULL, 0, 0);
+	err = getnameinfo((const struct sockaddr *)&sa, sizeof(sa), hostname, NI_MAXHOST, NULL, 0, 0);
     }
 
     /* Convert to host and service */
