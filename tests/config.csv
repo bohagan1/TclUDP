@@ -105,6 +105,8 @@ Remote,Set Remote Default Port IPv4,,,test_set_opt [incr ::mc_port] ipv4 -remote
 Remote,Set Remote Default Port IPv6,,,test_set_opt [incr ::mc_port] ipv6 -remote [list google.com],,glob,google.com *,,,
 Remote,Invalid value,,,set ch [udp_open [incr ::mc_port] ipv4];chan configure $ch -remote [list bogus value],close $ch,,"expected integer but got ""value""",,,1
 Remote,Too many values,,,set ch [udp_open [incr ::mc_port] ipv4];chan configure $ch -remote [list bogus value value],close $ch,,"wrong # args: should be ""?hostname? ?port?""",,,1
+Remote,Negative port,,,set ch [udp_open [incr ::mc_port] ipv4];chan configure $ch -remote [list 192.168.1.1 -80],close $ch,,couldn't open socket: port number out of range,,,1
+Remote,Out of range port,,,set ch [udp_open [incr ::mc_port] ipv4];chan configure $ch -remote [list 192.168.1.1 100000],close $ch,,couldn't open socket: port number out of range,,,1
 ,,,,,,,,,,
 command,# TTL,,,,,,,,,
 TTL,TTL IPv4,win7,,test_get_opt [incr ::mc_port] ipv4 -ttl,,,64,,,

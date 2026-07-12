@@ -360,6 +360,20 @@ test Remote-12.8 {Too many values} -body {
 	close $ch
     } -result {wrong # args: should be "?hostname? ?port?"} -returnCodes {1}
 
+test Remote-12.9 {Negative port} -body {
+	set ch [udp_open [incr ::mc_port] ipv4]
+	chan configure $ch -remote [list 192.168.1.1 -80]
+    } -cleanup {
+	close $ch
+    } -result {couldn't open socket: port number out of range} -returnCodes {1}
+
+test Remote-12.10 {Out of range port} -body {
+	set ch [udp_open [incr ::mc_port] ipv4]
+	chan configure $ch -remote [list 192.168.1.1 100000]
+    } -cleanup {
+	close $ch
+    } -result {couldn't open socket: port number out of range} -returnCodes {1}
+
 # TTL
 
 

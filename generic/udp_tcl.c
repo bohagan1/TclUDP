@@ -248,10 +248,12 @@ static void udpTrace(const char *format, ...) {
 
 int UdpSockGetPort(
      Tcl_Interp *interp,
-     const char *service,	/* Integer or service name */
+     Tcl_Obj *servicePtr,	/* Integer or service name */
      const char *proto,		/* "tcp" or "udp", typically */
      int *portPtr)		/* Return port number */
 {
+    Tcl_Size len = 0;
+    const char *service = Tcl_GetStringFromObj(servicePtr, &len);
 
     /* Get int or service name */
     if (Tcl_GetInt(NULL, service, portPtr) != TCL_OK) {
@@ -263,7 +265,7 @@ int UdpSockGetPort(
 	 * Don't bother translating 'proto' to native.
 	 */
 
-	native = Tcl_UtfToExternalDString(NULL, service, -1, &ds);
+	native = Tcl_UtfToExternalDString(NULL, service, len, &ds);
 	sp = getservbyname(native, proto);              /* INTL: Native. */
 	Tcl_DStringFree(&ds);
 	if (sp != NULL) {
@@ -275,8 +277,8 @@ int UdpSockGetPort(
     if (Tcl_GetInt(interp, service, portPtr) != TCL_OK) {
 	return TCL_ERROR;
     }
-    if (*portPtr > 0xFFFF) {
-	Tcl_AppendResult(interp, "couldn't open socket: port number too high", (char *) NULL);
+    if (*portPtr < 0 || *portPtr > 0xFFFF) {
+	Tcl_AppendResult(interp, "couldn't open socket: port number out of range", (char *) NULL);
 	    return TCL_ERROR;
     }
     return TCL_OK;
@@ -293,9 +295,9 @@ int UdpSockGetPort(
  * ----------------------------------------------------------------------
  */
 
-static int udpGetService(Tcl_Interp *interp, const char *service, uint16_t *servicePort) {
+static int udpGetService(Tcl_Interp *interp, Tcl_Obj *servicePtr, uint16_t *servicePort) {
     int port = 0;
-    int result = UdpSockGetPort(interp, service, "udp", &port);
+    int result = UdpSockGetPort(interp, servicePtr, "udp", &port);
 
     if (result == TCL_OK) {
 	*servicePort = htons((uint16_t)port);
@@ -1532,31 +1534,39 @@ static int udpSetMulticastDropOption(UdpState *statePtr, Tcl_Interp *interp, con
 static int udpSetRemoteOption(UdpState *statePtr, Tcl_Interp *interp, const char *newValue) {
     int result = TCL_OK;
     Tcl_Obj *valPtr;
-    Tcl_Size len;
+    Tcl_Size objc;
 
     valPtr = Tcl_NewStringObj(newValue, -1);
     Tcl_IncrRefCount(valPtr);
 
-    if (Tcl_ListObjLength(interp, valPtr, &len) != TCL_OK) {
+    if (Tcl_ListObjLength(interp, valPtr, &objc) != TCL_OK) {
 	Tcl_DecrRefCount(valPtr);
 	return TCL_ERROR;
     }
 
-    if (len < 1 || len > 2) {
+    if (objc < 1 || objc > 2) {
 	Tcl_WrongNumArgs(interp, 0, NULL, "?hostname? ?port?");
 	Tcl_DecrRefCount(valPtr);
 	return TCL_ERROR;
 
     } else {
-	Tcl_Obj *hostPtr, *portPtr;
+	Tcl_Obj *namePtr;
+	char *name;
+	Tcl_Size len;
 
-	Tcl_ListObjIndex(interp, valPtr, 0, &hostPtr);
-	strncpy(statePtr->remotehost, Tcl_GetString(hostPtr), sizeof(statePtr->remotehost));
-	statePtr->remotehost[sizeof(statePtr->remotehost)-1] = '\0';
+	/* Hostname */
+	Tcl_ListObjIndex(interp, valPtr, 0, &namePtr);
+	name = Tcl_GetStringFromObj(namePtr, &len);
+	if (len >= sizeof(statePtr->remotehost)) {
+	    len = sizeof(statePtr->remotehost)-1;
+	}
+	strncpy(statePtr->remotehost, name, (size_t)len);
+	statePtr->remotehost[len] = '\0';
 
-	if (len == 2) {
-	    Tcl_ListObjIndex(interp, valPtr, 1, &portPtr);
-	    result = udpGetService(interp, Tcl_GetString(portPtr), &(statePtr->remoteport));
+	/* Port */
+	if (objc == 2) {
+	    Tcl_ListObjIndex(interp, valPtr, 1, &namePtr);
+	    result = udpGetService(interp, namePtr, &(statePtr->remoteport));
 	}
     }
 
@@ -1971,7 +1981,7 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 		}
 	    } else {
 		/* Port could be a service name */
-		if (udpGetService(interp, Tcl_GetString(objv[i]), &localport) != TCL_OK) {
+		if (udpGetService(interp, objv[i], &localport) != TCL_OK) {
 		    return TCL_ERROR;
 		}
 	    }
@@ -2485,6 +2495,8 @@ int Udp_GetNameInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj
     int family = AF_INET, err;
     (void) clientData;
     hostname[0] = '\0';
+    char *address;
+    Tcl_Size len;
 
     Tcl_ResetResult(interp);
 
@@ -2496,14 +2508,23 @@ int Udp_GetNameInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj
 	family = AF_INET6;
     }
 
+    /* Get address type */
+    address = Tcl_GetStringFromObj(objv[1], &len);
+    for (Tcl_Size i = 0; i < len; i++) {
+	if (address[i] == ':') {
+	    family = AF_INET6;
+	    break;
+	}
+    }
+
     /* Get input address */
     if (family == AF_INET) {
 	struct sockaddr_in sa;
 	memset(&sa, 0, sizeof(sa));
 	sa.sin_family = family;
 
-	if (inet_pton(family, Tcl_GetString(objv[1]), &sa.sin_addr) != 1) {
-	    Tcl_AppendResult(interp, "Invalid IPv4 address ", Tcl_GetString(objv[1]), (char *) NULL);
+	if (inet_pton(family, address, &sa.sin_addr) != 1) {
+	    Tcl_AppendResult(interp, "Invalid IPv4 address ", address, (char *) NULL);
 	    return TCL_ERROR;
 	}
 	err = getnameinfo((const struct sockaddr *)&sa, sizeof(sa), hostname, NI_MAXHOST, NULL, 0, 0);
@@ -2513,8 +2534,8 @@ int Udp_GetNameInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj
 	memset(&sa, 0, sizeof(sa));
 	sa.sin6_family = family;
 
-	if (inet_pton(family, Tcl_GetString(objv[1]), &sa.sin6_addr) != 1) {
-	    Tcl_AppendResult(interp, "Invalid IPv6 address ", Tcl_GetString(objv[1]), (char *) NULL);
+	if (inet_pton(family, address, &sa.sin6_addr) != 1) {
+	    Tcl_AppendResult(interp, "Invalid IPv6 address ", address, (char *) NULL);
 	    return TCL_ERROR;
 	}
 	err = getnameinfo((const struct sockaddr *)&sa, sizeof(sa), hostname, NI_MAXHOST, NULL, 0, 0);
