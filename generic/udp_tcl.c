@@ -278,7 +278,7 @@ int UdpSockGetPort(
 	return TCL_ERROR;
     }
     if (*portPtr < 0 || *portPtr > 0xFFFF) {
-	Tcl_AppendResult(interp, "couldn't open socket: port number out of range", (char *) NULL);
+	Tcl_SetResult(interp, "couldn't open socket: port number out of range", TCL_STATIC);
 	    return TCL_ERROR;
     }
     return TCL_OK;
@@ -1281,6 +1281,7 @@ static int udpSetMulticastIFOption(UdpState *statePtr, Tcl_Interp *interp, const
 static Tcl_Size LSearch(Tcl_Obj *listObj, const char *group) {
     Tcl_Size objc, n;
     Tcl_Obj **objv;
+
     Tcl_ListObjGetElements(NULL, listObj, &objc, &objv);
     for (n = 0; n < objc; n++) {
 	if (strcmp(group, Tcl_GetString(objv[n])) == 0) {
@@ -2195,6 +2196,7 @@ int udpConf(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 	case _opt_remote:
 	case _opt_ttl:
 	    if (i+1 == objc) {
+		Tcl_ResetResult(interp);
 		Tcl_AppendResult(interp, "No value for option \"", cfg_opts[opt], "\"", (char *) NULL);
 		return TCL_ERROR;
 	    }
@@ -2208,6 +2210,7 @@ int udpConf(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 	case _opt_mcastgroups:
 	case _opt_myport:
 	case _opt_peer:
+	    Tcl_ResetResult(interp);
 	    Tcl_AppendResult(interp, "Read-only option \"", cfg_opts[opt], "\"", (char *) NULL);
 	    return TCL_ERROR;
 	    break;
@@ -2364,7 +2367,7 @@ int Udp_GetAddrInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj
 		if (i < objc-1) {
 		    hostname = Tcl_GetString(objv[++i]);
 		} else {
-		    Tcl_AppendResult(interp, "No hostname", (char *) NULL);
+		    Tcl_SetResult(interp, "No hostname", TCL_STATIC);
 		    return TCL_ERROR;
 		}
 		break;
@@ -2380,7 +2383,7 @@ int Udp_GetAddrInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj
 		if (i < objc-1) {
 		    service = Tcl_GetString(objv[++i]);
 		} else {
-		    Tcl_AppendResult(interp, "No port/service", (char *) NULL);
+		    Tcl_SetResult(interp, "No port/service", TCL_STATIC);
 		    return TCL_ERROR;
 		}
 		break;
@@ -2516,11 +2519,8 @@ int Udp_GetNameInfo(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj
 
     /* Get address type */
     address = Tcl_GetStringFromObj(objv[1], &len);
-    for (Tcl_Size i = 0; i < len; i++) {
-	if (address[i] == ':') {
-	    family = AF_INET6;
-	    break;
-	}
+    if (memchr(address, ':', (size_t)len) != NULL) {
+	family = AF_INET6;
     }
 
     /* Get input address */
