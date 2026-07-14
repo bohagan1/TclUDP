@@ -227,82 +227,62 @@ static void udpTrace(const char *format, ...) {
 /*
  *---------------------------------------------------------------------------
  *
- * UdpSockGetPort --
+ * udpGetServicePort --
  *
- *      Maps from a string, which could be a service name, to a port.
- *      Used by socket creation code to get port numbers and resolve
- *      registered service names to port numbers.
- *
- *      NOTE: this is a copy of TclSockGetPort.
+ *	Return the service port number in network byte order from either a
+ *	string representation of the port number or the service name. If the
+ *	service string cannot be converted (ie: a name not present in the
+ *	services database) then set a Tcl error.
  *
  * Results:
- *      A standard Tcl result. On success, the port number is returned
- *      in portPtr. On failure, an error message is left in the interp's
- *      result.
+ *	A standard Tcl result. On success, the port number is returned in
+ *	servicePort. On failure, an error message is left in the interp's
+ *	result.
  *
  * Side effects:
- *      None.
+ *	None.
  *
  *---------------------------------------------------------------------------
 */
 
-int UdpSockGetPort(
+int udpGetServicePort(
      Tcl_Interp *interp,
      Tcl_Obj *servicePtr,	/* Integer or service name */
      const char *proto,		/* "tcp" or "udp", typically */
-     int *portPtr)		/* Return port number */
+     uint16_t *servicePort)	/* Return port number */
 {
-    Tcl_Size len = 0;
-    const char *service = Tcl_GetStringFromObj(servicePtr, &len);
+    *servicePort = 0;
+    int port;
 
     /* Get int or service name */
-    if (Tcl_GetInt(NULL, service, portPtr) != TCL_OK) {
+    if (Tcl_GetIntFromObj(NULL, servicePtr, &port) == TCL_OK) {
+	if (port >= 0 && port < 65536) {
+	    *servicePort = htons((uint16_t)port);
+	} else {
+	    Tcl_SetResult(interp, "port number out of range", TCL_STATIC);
+	    return TCL_ERROR;
+	}
+
+    } else {
+	const char *service, *native;
+	struct servent *sp;	/* Protocol info for named services */
 	Tcl_DString ds;
-	const char *native;
-	struct servent *sp;          /* Protocol info for named services */
+	Tcl_Size len = 0;
 
-	/*
-	 * Don't bother translating 'proto' to native.
-	 */
-
+	/* Don't bother translating 'proto' to native. */
+	service = Tcl_GetStringFromObj(servicePtr, &len);
 	native = Tcl_UtfToExternalDString(NULL, service, len, &ds);
 	sp = getservbyname(native, proto);              /* INTL: Native. */
 	Tcl_DStringFree(&ds);
 	if (sp != NULL) {
-	    *portPtr = ntohs((unsigned short) sp->s_port);
-		return TCL_OK;
+	    *servicePort = (uint16_t)sp->s_port;
+	} else {
+	    Tcl_AppendResult(interp, "unknown service name \"", service,
+		"\" for protocol \"", proto, "\"", (char *) NULL);
+	    return TCL_ERROR;
 	}
     }
-
-    if (Tcl_GetInt(interp, service, portPtr) != TCL_OK) {
-	return TCL_ERROR;
-    }
-    if (*portPtr < 0 || *portPtr > 0xFFFF) {
-	Tcl_SetResult(interp, "couldn't open socket: port number out of range", TCL_STATIC);
-	    return TCL_ERROR;
-    }
     return TCL_OK;
-}
-
-/*
- * ----------------------------------------------------------------------
- * udpGetService --
- *
- *  Return the service port number in network byte order from either a
- *  string representation of the port number or the service name. If the
- *  service string cannot be converted (ie: a name not present in the
- *  services database) then set a Tcl error.
- * ----------------------------------------------------------------------
- */
-
-static int udpGetService(Tcl_Interp *interp, Tcl_Obj *servicePtr, uint16_t *servicePort) {
-    int port = 0;
-    int result = UdpSockGetPort(interp, servicePtr, "udp", &port);
-
-    if (result == TCL_OK) {
-	*servicePort = htons((uint16_t)port);
-    }
-    return result;
 }
 
 /*
@@ -1573,7 +1553,7 @@ static int udpSetRemoteOption(UdpState *statePtr, Tcl_Interp *interp, const char
 	/* Port */
 	if (objc == 2) {
 	    Tcl_ListObjIndex(interp, valPtr, 1, &namePtr);
-	    result = udpGetService(interp, namePtr, &(statePtr->remoteport));
+	    result = udpGetServicePort(interp, namePtr, "udp", &(statePtr->remoteport));
 	}
     }
 
@@ -1988,7 +1968,7 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
 		}
 	    } else {
 		/* Port could be a service name */
-		if (udpGetService(interp, objv[i], &localport) != TCL_OK) {
+		if (udpGetServicePort(interp, objv[i], "udp", &localport) != TCL_OK) {
 		    return TCL_ERROR;
 		}
 	    }
