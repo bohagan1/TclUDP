@@ -898,7 +898,7 @@ static int udpOutput(ClientData clientData, const char *buf, int toWrite, int *e
 	struct sockaddr_in6 sendaddrv6;
 	socksize = sizeof(sendaddrv6);
 	memset(&sendaddrv6, 0, socksize);
-	memset(&hints, 0, sizeof(struct addrinfo));
+	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET6;
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_protocol = IPPROTO_UDP;
@@ -1109,9 +1109,9 @@ static int udpInput(ClientData clientData, char *buf, int bufSize, int *errorCod
  *
  * ----------------------------------------------------------------------
  */
-static int udpGetBroadcastOption(UdpState *statePtr, Tcl_Interp *interp, int* value) {
+static int udpGetBroadcastOption(UdpState *statePtr, Tcl_Interp *interp, int *value) {
     int result = TCL_OK;
-    socklen_t optlen = sizeof(int);
+    socklen_t optlen = sizeof(*value);
 
     result = getsockopt(statePtr->sock, SOL_SOCKET, SO_BROADCAST, (char*)value, &optlen);
     if (result < 0) {
@@ -1138,7 +1138,7 @@ static int udpSetBroadcastOption(UdpState *statePtr, Tcl_Interp *interp, const c
 	return TCL_ERROR;
     }
 
-    result = setsockopt(statePtr->sock, SOL_SOCKET, SO_BROADCAST, (const char *)&tmp, sizeof(int));
+    result = setsockopt(statePtr->sock, SOL_SOCKET, SO_BROADCAST, (const char *)&tmp, sizeof(tmp));
     if (result == 0) {
 	Tcl_SetObjResult(interp, Tcl_NewIntObj(tmp));
     } else {
@@ -1156,19 +1156,26 @@ static int udpSetBroadcastOption(UdpState *statePtr, Tcl_Interp *interp, const c
  *
  * ----------------------------------------------------------------------
  */
-static int udpGetMcastloopOption(UdpState *statePtr, Tcl_Interp *interp, unsigned char *value) {
+static int udpGetMcastloopOption(UdpState *statePtr, Tcl_Interp *interp, int *value) {
     int result = 0;
-    socklen_t optlen = sizeof(int);
+#ifdef __APPLE__
+    u_char val;
+#else
+    int val;
+#endif
+    socklen_t optlen = sizeof(val);
 
     if (statePtr->ss_family == AF_INET) {
-	result = getsockopt(statePtr->sock, IPPROTO_IP, IP_MULTICAST_LOOP, value, &optlen);
+	result = getsockopt(statePtr->sock, IPPROTO_IP, IP_MULTICAST_LOOP, (char *)&val, &optlen);
     } else {
-	result = getsockopt(statePtr->sock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, value, &optlen);
+	result = getsockopt(statePtr->sock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, (char *)&val, &optlen);
     }
 
     if (result < 0) {
 	Tcl_SetObjResult(interp, ErrorToObj("error getting -mcastloop"));
 	return TCL_ERROR;
+    } else {
+	*value = (int)val;
     }
     return TCL_OK;
 }
@@ -1575,7 +1582,7 @@ static int udpSetRemoteOption(UdpState *statePtr, Tcl_Interp *interp, const char
 static int udpGetTtlOption(UdpState *statePtr, Tcl_Interp *interp, unsigned int *value) {
     int result = 0;
     int cmd;
-    socklen_t optlen = sizeof(unsigned int);
+    socklen_t optlen = sizeof(*value);
 
     if (statePtr->ss_family==AF_INET) {
 	if (statePtr->multicast > 0) {
@@ -1624,7 +1631,7 @@ static int udpSetTtlOption(UdpState *statePtr, Tcl_Interp *interp, const char *n
 	} else {
 	    cmd = IP_TTL;
 	}
-	result = setsockopt(statePtr->sock,IPPROTO_IP,cmd,(const char *)&tmp,sizeof(unsigned int));
+	result = setsockopt(statePtr->sock,IPPROTO_IP,cmd,(const char *)&tmp,sizeof(tmp));
 
     } else {
 	if (statePtr->multicast > 0) {
@@ -1632,7 +1639,7 @@ static int udpSetTtlOption(UdpState *statePtr, Tcl_Interp *interp, const char *n
 	} else {
 	    cmd = IPV6_UNICAST_HOPS;
 	}
-	result = setsockopt(statePtr->sock,IPPROTO_IPV6,cmd,(const char *)&tmp,sizeof(unsigned int));
+	result = setsockopt(statePtr->sock,IPPROTO_IPV6,cmd,(const char *)&tmp,sizeof(tmp));
     }
 
     if (result == 0) {
@@ -1655,7 +1662,6 @@ static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *o
     int result = TCL_OK, tmp, opt;
     Tcl_Size objc;
     Tcl_Obj **objv;
-    unsigned char str = 0;
     unsigned int ttl = 0;
 
     Tcl_ResetResult(interp);
@@ -1716,9 +1722,9 @@ static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *o
 	    break;
 
 	case _opt_mcastloop:
-	    if ((result = udpGetMcastloopOption(statePtr, interp, &str)) == TCL_OK) {
+	    if ((result = udpGetMcastloopOption(statePtr, interp, &tmp)) == TCL_OK) {
 		Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
-		snprintf(Tcl_DStringValue(&ds), TCL_INTEGER_SPACE, "%d", (int)str);
+		snprintf(Tcl_DStringValue(&ds), TCL_INTEGER_SPACE, "%d", tmp);
 	    }
 	    break;
 
