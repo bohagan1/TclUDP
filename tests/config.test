@@ -11,10 +11,12 @@ set auto_path [concat [list [file dirname [file dirname [info script]]]] $auto_p
 package require udp
 
 # Constraints
-::tcltest::testConstraint  win7 [expr {$::tcl_platform(platform) eq "windows" && $::tcl_platform(osVersion) == 6.1}]
-::tcltest::testConstraint  win10 [expr {$::tcl_platform(platform) eq "windows" && $::tcl_platform(osVersion) > 6.1}]
-::tcltest::testConstraint  tcl8 [expr {[info tclversion] < 9.0}]
-::tcltest::testConstraint  tcl9 [expr {[info tclversion] >= 9.0}]
+::tcltest::testConstraint win7 [expr {$::tcl_platform(platform) eq "windows" && $::tcl_platform(osVersion) == 6.1}]
+::tcltest::testConstraint win10 [expr {$::tcl_platform(platform) eq "windows" && $::tcl_platform(osVersion) > 6.1}]
+::tcltest::testConstraint tcl8 [expr {[info tclversion] < 9.0}]
+::tcltest::testConstraint tcl9 [expr {[info tclversion] >= 9.0}]
+::tcltest::testConstraint mac [expr {$tcl_platform(os) eq "Darwin"}]
+::tcltest::testConstraint !mac [expr {$tcl_platform(os) ne "Darwin"}]
 
 set mc_port 55000
 
@@ -159,15 +161,31 @@ test Chan_Config-2.4 {Set Invalid option} -setup {
 	close $ch
     } -result {bad option "-bogus": must be -broadcast, -family, -mcastadd, -mcastdrop, -mcastgroups, -mcastif, -mcastloop, -myport, -peer, -remote, or -ttl} -returnCodes {1}
 
-test Chan_Config-2.5 {Chan Config Get All} -setup {
+test Chan_Config-2.5 {Chan Config Get All} -constraints {tcl9 unix} -setup {
 	set ch [udp_open]
     } -body {
 	chan configure $ch
     } -cleanup {
 	close $ch
-    } -match {glob} -result "-blocking 1 -buffering full -buffersize 65535 -encoding * -eofchar * -translation * -broadcast 0 -family ipv4 -mcastgroups {} -mcastloop 1 -myport * -peer {} -remote {} -ttl *"
+    } -match {glob} -result "-blocking 1 -buffering full -buffersize 65535 -encoding * -eofchar * -profile strict -translation * -broadcast 0 -family ipv4 -mcastgroups {} -mcastif * -mcastloop 1 -myport * -peer {} -remote {} -ttl *"
 
-test Chan_Config-2.6 {Fconfigure Get All} -setup {
+test Chan_Config-2.6 {Chan Config Get All} -constraints {tcl9 win} -setup {
+	set ch [udp_open]
+    } -body {
+	chan configure $ch
+    } -cleanup {
+	close $ch
+    } -match {glob} -result "-blocking 1 -buffering full -buffersize 65535 -encoding * -eofchar * -profile strict -translation * -broadcast 0 -family ipv4 -mcastgroups {} -mcastloop 1 -myport * -peer {} -remote {} -ttl *"
+
+test Chan_Config-2.7 {Fconfigure Get All} -constraints {tcl8 unix} -setup {
+	set ch [udp_open]
+    } -body {
+	fconfigure $ch
+    } -cleanup {
+	close $ch
+    } -match {glob} -result "-blocking 1 -buffering full -buffersize 65535 -encoding * -eofchar * -translation * -broadcast 0 -family ipv4 -mcastgroups {} -mcastif * -mcastloop 1 -myport * -peer {} -remote {} -ttl *"
+
+test Chan_Config-2.8 {Fconfigure Get All} -constraints {tcl8 win} -setup {
 	set ch [udp_open]
     } -body {
 	fconfigure $ch
@@ -299,7 +317,7 @@ test Multicast_Add-5.4 {Join IPv4} -setup {
 	close $ch
     } -result {224.0.0.0}
 
-test Multicast_Add-5.5 {Join IPv6} -setup {
+test Multicast_Add-5.5 {Join IPv6} -constraints {!mac} -setup {
 	set ch [udp_open [incr ::mc_port] ipv6]
     } -body {
 	chan configure $ch -mcastadd ff02::1
@@ -308,10 +326,35 @@ test Multicast_Add-5.5 {Join IPv6} -setup {
 	close $ch
     } -result {ff02::1}
 
+test Multicast_Add-5.6 {Join IPv6} -constraints {mac} -setup {
+	set ch [udp_open [incr ::mc_port] ipv6]
+    } -body {
+	chan configure $ch -mcastadd {ff02::1 en0}
+	chan configure $ch -mcastgroup
+    } -cleanup {
+	close $ch
+    } -result {{ff02::1 en0}}
+
+test Multicast_Add-5.7 {IPv6 address for IPv4 port} -setup {
+	set ch [udp_open [incr ::mc_port] ipv4]
+    } -body {
+	chan configure $ch -mcastadd ff02::1
+    } -cleanup {
+	close $ch
+    } -result {invalid group name} -returnCodes {1}
+
+test Multicast_Add-5.8 {IPv4 address for IPv6 port} -constraints {!mac} -setup {
+	set ch [udp_open [incr ::mc_port] ipv6]
+    } -body {
+	chan configure $ch -mcastadd 224.0.0.0
+    } -cleanup {
+	close $ch
+    } -result {invalid group name} -returnCodes {1}
+
 # Multicast Drop
 
 
-test Multicast_Drop-6.1 {Leave None} -setup {
+test Multicast_Drop-6.1 {Drop None} -setup {
 	set ch [udp_open [incr ::mc_port]]
     } -body {
 	chan configure $ch -mcastdrop
@@ -319,7 +362,7 @@ test Multicast_Drop-6.1 {Leave None} -setup {
 	close $ch
     } -result {set only option "-mcastdrop"} -returnCodes {1}
 
-test Multicast_Drop-6.2 {Leave Empty} -setup {
+test Multicast_Drop-6.2 {Drop Empty} -setup {
 	set ch [udp_open [incr ::mc_port]]
     } -body {
 	chan configure $ch -mcastdrop {}
@@ -327,7 +370,7 @@ test Multicast_Drop-6.2 {Leave Empty} -setup {
 	close $ch
     } -result {multicast group and/or local network interface not specified} -returnCodes {1}
 
-test Multicast_Drop-6.3 {Leave Invalid} -setup {
+test Multicast_Drop-6.3 {Drop Invalid} -setup {
 	set ch [udp_open [incr ::mc_port]]
     } -body {
 	chan configure $ch -mcastdrop bogus
@@ -335,7 +378,7 @@ test Multicast_Drop-6.3 {Leave Invalid} -setup {
 	close $ch
     } -result {invalid group name} -returnCodes {1}
 
-test Multicast_Drop-6.4 {Leave IPv4} -setup {
+test Multicast_Drop-6.4 {Drop IPv4} -setup {
 	set ch [udp_open [incr ::mc_port] ipv4]
     } -body {
 	chan configure $ch -mcastadd 224.0.0.0
@@ -345,7 +388,7 @@ test Multicast_Drop-6.4 {Leave IPv4} -setup {
 	close $ch
     }
 
-test Multicast_Drop-6.5 {Leave IPv6} -setup {
+test Multicast_Drop-6.5 {Drop IPv6} -constraints {!mac} -setup {
 	set ch [udp_open [incr ::mc_port] ipv6]
     } -body {
 	chan configure $ch -mcastadd ff02::1
@@ -354,6 +397,32 @@ test Multicast_Drop-6.5 {Leave IPv6} -setup {
     } -cleanup {
 	close $ch
     }
+
+test Multicast_Drop-6.6 {Drop IPv6} -constraints {mac} -setup {
+	set ch [udp_open [incr ::mc_port] ipv6]
+    } -body {
+	chan configure $ch -mcastadd {ff02::1 en0}
+	chan configure $ch -mcastdrop {ff02::1 en0}
+	chan configure $ch -mcastgroup
+    } -cleanup {
+	close $ch
+    }
+
+test Multicast_Drop-6.7 {IPv6 address for IPv4 port} -setup {
+	set ch [udp_open [incr ::mc_port] ipv4]
+    } -body {
+	chan configure $ch -mcastdrop ff02::1
+    } -cleanup {
+	close $ch
+    } -result {invalid group name} -returnCodes {1}
+
+test Multicast_Drop-6.8 {IPv4 address for IPv6 port} -constraints {!mac} -setup {
+	set ch [udp_open [incr ::mc_port] ipv6]
+    } -body {
+	chan configure $ch -mcastdrop 224.0.0.0
+    } -cleanup {
+	close $ch
+    } -result {invalid group name} -returnCodes {1}
 
 # Multicast Group
 
@@ -393,39 +462,50 @@ test Multicast_Group-7.4 {Set IPv6} -setup {
 # Multicast Interface
 
 
-test Multicast_IF-8.1 {Get IPv4} -constraints {knownBug} -setup {
+test Multicast_IF-8.1 {Get IPv4} -constraints {unix} -setup {
 	set ch [udp_open [incr ::mc_port] ipv4]
     } -body {
 	chan configure $ch -mcastif
     } -cleanup {
 	close $ch
-    }
+    } -result {0.0.0.0}
 
-test Multicast_IF-8.2 {Get IPv6} -constraints {knownBug} -setup {
+test Multicast_IF-8.2 {Get IPv6} -constraints {unix} -setup {
 	set ch [udp_open [incr ::mc_port] ipv6]
     } -body {
 	chan configure $ch -mcastif
     } -cleanup {
 	close $ch
-    }
+    } -result {0}
 
 test Multicast_IF-8.3 {Set IPv4} -constraints {unix} -setup {
 	set ch [udp_open [incr ::mc_port] ipv4]
     } -body {
 	chan configure $ch -mcastif 0.0.0.0
+	chan configure $ch -mcastif
     } -cleanup {
 	close $ch
-    }
+    } -result {0.0.0.0}
 
-test Multicast_IF-8.4 {Set IPv6} -constraints {unix} -setup {
+test Multicast_IF-8.4 {Set IPv6} -constraints {unix !mac} -setup {
 	set ch [udp_open [incr ::mc_port] ipv6]
     } -body {
 	chan configure $ch -mcastif ::1
+	chan configure $ch -mcastif
     } -cleanup {
 	close $ch
     }
 
-test Multicast_IF-8.5 {Reset IPv4} -constraints {unix} -setup {
+test Multicast_IF-8.5 {Set IPv6} -constraints {mac} -setup {
+	set ch [udp_open [incr ::mc_port] ipv6]
+    } -body {
+	chan configure $ch -mcastif en0
+	chan configure $ch -mcastif
+    } -cleanup {
+	close $ch
+    } -match {glob} -result {*}
+
+test Multicast_IF-8.6 {Reset IPv4} -constraints {unix} -setup {
 	set ch [udp_open [incr ::mc_port] ipv4]
     } -body {
 	chan configure $ch -mcastif 0
@@ -433,7 +513,7 @@ test Multicast_IF-8.5 {Reset IPv4} -constraints {unix} -setup {
 	close $ch
     }
 
-test Multicast_IF-8.6 {Reset IPv6} -constraints {knownBug} -setup {
+test Multicast_IF-8.7 {Reset IPv6} -constraints {unix !mac} -setup {
 	set ch [udp_open [incr ::mc_port] ipv6]
     } -body {
 	chan configure $ch -mcastif 0
@@ -441,21 +521,38 @@ test Multicast_IF-8.6 {Reset IPv6} -constraints {knownBug} -setup {
 	close $ch
     }
 
-test Multicast_IF-8.7 {Invalid value} -constraints {unix tcl8} -setup {
+test Multicast_IF-8.8 {Invalid value} -constraints {unix tcl8} -setup {
 	set ch [udp_open [incr ::mc_port]]
     } -body {
 	chan configure $ch -mcastif bogus
     } -cleanup {
 	close $ch
-    } -match {glob} -result {error setting -mcastif (bad address): *} -returnCodes {1}
+    } -match {glob} -result {invalid IPv4 address "bogus"} -returnCodes {1}
 
-test Multicast_IF-8.8 {Invalid value} -constraints {unix tcl9} -setup {
+test Multicast_IF-8.9 {Invalid value} -constraints {unix tcl9} -setup {
 	set ch [udp_open [incr ::mc_port]]
     } -body {
 	chan configure $ch -mcastif bogus
     } -cleanup {
 	close $ch
-    } -match {glob} -result {error setting -mcastif (bad address): *} -returnCodes {1}
+    } -match {glob} -result {invalid IPv4 address "bogus"} -returnCodes {1}
+
+test Multicast_IF-8.10 {IPv6 address for IPv4 port} -constraints {unix} -setup {
+	set ch [udp_open [incr ::mc_port] ipv4]
+    } -body {
+	chan configure $ch -mcastif ::1
+	chan configure $ch -mcastif
+    } -cleanup {
+	close $ch
+    } -match {glob} -result {invalid IPv4 address "::1"} -returnCodes {1}
+
+test Multicast_IF-8.11 {IPv4 address for IPv6 port} -constraints {unix} -setup {
+	set ch [udp_open [incr ::mc_port] ipv6]
+    } -body {
+	chan configure $ch -mcastif 224.0.0.0
+    } -cleanup {
+	close $ch
+    } -match {glob} -result {invalid IPv6 address "224.0.0.0"} -returnCodes {1}
 
 # Multicast Loop
 
@@ -814,7 +911,7 @@ test TTL-14.4 {Get IPv6 win} -constraints {win} -setup {
 	close $ch
     } -result {128}
 
-test TTL-14.5 {Get IPv6 unix} -constraints {unix} -setup {
+test TTL-14.5 {Get IPv6 unix} -constraints {unix !mac} -setup {
 	set ch [udp_open ipv6]
     } -body {
 	chan configure $ch -ttl
@@ -822,7 +919,15 @@ test TTL-14.5 {Get IPv6 unix} -constraints {unix} -setup {
 	close $ch
     } -result {64}
 
-test TTL-14.6 {Set default value} -setup {
+test TTL-14.6 {Get IPv6 unix} -constraints {mac} -setup {
+	set ch [udp_open ipv6]
+    } -body {
+	chan configure $ch -ttl
+    } -cleanup {
+	close $ch
+    } -result {-1}
+
+test TTL-14.7 {Set default value} -setup {
 	set ch [udp_open]
     } -body {
 	chan configure $ch -ttl -1
@@ -831,7 +936,7 @@ test TTL-14.6 {Set default value} -setup {
 	close $ch
     } -match {glob} -result {*}
 
-test TTL-14.7 {Set IPv4} -setup {
+test TTL-14.8 {Set IPv4} -setup {
 	set ch [udp_open ipv4]
     } -body {
 	chan configure $ch -ttl 72
@@ -840,7 +945,7 @@ test TTL-14.7 {Set IPv4} -setup {
 	close $ch
     } -result {72}
 
-test TTL-14.8 {Set IPv6} -setup {
+test TTL-14.9 {Set IPv6} -setup {
 	set ch [udp_open ipv6]
     } -body {
 	chan configure $ch -ttl 84
@@ -849,7 +954,7 @@ test TTL-14.8 {Set IPv6} -setup {
 	close $ch
     } -result {84}
 
-test TTL-14.9 {Invalid value} -setup {
+test TTL-14.10 {Invalid value} -setup {
 	set ch [udp_open]
     } -body {
 	chan configure $ch -ttl bogus
@@ -857,7 +962,7 @@ test TTL-14.9 {Invalid value} -setup {
 	close $ch
     } -result {expected integer but got "bogus"} -returnCodes {1}
 
-test TTL-14.10 {Out of range value} -setup {
+test TTL-14.11 {Out of range value IPv4} -constraints {!mac} -setup {
 	set ch [udp_open]
     } -body {
 	chan configure $ch -ttl 257
@@ -865,6 +970,14 @@ test TTL-14.10 {Out of range value} -setup {
 	close $ch
     } -match {glob} -result {error setting -ttl: *[Ii]nvalid argument*} -returnCodes {1}
 
+test TTL-14.12 {Out of range value IPv6} -setup {
+	set ch [udp_open ipv6]
+    } -body {
+	chan configure $ch -ttl 257
+    } -cleanup {
+	close $ch
+    } -match {glob} -result {error setting -ttl: *[Ii]nvalid argument*} -returnCodes {1}
+# Add multicast versions of above
 
 # Other commands
 

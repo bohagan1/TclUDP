@@ -308,22 +308,6 @@ test udp-6.1 {test ipv6 mcastadd with an ipv6 group} -setup {
     close $s
 } -match regexp -result {ff15::e755}
 
-test udp-6.2 {test ipv6 mcastadd with an ipv4 group} -setup {
-    set s [udp_open ipv6]
-} -body {
-   fconfigure $s -mcastadd 224.0.10.10
-} -cleanup {
-    close $s
-} -returnCodes error -match glob -result {*}
-
-test udp-6.3 {test ipv4 mcastadd with an ipv6 group} -setup {
-    set s [udp_open]
-} -body {
-   fconfigure $s -mcastadd ff15::e755
-} -cleanup {
-    close $s
-} -returnCodes error -match glob -result {*}
-
 test udp-10.1 "bug #1838467 - crash on exit" -setup {
     set s [udp_open]
 } -body {

@@ -2,10 +2,12 @@
 command,package require udp,,,,,,,,,
 ,,,,,,,,,,
 command,# Constraints,,,,,,,,,
-command,"::tcltest::testConstraint  win7 [expr {$::tcl_platform(platform) eq ""windows"" && $::tcl_platform(osVersion) == 6.1}]",,,,,,,,,
-command,"::tcltest::testConstraint  win10 [expr {$::tcl_platform(platform) eq ""windows"" && $::tcl_platform(osVersion) > 6.1}]",,,,,,,,,
-command,::tcltest::testConstraint  tcl8 [expr {[info tclversion] < 9.0}],,,,,,,,,
-command,::tcltest::testConstraint  tcl9 [expr {[info tclversion] >= 9.0}],,,,,,,,,
+command,"::tcltest::testConstraint win7 [expr {$::tcl_platform(platform) eq ""windows"" && $::tcl_platform(osVersion) == 6.1}]",,,,,,,,,
+command,"::tcltest::testConstraint win10 [expr {$::tcl_platform(platform) eq ""windows"" && $::tcl_platform(osVersion) > 6.1}]",,,,,,,,,
+command,::tcltest::testConstraint tcl8 [expr {[info tclversion] < 9.0}],,,,,,,,,
+command,::tcltest::testConstraint tcl9 [expr {[info tclversion] >= 9.0}],,,,,,,,,
+command,"::tcltest::testConstraint mac [expr {$tcl_platform(os) eq ""Darwin""}]",,,,,,,,,
+command,"::tcltest::testConstraint !mac [expr {$tcl_platform(os) ne ""Darwin""}]",,,,,,,,,
 ,,,,,,,,,,
 command,set mc_port 55000,,,,,,,,,
 ,,,,,,,,,,
@@ -33,8 +35,10 @@ Chan Config,Too few args,,set ch [udp_open],chan configure,close $ch,glob,"wrong
 Chan Config,Too many args,,set ch [udp_open],chan configure $ch -broadcast 1 2,close $ch,glob,"wrong # args: should be ""chan configure channel* ?-option value ...?""",,,1
 Chan Config,Get Invalid option,,set ch [udp_open],chan configure $ch -bogus,close $ch,,"bad option ""-bogus"": must be -broadcast, -family, -mcastadd, -mcastdrop, -mcastgroups, -mcastif, -mcastloop, -myport, -peer, -remote, or -ttl",,,1
 Chan Config,Set Invalid option,,set ch [udp_open],chan configure $ch -bogus value,close $ch,,"bad option ""-bogus"": must be -broadcast, -family, -mcastadd, -mcastdrop, -mcastgroups, -mcastif, -mcastloop, -myport, -peer, -remote, or -ttl",,,1
-Chan Config,Chan Config Get All,,set ch [udp_open],chan configure $ch,close $ch,glob,"""-blocking 1 -buffering full -buffersize 65535 -encoding * -eofchar * -translation * -broadcast 0 -family ipv4 -mcastgroups {} -mcastloop 1 -myport * -peer {} -remote {} -ttl *""",,,
-Chan Config,Fconfigure Get All,,set ch [udp_open],fconfigure $ch,close $ch,glob,"""-blocking 1 -buffering full -buffersize 65535 -encoding * -eofchar * -translation * -broadcast 0 -family ipv4 -mcastgroups {} -mcastloop 1 -myport * -peer {} -remote {} -ttl *""",,,
+Chan Config,Chan Config Get All,tcl9 unix,set ch [udp_open],chan configure $ch,close $ch,glob,"""-blocking 1 -buffering full -buffersize 65535 -encoding * -eofchar * -profile strict -translation * -broadcast 0 -family ipv4 -mcastgroups {} -mcastif * -mcastloop 1 -myport * -peer {} -remote {} -ttl *""",,,
+Chan Config,Chan Config Get All,tcl9 win,set ch [udp_open],chan configure $ch,close $ch,glob,"""-blocking 1 -buffering full -buffersize 65535 -encoding * -eofchar * -profile strict -translation * -broadcast 0 -family ipv4 -mcastgroups {} -mcastloop 1 -myport * -peer {} -remote {} -ttl *""",,,
+Chan Config,Fconfigure Get All,tcl8 unix,set ch [udp_open],fconfigure $ch,close $ch,glob,"""-blocking 1 -buffering full -buffersize 65535 -encoding * -eofchar * -translation * -broadcast 0 -family ipv4 -mcastgroups {} -mcastif * -mcastloop 1 -myport * -peer {} -remote {} -ttl *""",,,
+Chan Config,Fconfigure Get All,tcl8 win,set ch [udp_open],fconfigure $ch,close $ch,glob,"""-blocking 1 -buffering full -buffersize 65535 -encoding * -eofchar * -translation * -broadcast 0 -family ipv4 -mcastgroups {} -mcastloop 1 -myport * -peer {} -remote {} -ttl *""",,,
 ,,,,,,,,,,
 command,# Broadcast,,,,,,,,,
 Broadcast,Get broadcast IPv4,,set ch [udp_open [incr ::mc_port]],chan configure $ch -broadcast,close $ch,,0,,,
@@ -55,14 +59,20 @@ Multicast Add,Join None,,set ch [udp_open [incr ::mc_port]],chan configure $ch -
 Multicast Add,Join Empty,,set ch [udp_open [incr ::mc_port]],chan configure $ch -mcastadd {},close $ch,,multicast group and/or local network interface not specified,,,1
 Multicast Add,Join Invalid,,set ch [udp_open [incr ::mc_port]],chan configure $ch -mcastadd bogus,close $ch,,invalid group name,,,1
 Multicast Add,Join IPv4,,set ch [udp_open [incr ::mc_port] ipv4],chan configure $ch -mcastadd 224.0.0.0;chan configure $ch -mcastgroup,close $ch,,224.0.0.0,,,
-Multicast Add,Join IPv6,,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastadd ff02::1;chan configure $ch -mcastgroup,close $ch,,ff02::1,,,
+Multicast Add,Join IPv6,!mac,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastadd ff02::1;chan configure $ch -mcastgroup,close $ch,,ff02::1,,,
+Multicast Add,Join IPv6,mac,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastadd {ff02::1 en0};chan configure $ch -mcastgroup,close $ch,,{{ff02::1 en0}},,,
+Multicast Add,IPv6 address for IPv4 port,,set ch [udp_open [incr ::mc_port] ipv4],chan configure $ch -mcastadd ff02::1,close $ch,,invalid group name,,,1
+Multicast Add,IPv4 address for IPv6 port,!mac,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastadd 224.0.0.0,close $ch,,invalid group name,,,1
 ,,,,,,,,,,
 command,# Multicast Drop,,,,,,,,,
-Multicast Drop,Leave None,,set ch [udp_open [incr ::mc_port]],chan configure $ch -mcastdrop,close $ch,,"set only option ""-mcastdrop""",,,1
-Multicast Drop,Leave Empty,,set ch [udp_open [incr ::mc_port]],chan configure $ch -mcastdrop {},close $ch,,multicast group and/or local network interface not specified,,,1
-Multicast Drop,Leave Invalid,,set ch [udp_open [incr ::mc_port]],chan configure $ch -mcastdrop bogus,close $ch,,invalid group name,,,1
-Multicast Drop,Leave IPv4,,set ch [udp_open [incr ::mc_port] ipv4],chan configure $ch -mcastadd 224.0.0.0;chan configure $ch -mcastdrop 224.0.0.0;chan configure $ch -mcastgroup,close $ch,,,,,
-Multicast Drop,Leave IPv6,,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastadd ff02::1;chan configure $ch -mcastdrop ff02::1;chan configure $ch -mcastgroup,close $ch,,,,,
+Multicast Drop,Drop None,,set ch [udp_open [incr ::mc_port]],chan configure $ch -mcastdrop,close $ch,,"set only option ""-mcastdrop""",,,1
+Multicast Drop,Drop Empty,,set ch [udp_open [incr ::mc_port]],chan configure $ch -mcastdrop {},close $ch,,multicast group and/or local network interface not specified,,,1
+Multicast Drop,Drop Invalid,,set ch [udp_open [incr ::mc_port]],chan configure $ch -mcastdrop bogus,close $ch,,invalid group name,,,1
+Multicast Drop,Drop IPv4,,set ch [udp_open [incr ::mc_port] ipv4],chan configure $ch -mcastadd 224.0.0.0;chan configure $ch -mcastdrop 224.0.0.0;chan configure $ch -mcastgroup,close $ch,,,,,
+Multicast Drop,Drop IPv6,!mac,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastadd ff02::1;chan configure $ch -mcastdrop ff02::1;chan configure $ch -mcastgroup,close $ch,,,,,
+Multicast Drop,Drop IPv6,mac,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastadd {ff02::1 en0};chan configure $ch -mcastdrop {ff02::1 en0};chan configure $ch -mcastgroup,close $ch,,,,,
+Multicast Drop,IPv6 address for IPv4 port,,set ch [udp_open [incr ::mc_port] ipv4],chan configure $ch -mcastdrop ff02::1,close $ch,,invalid group name,,,1
+Multicast Drop,IPv4 address for IPv6 port,!mac,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastdrop 224.0.0.0,close $ch,,invalid group name,,,1
 ,,,,,,,,,,
 command,# Multicast Group,,,,,,,,,
 Multicast Group,Get IPv4,,set ch [udp_open [incr ::mc_port] ipv4],chan configure $ch -mcastgroup,close $ch,,,,,
@@ -71,14 +81,17 @@ Multicast Group,Set IPv4,,set ch [udp_open [incr ::mc_port] ipv4],chan configure
 Multicast Group,Set IPv6,,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastgroup ff02::1,close $ch,,"get only option ""-mcastgroup""",,,1
 ,,,,,,,,,,
 command,# Multicast Interface,,,,,,,,,
-Multicast IF,Get IPv4,knownBug,set ch [udp_open [incr ::mc_port] ipv4],chan configure $ch -mcastif,close $ch,,,,,
-Multicast IF,Get IPv6,knownBug,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastif,close $ch,,,,,
-Multicast IF,Set IPv4,unix,set ch [udp_open [incr ::mc_port] ipv4],chan configure $ch -mcastif 0.0.0.0,close $ch,,,,,
-Multicast IF,Set IPv6,unix,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastif ::1,close $ch,,,,,
+Multicast IF,Get IPv4,unix,set ch [udp_open [incr ::mc_port] ipv4],chan configure $ch -mcastif,close $ch,,0.0.0.0,,,
+Multicast IF,Get IPv6,unix,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastif,close $ch,,0,,,
+Multicast IF,Set IPv4,unix,set ch [udp_open [incr ::mc_port] ipv4],chan configure $ch -mcastif 0.0.0.0;chan configure $ch -mcastif,close $ch,,0.0.0.0,,,
+Multicast IF,Set IPv6,unix !mac,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastif ::1;chan configure $ch -mcastif,close $ch,,,,,
+Multicast IF,Set IPv6,mac,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastif en0;chan configure $ch -mcastif,close $ch,glob,*,,,
 Multicast IF,Reset IPv4,unix,set ch [udp_open [incr ::mc_port] ipv4],chan configure $ch -mcastif 0,close $ch,,,,,
-Multicast IF,Reset IPv6,knownBug,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastif 0,close $ch,,,,,
-Multicast IF,Invalid value,unix tcl8,set ch [udp_open [incr ::mc_port]],chan configure $ch -mcastif bogus,close $ch,glob,error setting -mcastif (bad address): *,,,1
-Multicast IF,Invalid value,unix tcl9,set ch [udp_open [incr ::mc_port]],chan configure $ch -mcastif bogus,close $ch,glob,error setting -mcastif (bad address): *,,,1
+Multicast IF,Reset IPv6,unix !mac,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastif 0,close $ch,,,,,
+Multicast IF,Invalid value,unix tcl8,set ch [udp_open [incr ::mc_port]],chan configure $ch -mcastif bogus,close $ch,glob,"invalid IPv4 address ""bogus""",,,1
+Multicast IF,Invalid value,unix tcl9,set ch [udp_open [incr ::mc_port]],chan configure $ch -mcastif bogus,close $ch,glob,"invalid IPv4 address ""bogus""",,,1
+Multicast IF,IPv6 address for IPv4 port,unix,set ch [udp_open [incr ::mc_port] ipv4],chan configure $ch -mcastif ::1;chan configure $ch -mcastif,close $ch,glob,"invalid IPv4 address ""::1""",,,1
+Multicast IF,IPv4 address for IPv6 port,unix,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastif 224.0.0.0,close $ch,glob,"invalid IPv6 address ""224.0.0.0""",,,1
 ,,,,,,,,,,
 command,# Multicast Loop,,,,,,,,,
 Multicast Loop,Get Multicast Loop IPv4,,set ch [udp_open [incr ::mc_port] ipv4],chan configure $ch -mcastloop,close $ch,,1,,,
@@ -138,13 +151,15 @@ TTL,Get IPv4 win7,win7,set ch [udp_open ipv4],chan configure $ch -ttl,close $ch,
 TTL,Get IPv4 win10,win10,set ch [udp_open ipv4],chan configure $ch -ttl,close $ch,,128,,,
 TTL,Get IPv4 unix,unix,set ch [udp_open ipv4],chan configure $ch -ttl,close $ch,,64,,,
 TTL,Get IPv6 win,win,set ch [udp_open ipv6],chan configure $ch -ttl,close $ch,,128,,,
-TTL,Get IPv6 unix,unix,set ch [udp_open ipv6],chan configure $ch -ttl,close $ch,,64,,,
+TTL,Get IPv6 unix,unix !mac,set ch [udp_open ipv6],chan configure $ch -ttl,close $ch,,64,,,
+TTL,Get IPv6 unix,mac,set ch [udp_open ipv6],chan configure $ch -ttl,close $ch,,-1,,,
 TTL,Set default value,,set ch [udp_open],chan configure $ch -ttl -1;chan configure $ch -ttl,close $ch,glob,*,,,
 TTL,Set IPv4,,set ch [udp_open ipv4],chan configure $ch -ttl 72;chan configure $ch -ttl,close $ch,,72,,,
 TTL,Set IPv6,,set ch [udp_open ipv6],chan configure $ch -ttl 84;chan configure $ch -ttl,close $ch,,84,,,
 TTL,Invalid value,,set ch [udp_open],chan configure $ch -ttl bogus,close $ch,,"expected integer but got ""bogus""",,,1
-TTL,Out of range value,,set ch [udp_open],chan configure $ch -ttl 257,close $ch,glob,error setting -ttl: *[Ii]nvalid argument*,,,1
-comamnd,# Add multicast versions of above,,,,,,,,,
+TTL,Out of range value IPv4,!mac,set ch [udp_open],chan configure $ch -ttl 257,close $ch,glob,error setting -ttl: *[Ii]nvalid argument*,,,1
+TTL,Out of range value IPv6,,set ch [udp_open ipv6],chan configure $ch -ttl 257,close $ch,glob,error setting -ttl: *[Ii]nvalid argument*,,,1
+command,# Add multicast versions of above,,,,,,,,,
 ,,,,,,,,,,
 command,# Other commands,,,,,,,,,
 ,,,,,,,,,,

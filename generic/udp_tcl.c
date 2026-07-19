@@ -1110,11 +1110,12 @@ static int udpInput(ClientData clientData, char *buf, int bufSize, int *errorCod
  * ----------------------------------------------------------------------
  */
 static int udpGetBroadcastOption(UdpState *statePtr, Tcl_Interp *interp, int *value) {
-    int result = TCL_OK;
-    socklen_t optlen = sizeof(*value);
+    int tmp;
+    socklen_t optlen = sizeof(tmp);
 
-    result = getsockopt(statePtr->sock, SOL_SOCKET, SO_BROADCAST, (char*)value, &optlen);
-    if (result < 0) {
+    if (getsockopt(statePtr->sock, SOL_SOCKET, SO_BROADCAST, (char*)&tmp, &optlen) == 0) {
+    	*value = (tmp != 0 ? 1 : 0);
+    } else {
 	Tcl_SetObjResult(interp, ErrorToObj("error getting -broadcast"));
 	return TCL_ERROR;
     }
@@ -1131,21 +1132,19 @@ static int udpGetBroadcastOption(UdpState *statePtr, Tcl_Interp *interp, int *va
  * ----------------------------------------------------------------------
  */
 static int udpSetBroadcastOption(UdpState *statePtr, Tcl_Interp *interp, const char *newValue) {
-    int result;
     int tmp = 1;
 
     if (Tcl_GetBoolean(interp, newValue, &tmp) != TCL_OK) {
 	return TCL_ERROR;
     }
 
-    result = setsockopt(statePtr->sock, SOL_SOCKET, SO_BROADCAST, (const char *)&tmp, sizeof(tmp));
-    if (result == 0) {
+    if (setsockopt(statePtr->sock, SOL_SOCKET, SO_BROADCAST, (const char *)&tmp, sizeof(tmp)) == 0) {
 	Tcl_SetObjResult(interp, Tcl_NewIntObj(tmp));
     } else {
 	Tcl_SetObjResult(interp, ErrorToObj("error setting -broadcast"));
 	return TCL_ERROR;
     }
-    return result;
+    return TCL_OK;
 }
 
 /*
@@ -1216,6 +1215,50 @@ static int udpSetMcastloopOption(UdpState *statePtr, Tcl_Interp *interp, const c
 #ifndef _WIN32
 /*
  * ----------------------------------------------------------------------
+ * udpGetMulticastIFOption --
+ *
+ *  Handle get gateway interface for multicast
+ *
+ * ----------------------------------------------------------------------
+ */
+static int udpGetMulticastIFOption(UdpState *statePtr, Tcl_Interp *interp, char **name, int *value) {
+    int result = 0;
+
+    if (statePtr->ss_family == AF_INET) {
+	struct in_addr if_addr;
+	socklen_t optlen = sizeof(if_addr);
+	
+	result = getsockopt(statePtr->sock, IPPROTO_IP, IP_MULTICAST_IF, (char *)&if_addr, &optlen);
+	if (result == 0) {
+	    *name = inet_ntoa(if_addr);
+	    if (*name) {
+		*value = strlen(*name);
+	    } else {
+		*value = 0;
+	    }
+	} else {
+	    Tcl_SetObjResult(interp, ErrorToObj("error getting -mcastif"));
+	    return TCL_ERROR;
+	}
+
+    } else {
+	int val;
+	socklen_t optlen = sizeof(val);
+
+	result = getsockopt(statePtr->sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, (char *)&val, &optlen);
+	if (result == 0) {
+	    *name = NULL;
+	    *value = (int)val;
+	} else {
+	    Tcl_SetObjResult(interp, ErrorToObj("error getting -mcastif"));
+	    return TCL_ERROR;
+	}
+    }
+    return TCL_OK;
+}
+
+/*
+ * ----------------------------------------------------------------------
  * udpSetMulticastIFOption --
  *
  *  Specify the default gateway interface for multicast
@@ -1228,27 +1271,43 @@ static int udpSetMulticastIFOption(UdpState *statePtr, Tcl_Interp *interp, const
 
 	if (strlen(newValue) == 0) {
 	    interface_addr.s_addr = INADDR_NONE;
-	} else if (inet_aton(newValue, &interface_addr) == 0) {
-	    Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif (bad address)"));
+	} else if (inet_aton(newValue, &interface_addr) <= 0) {
+	    Tcl_AppendResult(interp, "invalid IPv4 address \"", newValue, "\"", (char *)NULL);
 	    return TCL_ERROR;
 	}
 
-	if (setsockopt(statePtr->sock, IPPROTO_IP, IP_MULTICAST_IF, (const char*)&interface_addr,
-		sizeof(interface_addr)) < 0) {
+	if (setsockopt(statePtr->sock, IPPROTO_IP, IP_MULTICAST_IF,
+		(const char*)&interface_addr, sizeof(interface_addr)) == -1) {
 	    Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif"));
 	    return TCL_ERROR;
 	}
+
     } else {
 	struct in6_addr interface_addr = IN6ADDR_ANY_INIT;
+	int result;
+	unsigned int index;
 
 	if (strlen(newValue) == 0) {
-	} else if (inet_pton(AF_INET6, newValue, &interface_addr)==0) {
-	    Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif (bad address)"));
-	    return TCL_ERROR;
+	    result = setsockopt(statePtr->sock, IPPROTO_IPV6, IPV6_MULTICAST_IF,
+		(const char*)&interface_addr, sizeof(interface_addr));
+
+	} else if ((index = if_nametoindex(newValue)) > 0) {
+	    result = setsockopt(statePtr->sock, IPPROTO_IPV6, IPV6_MULTICAST_IF,
+		(const char*)&index, sizeof(index));
+
+	} else {
+	    result = inet_pton(AF_INET6, newValue, &interface_addr);
+
+	    if (result > 0) {
+		result = setsockopt(statePtr->sock, IPPROTO_IPV6, IPV6_MULTICAST_IF,
+		    (const char*)&interface_addr, sizeof(interface_addr));
+	    } else if (result == 0) {
+		Tcl_AppendResult(interp, "invalid IPv6 address \"", newValue, "\"", (char *)NULL);
+		return TCL_ERROR;
+	    }
 	}
 
-	if (setsockopt(statePtr->sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, (const char*)&interface_addr,
-		sizeof(interface_addr)) < 0) {
+	if (result == -1) {
 	    Tcl_SetObjResult(interp, ErrorToObj("error setting -mcastif"));
 	    return TCL_ERROR;
 	}
@@ -1264,7 +1323,6 @@ static int udpSetMulticastIFOption(UdpState *statePtr, Tcl_Interp *interp, const
  * 	Find a string item in a list or return -1 if not found.
  * ----------------------------------------------------------------------
  */
-
 static Tcl_Size LSearch(Tcl_Obj *listObj, const char *group) {
     Tcl_Size objc, n;
     Tcl_Obj **objv;
@@ -1288,7 +1346,6 @@ static Tcl_Size LSearch(Tcl_Obj *listObj, const char *group) {
  *
  * ----------------------------------------------------------------------
  */
-
 static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp, int action) {
     Tcl_Obj *tcllist , *multicastgrp , *nw_interface;
     Tcl_Size len;
@@ -1331,7 +1388,7 @@ static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp,
 	    if (statePtr->ss_family == AF_INET) {
 		/* For IPv4, we need the network interface address. */
 		strcpy(ifreq.ifr_name, name);
-		if (ioctl(statePtr->sock, SIOCGIFADDR, &ifreq) < 0 ) {
+		if (ioctl(statePtr->sock, SIOCGIFADDR, &ifreq) == -1 ) {
 		if (interp != NULL) {
 		    Tcl_SetResult(interp, "unknown network interface", TCL_STATIC);
 		}
@@ -1390,7 +1447,7 @@ static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp,
 #endif
 	}
 
-	if (setsockopt(statePtr->sock, IPPROTO_IP, action, (const char*)&mreq, sizeof(mreq)) < 0) {
+	if (setsockopt(statePtr->sock, IPPROTO_IP, action, (const char*)&mreq, sizeof(mreq)) == -1) {
 	    if (interp != NULL) {
 		Tcl_SetObjResult(interp, ErrorToObj("error changing multicast group"));
 	    }
@@ -1431,7 +1488,7 @@ static int UdpMulticast(UdpState *statePtr, Tcl_Interp *interp, const char *grp,
 	    mreq6.ipv6mr_interface = nwinterface_index;
 	}
 
-	if (setsockopt(statePtr->sock, IPPROTO_IPV6, action, (const char*)&mreq6, sizeof(mreq6)) < 0) {
+	if (setsockopt(statePtr->sock, IPPROTO_IPV6, action, (const char*)&mreq6, sizeof(mreq6)) == -1) {
 	    if (interp != NULL) {
 		Tcl_SetObjResult(interp, ErrorToObj("error changing multicast group"));
 	    }
@@ -1579,7 +1636,7 @@ static int udpSetRemoteOption(UdpState *statePtr, Tcl_Interp *interp, const char
  *
  * ----------------------------------------------------------------------
  */
-static int udpGetTtlOption(UdpState *statePtr, Tcl_Interp *interp, unsigned int *value) {
+static int udpGetTtlOption(UdpState *statePtr, Tcl_Interp *interp, int *value) {
     int result = 0;
     int cmd;
     socklen_t optlen = sizeof(*value);
@@ -1600,7 +1657,7 @@ static int udpGetTtlOption(UdpState *statePtr, Tcl_Interp *interp, unsigned int 
 	result = getsockopt(statePtr->sock, IPPROTO_IPV6, cmd, (char*)value, &optlen);
     }
 
-    if (result < 0) {
+    if (result == -1) {
 	Tcl_SetObjResult(interp, ErrorToObj("error getting -ttl"));
 	return TCL_ERROR;
     }
@@ -1662,7 +1719,9 @@ static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *o
     int result = TCL_OK, tmp, opt;
     Tcl_Size objc;
     Tcl_Obj **objv;
-    unsigned int ttl = 0;
+#ifndef _WIN32
+    char *name;
+#endif
 
     Tcl_ResetResult(interp);
 
@@ -1706,10 +1765,8 @@ static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *o
 
 	case _opt_family:
 	    if (statePtr->ss_family == AF_INET6) {
-		Tcl_DStringSetLength(&dsInt, TCL_INTEGER_SPACE);
 		Tcl_DStringAppendElement(&ds, "ipv6");
 	    } else {
-		Tcl_DStringSetLength(&dsInt, TCL_INTEGER_SPACE);
 		Tcl_DStringAppendElement(&ds, "ipv4");
 	    }
 	    break;
@@ -1720,6 +1777,19 @@ static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *o
 		Tcl_DStringAppendElement(&ds, Tcl_GetString(objv[n]));
 	    }
 	    break;
+
+#ifndef _WIN32
+	case _opt_mcastif:
+	    if ((result = udpGetMulticastIFOption(statePtr, interp, &name, &tmp)) == TCL_OK) {
+		if (name) {
+		    Tcl_DStringAppendElement(&ds, name);
+		} else {
+		    Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
+		    snprintf(Tcl_DStringValue(&ds), TCL_INTEGER_SPACE, "%d", tmp);
+		}
+	    }
+	    break;
+#endif
 
 	case _opt_mcastloop:
 	    if ((result = udpGetMcastloopOption(statePtr, interp, &tmp)) == TCL_OK) {
@@ -1752,9 +1822,9 @@ static int udpGetOption(ClientData clientData, Tcl_Interp *interp, const char *o
 	    break;
 
 	case _opt_ttl:
-	    if ((result = udpGetTtlOption(statePtr, interp, &ttl)) == TCL_OK) {
+	    if ((result = udpGetTtlOption(statePtr, interp, &tmp)) == TCL_OK) {
 		Tcl_DStringSetLength(&ds, TCL_INTEGER_SPACE);
-		snprintf(Tcl_DStringValue(&ds), TCL_INTEGER_SPACE, "%u", ttl);
+		snprintf(Tcl_DStringValue(&ds), TCL_INTEGER_SPACE, "%d", tmp);
 	    }
 	    break;
 
@@ -2028,9 +2098,9 @@ int udpOpen(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const 
     if (reuse) {
 	int one = 1;
 #ifdef SO_REUSEPORT
-	if (setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, (const char *)&one, sizeof(one)) < 0)
+	if (setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, (const char *)&one, sizeof(one)) == -1)
 #else
-	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&one, sizeof(one)) < 0)
+	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&one, sizeof(one)) == -1)
 #endif
 	{
 	    Tcl_SetObjResult(interp, ErrorToObj("error setting socket option"));
