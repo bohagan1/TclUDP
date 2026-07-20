@@ -8,6 +8,8 @@ command,::tcltest::testConstraint tcl8 [expr {[info tclversion] < 9.0}],,,,,,,,,
 command,::tcltest::testConstraint tcl9 [expr {[info tclversion] >= 9.0}],,,,,,,,,
 command,"::tcltest::testConstraint mac [expr {$tcl_platform(os) eq ""Darwin""}]",,,,,,,,,
 command,"::tcltest::testConstraint !mac [expr {$tcl_platform(os) ne ""Darwin""}]",,,,,,,,,
+command,"::tcltest::testConstraint bsd [string match -nocase ""*bsd*"" $tcl_platform(os)]",,,,,,,,,
+command,"::tcltest::testConstraint !bsd [expr {![string match -nocase ""*bsd*"" $tcl_platform(os)]}]",,,,,,,,,
 ,,,,,,,,,,
 command,set mc_port 55000,,,,,,,,,
 ,,,,,,,,,,
@@ -59,7 +61,8 @@ Multicast Add,Join None,,set ch [udp_open [incr ::mc_port]],chan configure $ch -
 Multicast Add,Join Empty,,set ch [udp_open [incr ::mc_port]],chan configure $ch -mcastadd {},close $ch,,multicast group and/or local network interface not specified,,,1
 Multicast Add,Join Invalid,,set ch [udp_open [incr ::mc_port]],chan configure $ch -mcastadd bogus,close $ch,,invalid group name,,,1
 Multicast Add,Join IPv4,,set ch [udp_open [incr ::mc_port] ipv4],chan configure $ch -mcastadd 224.0.0.0;chan configure $ch -mcastgroup,close $ch,,224.0.0.0,,,
-Multicast Add,Join IPv6,!mac,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastadd ff02::1;chan configure $ch -mcastgroup,close $ch,,ff02::1,,,
+Multicast Add,Join IPv6,!mac !bsd,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastadd ff02::1;chan configure $ch -mcastgroup,close $ch,,ff02::1,,,
+Multicast Add,Join IPv6,bsd,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastadd {ff02::1 em0};chan configure $ch -mcastgroup,close $ch,,{{ff02::1 em0}},,,
 Multicast Add,Join IPv6,mac,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastadd {ff02::1 en0};chan configure $ch -mcastgroup,close $ch,,{{ff02::1 en0}},,,
 Multicast Add,IPv6 address for IPv4 port,,set ch [udp_open [incr ::mc_port] ipv4],chan configure $ch -mcastadd ff02::1,close $ch,,invalid group name,,,1
 Multicast Add,IPv4 address for IPv6 port,!mac,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastadd 224.0.0.0,close $ch,,invalid group name,,,1
@@ -69,7 +72,8 @@ Multicast Drop,Drop None,,set ch [udp_open [incr ::mc_port]],chan configure $ch 
 Multicast Drop,Drop Empty,,set ch [udp_open [incr ::mc_port]],chan configure $ch -mcastdrop {},close $ch,,multicast group and/or local network interface not specified,,,1
 Multicast Drop,Drop Invalid,,set ch [udp_open [incr ::mc_port]],chan configure $ch -mcastdrop bogus,close $ch,,invalid group name,,,1
 Multicast Drop,Drop IPv4,,set ch [udp_open [incr ::mc_port] ipv4],chan configure $ch -mcastadd 224.0.0.0;chan configure $ch -mcastdrop 224.0.0.0;chan configure $ch -mcastgroup,close $ch,,,,,
-Multicast Drop,Drop IPv6,!mac,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastadd ff02::1;chan configure $ch -mcastdrop ff02::1;chan configure $ch -mcastgroup,close $ch,,,,,
+Multicast Drop,Drop IPv6,!mac !bsd,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastadd ff02::1;chan configure $ch -mcastdrop ff02::1;chan configure $ch -mcastgroup,close $ch,,,,,
+Multicast Drop,Drop IPv6,bsd,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastadd {ff02::1 em0};chan configure $ch -mcastdrop {ff02::1 em0};chan configure $ch -mcastgroup,close $ch,,,,,
 Multicast Drop,Drop IPv6,mac,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastadd {ff02::1 en0};chan configure $ch -mcastdrop {ff02::1 en0};chan configure $ch -mcastgroup,close $ch,,,,,
 Multicast Drop,IPv6 address for IPv4 port,,set ch [udp_open [incr ::mc_port] ipv4],chan configure $ch -mcastdrop ff02::1,close $ch,,invalid group name,,,1
 Multicast Drop,IPv4 address for IPv6 port,!mac,set ch [udp_open [incr ::mc_port] ipv6],chan configure $ch -mcastdrop 224.0.0.0,close $ch,,invalid group name,,,1
@@ -157,7 +161,7 @@ TTL,Set default value,,set ch [udp_open],chan configure $ch -ttl -1;chan configu
 TTL,Set IPv4,,set ch [udp_open ipv4],chan configure $ch -ttl 72;chan configure $ch -ttl,close $ch,,72,,,
 TTL,Set IPv6,,set ch [udp_open ipv6],chan configure $ch -ttl 84;chan configure $ch -ttl,close $ch,,84,,,
 TTL,Invalid value,,set ch [udp_open],chan configure $ch -ttl bogus,close $ch,,"expected integer but got ""bogus""",,,1
-TTL,Out of range value IPv4,!mac,set ch [udp_open],chan configure $ch -ttl 257,close $ch,glob,error setting -ttl: *[Ii]nvalid argument*,,,1
+TTL,Out of range value IPv4,!mac !bsd,set ch [udp_open],chan configure $ch -ttl 257,close $ch,glob,error setting -ttl: *[Ii]nvalid argument*,,,1
 TTL,Out of range value IPv6,,set ch [udp_open ipv6],chan configure $ch -ttl 257,close $ch,glob,error setting -ttl: *[Ii]nvalid argument*,,,1
 command,# Add multicast versions of above,,,,,,,,,
 ,,,,,,,,,,

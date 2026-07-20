@@ -17,6 +17,8 @@ package require udp
 ::tcltest::testConstraint tcl9 [expr {[info tclversion] >= 9.0}]
 ::tcltest::testConstraint mac [expr {$tcl_platform(os) eq "Darwin"}]
 ::tcltest::testConstraint !mac [expr {$tcl_platform(os) ne "Darwin"}]
+::tcltest::testConstraint bsd [string match -nocase "*bsd*" $tcl_platform(os)]
+::tcltest::testConstraint !bsd [expr {![string match -nocase "*bsd*" $tcl_platform(os)]}]
 
 set mc_port 55000
 
@@ -317,7 +319,7 @@ test Multicast_Add-5.4 {Join IPv4} -setup {
 	close $ch
     } -result {224.0.0.0}
 
-test Multicast_Add-5.5 {Join IPv6} -constraints {!mac} -setup {
+test Multicast_Add-5.5 {Join IPv6} -constraints {!mac !bsd} -setup {
 	set ch [udp_open [incr ::mc_port] ipv6]
     } -body {
 	chan configure $ch -mcastadd ff02::1
@@ -326,7 +328,16 @@ test Multicast_Add-5.5 {Join IPv6} -constraints {!mac} -setup {
 	close $ch
     } -result {ff02::1}
 
-test Multicast_Add-5.6 {Join IPv6} -constraints {mac} -setup {
+test Multicast_Add-5.6 {Join IPv6} -constraints {bsd} -setup {
+	set ch [udp_open [incr ::mc_port] ipv6]
+    } -body {
+	chan configure $ch -mcastadd {ff02::1 em0}
+	chan configure $ch -mcastgroup
+    } -cleanup {
+	close $ch
+    } -result {{ff02::1 em0}}
+
+test Multicast_Add-5.7 {Join IPv6} -constraints {mac} -setup {
 	set ch [udp_open [incr ::mc_port] ipv6]
     } -body {
 	chan configure $ch -mcastadd {ff02::1 en0}
@@ -335,7 +346,7 @@ test Multicast_Add-5.6 {Join IPv6} -constraints {mac} -setup {
 	close $ch
     } -result {{ff02::1 en0}}
 
-test Multicast_Add-5.7 {IPv6 address for IPv4 port} -setup {
+test Multicast_Add-5.8 {IPv6 address for IPv4 port} -setup {
 	set ch [udp_open [incr ::mc_port] ipv4]
     } -body {
 	chan configure $ch -mcastadd ff02::1
@@ -343,7 +354,7 @@ test Multicast_Add-5.7 {IPv6 address for IPv4 port} -setup {
 	close $ch
     } -result {invalid group name} -returnCodes {1}
 
-test Multicast_Add-5.8 {IPv4 address for IPv6 port} -constraints {!mac} -setup {
+test Multicast_Add-5.9 {IPv4 address for IPv6 port} -constraints {!mac} -setup {
 	set ch [udp_open [incr ::mc_port] ipv6]
     } -body {
 	chan configure $ch -mcastadd 224.0.0.0
@@ -388,7 +399,7 @@ test Multicast_Drop-6.4 {Drop IPv4} -setup {
 	close $ch
     }
 
-test Multicast_Drop-6.5 {Drop IPv6} -constraints {!mac} -setup {
+test Multicast_Drop-6.5 {Drop IPv6} -constraints {!mac !bsd} -setup {
 	set ch [udp_open [incr ::mc_port] ipv6]
     } -body {
 	chan configure $ch -mcastadd ff02::1
@@ -398,7 +409,17 @@ test Multicast_Drop-6.5 {Drop IPv6} -constraints {!mac} -setup {
 	close $ch
     }
 
-test Multicast_Drop-6.6 {Drop IPv6} -constraints {mac} -setup {
+test Multicast_Drop-6.6 {Drop IPv6} -constraints {bsd} -setup {
+	set ch [udp_open [incr ::mc_port] ipv6]
+    } -body {
+	chan configure $ch -mcastadd {ff02::1 em0}
+	chan configure $ch -mcastdrop {ff02::1 em0}
+	chan configure $ch -mcastgroup
+    } -cleanup {
+	close $ch
+    }
+
+test Multicast_Drop-6.7 {Drop IPv6} -constraints {mac} -setup {
 	set ch [udp_open [incr ::mc_port] ipv6]
     } -body {
 	chan configure $ch -mcastadd {ff02::1 en0}
@@ -408,7 +429,7 @@ test Multicast_Drop-6.6 {Drop IPv6} -constraints {mac} -setup {
 	close $ch
     }
 
-test Multicast_Drop-6.7 {IPv6 address for IPv4 port} -setup {
+test Multicast_Drop-6.8 {IPv6 address for IPv4 port} -setup {
 	set ch [udp_open [incr ::mc_port] ipv4]
     } -body {
 	chan configure $ch -mcastdrop ff02::1
@@ -416,7 +437,7 @@ test Multicast_Drop-6.7 {IPv6 address for IPv4 port} -setup {
 	close $ch
     } -result {invalid group name} -returnCodes {1}
 
-test Multicast_Drop-6.8 {IPv4 address for IPv6 port} -constraints {!mac} -setup {
+test Multicast_Drop-6.9 {IPv4 address for IPv6 port} -constraints {!mac} -setup {
 	set ch [udp_open [incr ::mc_port] ipv6]
     } -body {
 	chan configure $ch -mcastdrop 224.0.0.0
@@ -962,7 +983,7 @@ test TTL-14.10 {Invalid value} -setup {
 	close $ch
     } -result {expected integer but got "bogus"} -returnCodes {1}
 
-test TTL-14.11 {Out of range value IPv4} -constraints {!mac} -setup {
+test TTL-14.11 {Out of range value IPv4} -constraints {!mac !bsd} -setup {
 	set ch [udp_open]
     } -body {
 	chan configure $ch -ttl 257

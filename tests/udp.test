@@ -15,6 +15,9 @@ if {[lsearch [namespace children] ::tcltest] == -1} {
     namespace import ::tcltest::*
 }
 
+::tcltest::testConstraint bsd [string match -nocase "*bsd*" $tcl_platform(os)]
+::tcltest::testConstraint !bsd [expr {![string match -nocase "*bsd*" $tcl_platform(os)]}]
+
 package require udp
 
 # -------------------------------------------------------------------------
@@ -249,16 +252,16 @@ test udp-4.0 {udp_peek} -constraints unix -setup {
     close $s
 } -result {}
 
-test udp-4.1 {udp_peek} -constraints unix -setup {
-	set port 9009
-	set client [udp_open] 
+test udp-4.1 {udp_peek} -constraints {unix !bsd} -setup {
+    set port 9009
+    set client [udp_open] 
     fconfigure $client -remote [list localhost $port] -buffering none -translation binary 
     puts -nonewline $client "Hello, World" 
 
     set srv [udp_open $port] 
     fconfigure $srv -buffering none -translation binary 
 } -body {
-	puts $client "message"
+    puts $client "message"
     udp_peek $srv
 } -cleanup {
     close $client
@@ -297,10 +300,14 @@ test udp-6.0 {udp_open with ipv6} -body {
 test udp-6.1 {test ipv6 mcastadd with an ipv6 group} -setup {
     set s [udp_open ipv6]
 } -body {
-	if {[string equal $::tcl_platform(os) Darwin]} {\
+	if {[string equal $::tcl_platform(os) Darwin]} {
 		# On MacOSX the default network interface for IPv6 is not set
 		# Therefor, specifically specify the used interface
    		fconfigure $s -mcastadd "ff15::e755 en0"
+	} elseif {[string match -nocase "*bsd*" $::tcl_platform(os)]} {
+		# On MacOSX the default network interface for IPv6 is not set
+		# Therefor, specifically specify the used interface
+   		fconfigure $s -mcastadd "ff15::e755 em0"
    	} else {
    		fconfigure $s -mcastadd ff15::e755
    	}
